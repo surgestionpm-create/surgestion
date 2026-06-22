@@ -327,15 +327,18 @@ function poblarMeses(anio) {
 
 function filtrarPeriodo() {
   var anio = document.getElementById('sel-anio').value;
-  var mes = document.getElementById('sel-mes').value;
-  // Al cambiar año, actualizar meses disponibles
+  var mesAntes = document.getElementById('sel-mes').value;
+  // Repoblar meses del año seleccionado
   poblarMeses(anio);
-  mes = document.getElementById('sel-mes').value;
+  // Si el mes seleccionado antes existe en el nuevo año, mantenerlo
+  var selMes = document.getElementById('sel-mes');
+  var optsArr = Array.from(selMes.options).map(function(o){ return o.value; });
+  if (optsArr.indexOf(mesAntes) >= 0) { selMes.value = mesAntes; }
+  var mes = selMes.value;
   var periodo = mes + ' ' + anio;
   if (_periodos.indexOf(periodo) >= 0) {
     cargarPeriodo(periodo);
   } else {
-    // Tomar el primer período disponible del año seleccionado
     var disponible = _periodos.find(function(p){ return p.endsWith(anio); });
     if (disponible) cargarPeriodo(disponible);
   }
@@ -401,14 +404,23 @@ function cargarDatos(userId) {
       // Poblar meses del primer año
       poblarMeses(anios[0]);
 
-      var optsRev = _periodos.slice().reverse().map(function(p) {
+      // Periodos en orden cronológico (más antiguo primero) para comp-desde
+      var periodosAsc = _periodos.slice().reverse();
+      var optsAsc = periodosAsc.map(function(p) {
         return '<option value="' + p + '">' + p.charAt(0).toUpperCase() + p.slice(1) + '</option>';
       }).join('');
-      var opts = _periodos.map(function(p) {
+      // Periodos en orden descendente (más reciente primero) para comp-hasta
+      var optsDesc = _periodos.map(function(p) {
         return '<option value="' + p + '">' + p.charAt(0).toUpperCase() + p.slice(1) + '</option>';
       }).join('');
-      document.getElementById('comp-desde').innerHTML = optsRev;
-      document.getElementById('comp-hasta').innerHTML = opts;
+      document.getElementById('comp-desde').innerHTML = optsAsc;
+      document.getElementById('comp-hasta').innerHTML = optsDesc;
+      // Valores por defecto: comp-desde = 6 periodos atrás (o el más antiguo), comp-hasta = más reciente
+      var selDesde = document.getElementById('comp-desde');
+      var selHasta = document.getElementById('comp-hasta');
+      var opsDes = Array.from(selDesde.options);
+      selDesde.value = opsDes.length > 6 ? opsDes[opsDes.length - 6].value : opsDes[0].value;
+      selHasta.value = _periodos[0];
 
       // Mostrar última actualización (reporte más reciente)
       var masReciente = _reportes[0];
@@ -682,7 +694,7 @@ function actualizarComp() {
   var repsIds = _reportes.filter(function(r){return sel.indexOf(r.periodo)>=0;}).map(function(r){return r.id;});
   if (!repsIds.length) return;
 
-  sb_client.from('costos').select('reporte_id,monto,familia,categoria').in('reporte_id', repsIds).then(function(res) {
+  sb_client.from('costos').select('reporte_id,monto,monto_neto,familia,categoria').in('reporte_id', repsIds).then(function(res) {
     var allC = res.data || [];
     var repMap = {};
     _reportes.forEach(function(r){repMap[r.id]=r.periodo;});
@@ -697,7 +709,7 @@ function actualizarComp() {
       var p = repMap[c.reporte_id];
       if (!p||!dat[p]) return;
       if (/impuesto|iva/i.test(c.familia||c.categoria||'')) return;
-      var mon = Number(c.monto||0);
+      var mon = Number(c.monto_neto||c.monto||0);
       var fam = c.familia||c.categoria||'Sin familia';
       var cat = c.categoria||'Sin categoria';
       dat[p].g += mon;
@@ -864,53 +876,6 @@ function renderEvolucion() {
       ]
     },
     options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size:10 }}}}, scales: { x: { grid: { display: false }, ticks: { font: { size:9 }}}, y: { grid: { color: '#EBF5FB' }, ticks: { font: { size:9 }, callback: function(v) { return v>=1000000?'$'+(v/1000000).toFixed(1)+'M':'$'+(v/1000).toFixed(0)+'K'; }}}}}
-  });
-}
-
-function actualizarComp() {
-  var desde = document.getElementById('comp-desde').value;
-  var hasta  = document.getElementById('comp-hasta').value;
-  if (!desde || !hasta || !_reportes.length) return;
-  var idxD = _periodos.indexOf(desde);
-  var idxH = _periodos.indexOf(hasta);
-  if (idxD < 0 || idxH < 0) return;
-  var start = Math.min(idxD, idxH);
-  var end   = Math.max(idxD, idxH);
-  var sel   = _periodos.slice(start, end+1);
-  var repsIds = _reportes.filter(function(r) { return sel.indexOf(r.periodo) >= 0; }).map(function(r) { return r.id; });
-  if (!repsIds.length) return;
-
-  sb_client.from('costos').select('reporte_id,monto,familia').in('reporte_id', repsIds).then(function(res) {
-    var allC = res.data || [];
-    var repMap = {};
-    _reportes.forEach(function(r) { repMap[r.id] = r.periodo; });
-    var dat = {};
-    sel.forEach(function(p) { dat[p] = { vb:0, vn:0, g:0 }; });
-    _reportes.filter(function(r) { return sel.indexOf(r.periodo) >= 0; }).forEach(function(r) {
-      dat[r.periodo].vb = Number(r.ventas_brutas||0);
-      dat[r.periodo].vn = Number(r.ventas_netas||0);
-    });
-    allC.forEach(function(c) {
-      var p = repMap[c.reporte_id];
-      if (p && dat[p] && !/impuesto|iva/i.test(c.familia||'')) dat[p].g += Number(c.monto||0);
-    });
-    sel.forEach(function(p) { dat[p].res = dat[p].vn - dat[p].g; });
-
-    var thead = '<tr><th>Concepto</th>' + sel.map(function(p) { return '<th class="num" style="font-size:11px">'+p.charAt(0).toUpperCase()+p.slice(1)+'</th>'; }).join('') + '<th class="num">Total</th></tr>';
-    var conceptos = [{k:'vb',l:'Ventas brutas'},{k:'vn',l:'Ventas netas'},{k:'g',l:'Gastos netos'},{k:'res',l:'Resultado'}];
-    var tbody = conceptos.map(function(con) {
-      var tot = sel.reduce(function(s,p) { return s+dat[p][con.k]; }, 0);
-      var isR = con.k === 'res';
-      return '<tr><td style="padding:7px 10px;font-size:12px;font-weight:500">'+con.l+'</td>'+
-        sel.map(function(p) {
-          var v = dat[p][con.k];
-          var s = isR ? (v>=0?'color:var(--green)':'color:var(--red)') : '';
-          return '<td class="num" style="font-size:12px;'+s+'">'+fmt(v)+'</td>';
-        }).join('') +
-        '<td class="num" style="font-weight:700;'+(isR?(tot>=0?'color:var(--green)':'color:var(--red)'):'')+'" >'+fmt(tot)+'</td></tr>';
-    }).join('');
-    document.getElementById('th-comp').innerHTML = thead;
-    document.getElementById('tb-comp').innerHTML = tbody;
   });
 }
 
