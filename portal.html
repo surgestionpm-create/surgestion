@@ -108,9 +108,12 @@ table.t tr:hover td{background:#F0F7FD}
   </div>
 
   <div class="periodo-nav">
-    <label>Periodo:</label>
-    <select class="sel" id="periodo-select"></select>
+    <label>Año:</label>
+    <select class="sel" id="sel-anio" onchange="filtrarPeriodo()"></select>
+    <label>Mes:</label>
+    <select class="sel" id="sel-mes" onchange="filtrarPeriodo()"></select>
     <span class="periodo-pill" id="periodo-pill">--</span>
+    <span id="ultima-actualizacion" style="display:none;margin-left:8px;font-size:11px;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:4px 12px">🕐 Actualizado: <strong id="fecha-actualizacion">--</strong></span>
   </div>
 
   <p class="sec">Ventas del periodo</p>
@@ -306,6 +309,31 @@ function toggleProd(row, e) {
   }
 }
 
+function poblarMeses(anio) {
+  var meses = (window._mesesPorAnio && window._mesesPorAnio[anio]) || [];
+  var orden = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  meses.sort(function(a,b){ return orden.indexOf(a)-orden.indexOf(b); });
+  document.getElementById('sel-mes').innerHTML = meses.map(function(m) {
+    return '<option value="' + m + '">' + m.charAt(0).toUpperCase() + m.slice(1) + '</option>';
+  }).join('');
+}
+
+function filtrarPeriodo() {
+  var anio = document.getElementById('sel-anio').value;
+  var mes = document.getElementById('sel-mes').value;
+  // Al cambiar año, actualizar meses disponibles
+  poblarMeses(anio);
+  mes = document.getElementById('sel-mes').value;
+  var periodo = mes + ' ' + anio;
+  if (_periodos.indexOf(periodo) >= 0) {
+    cargarPeriodo(periodo);
+  } else {
+    // Tomar el primer período disponible del año seleccionado
+    var disponible = _periodos.find(function(p){ return p.endsWith(anio); });
+    if (disponible) cargarPeriodo(disponible);
+  }
+}
+
 function iniciar() {
   sb_client.auth.getSession().then(function(res) {
     var session = res.data && res.data.session;
@@ -333,7 +361,7 @@ function cargarDatos(userId) {
       document.getElementById('nav-logo').src = cliente.logo_url;
     }
 
-    sb_client.from('reportes').select('id,periodo,ventas_brutas,ventas_netas').eq('cliente_id', cliente.id).order('created_at', {ascending: false}).then(function(r2) {
+    sb_client.from('reportes').select('id,periodo,ventas_brutas,ventas_netas,created_at').eq('cliente_id', cliente.id).order('created_at', {ascending: false}).then(function(r2) {
       _reportes = r2.data || [];
       _periodos = _reportes.map(function(r) { return r.periodo; });
 
@@ -343,16 +371,49 @@ function cargarDatos(userId) {
         return;
       }
 
-      var opts = _periodos.map(function(p) {
-        return '<option value="' + p + '">' + p.charAt(0).toUpperCase() + p.slice(1) + '</option>';
+      // Extraer años y meses únicos
+      var anios = [];
+      var mesesPorAnio = {};
+      _periodos.forEach(function(p) {
+        var parts = p.split(' ');
+        var mes = parts[0];
+        var anio = parts[1];
+        if (!anio) return;
+        if (anios.indexOf(anio) < 0) anios.push(anio);
+        if (!mesesPorAnio[anio]) mesesPorAnio[anio] = [];
+        if (mesesPorAnio[anio].indexOf(mes) < 0) mesesPorAnio[anio].push(mes);
+      });
+      anios.sort(function(a,b){return Number(b)-Number(a);});
+      window._mesesPorAnio = mesesPorAnio;
+
+      // Poblar selector de años
+      document.getElementById('sel-anio').innerHTML = anios.map(function(a) {
+        return '<option value="' + a + '">' + a + '</option>';
       }).join('');
-      document.getElementById('periodo-select').innerHTML = opts;
+
+      // Poblar meses del primer año
+      poblarMeses(anios[0]);
 
       var optsRev = _periodos.slice().reverse().map(function(p) {
         return '<option value="' + p + '">' + p.charAt(0).toUpperCase() + p.slice(1) + '</option>';
       }).join('');
+      var opts = _periodos.map(function(p) {
+        return '<option value="' + p + '">' + p.charAt(0).toUpperCase() + p.slice(1) + '</option>';
+      }).join('');
       document.getElementById('comp-desde').innerHTML = optsRev;
       document.getElementById('comp-hasta').innerHTML = opts;
+
+      // Mostrar última actualización (reporte más reciente)
+      var masReciente = _reportes[0];
+      if (masReciente && masReciente.created_at) {
+        var fecha = new Date(masReciente.created_at);
+        var opciones = {day:'2-digit', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit'};
+        var fechaStr = fecha.toLocaleDateString('es-CL', opciones);
+        document.getElementById('fecha-actualizacion').textContent = fechaStr;
+        document.getElementById('ultima-actualizacion').style.display = 'inline-flex';
+        document.getElementById('ultima-actualizacion').style.alignItems = 'center';
+        document.getElementById('ultima-actualizacion').style.gap = '4px';
+      }
 
       cargarPeriodo(_periodos[0]);
       renderEvolucion();
