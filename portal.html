@@ -243,6 +243,13 @@ document.getElementById('btn-logout').onclick = function() {
 document.getElementById('comp-desde').onchange = function() { actualizarComp(); };
 document.getElementById('comp-hasta').onchange = function() { actualizarComp(); };
 
+function flecha(actual, anterior) {
+  if (anterior === null || anterior === undefined) return '';
+  if (actual > anterior) return ' <span style="color:#27AE60;font-size:13px">&#9650;</span>';
+  if (actual < anterior) return ' <span style="color:#E74C3C;font-size:13px">&#9660;</span>';
+  return ' <span style="color:#E67E22;font-size:13px">&#9654;</span>';
+}
+
 function toggleGrupo(el) {
   var b = el.nextElementSibling;
   b.classList.toggle('open');
@@ -432,12 +439,27 @@ function cargarPeriodo(periodo) {
 
   document.getElementById('periodo-pill').textContent = periodo.charAt(0).toUpperCase() + periodo.slice(1);
 
-  Promise.all([
+  // Mes anterior para flechas de tendencia
+  var idxPer = _periodos.indexOf(periodo);
+  var periodoAnt = idxPer < _periodos.length-1 ? _periodos[idxPer+1] : null;
+  var repAnt = periodoAnt ? _reportes.find(function(r){return r.periodo===periodoAnt;}) : null;
+
+  var queries = [
     sb_client.from('costos').select('*').eq('reporte_id', rep.id).order('monto', {ascending: false}),
-    sb_client.from('productos').select('*').eq('reporte_id', rep.id).order('monto', {ascending: false}),
-  ]).then(function(results) {
+    sb_client.from('productos').select('*').eq('reporte_id', rep.id).order('monto', {ascending: false})
+  ];
+  if (repAnt) queries.push(sb_client.from('costos').select('*').eq('reporte_id', repAnt.id));
+
+  Promise.all(queries).then(function(results) {
     var costos   = results[0].data || [];
     var productos = results[1].data || [];
+    var costosAnt = repAnt ? (results[2].data||[]) : [];
+    var vbAnt = repAnt ? Number(repAnt.ventas_brutas||0) : null;
+    var vnAnt = repAnt ? Number(repAnt.ventas_netas||0) : null;
+    var gnAnt = costosAnt.reduce(function(s,c){return s+Number(c.monto||0);},0);
+    var impAnt = costosAnt.filter(function(c){return /impuesto|iva/i.test(c.familia||c.categoria||'');}).reduce(function(s,c){return s+Number(c.monto||0);},0);
+    var gnOpAnt = gnAnt - impAnt;
+    var resAnt = vnAnt !== null ? vnAnt - gnOpAnt : null;
 
     var vb = Number(rep.ventas_brutas || 0);
     var vn = Number(rep.ventas_netas  || 0);
@@ -585,13 +607,16 @@ function cargarPeriodo(periodo) {
     });
     var famList = Object.entries(famGastos).sort(function(a,b) { return b[1]-a[1]; });
 
+    // Nota periodo anterior
+    var notaAnt = periodoAnt ? '<span style="font-size:10px;color:var(--muted);margin-left:8px">vs '+periodoAnt.charAt(0).toUpperCase()+periodoAnt.slice(1)+'</span>' : '';
+
     var h = '';
-    h += '<div class="eg"><div class="egh" onclick="toggleGrupo(this)"><span>INGRESOS</span><span>'+fmt(vb)+'</span></div><div class="egb open">';
-    h += '<div class="ech"><span>Ventas brutas</span><span>'+fmt(vb)+'</span></div>';
-    h += '<div class="ech"><span>Ventas netas (sin IVA)</span><span>'+fmt(vn)+'</span></div>';
+    h += '<div class="eg"><div class="egh" onclick="toggleGrupo(this)"><span>INGRESOS '+notaAnt+'</span><span>'+fmt(vb)+flecha(vb,vbAnt)+'</span></div><div class="egb open">';
+    h += '<div class="ech"><span>Ventas brutas</span><span>'+fmt(vb)+flecha(vb,vbAnt)+'</span></div>';
+    h += '<div class="ech"><span>Ventas netas (sin IVA)</span><span>'+fmt(vn)+flecha(vn,vnAnt)+'</span></div>';
     h += '</div></div>';
 
-    h += '<div class="eg"><div class="egh" onclick="toggleGrupo(this)"><span>GASTOS OPERACIONALES</span><span>'+fmt(gnOp)+'</span></div><div class="egb open">';
+    h += '<div class="eg"><div class="egh" onclick="toggleGrupo(this)"><span>GASTOS OPERACIONALES</span><span>'+fmt(gnOp)+flecha(gnOpAnt,gnOp)+'</span></div><div class="egb open">';
     famList.forEach(function(fe) {
       h += '<div class="ech" onclick="toggleCat(this)"><span>'+fe[0]+'</span><span>'+fmt(fe[1])+'</span></div>';
       h += '<div class="ecb">';
@@ -607,7 +632,7 @@ function cargarPeriodo(periodo) {
     }
 
     var resStyle = resultado >= 0 ? 'background:var(--gl);color:var(--green)' : 'background:var(--rl);color:var(--red)';
-    h += '<div class="eres" style="'+resStyle+'"><span>RESULTADO OPERACIONAL</span><span>'+(resultado>=0?'+':'')+fmt(Math.abs(resultado))+'</span></div>';
+    h += '<div class="eres" style="'+resStyle+'"><span>RESULTADO OPERACIONAL</span><span>'+(resultado>=0?'+':'')+fmt(Math.abs(resultado))+flecha(resultado,resAnt)+'</span></div>';
     h += '<div class="ekpis" style="grid-template-columns:repeat(3,1fr)">';
     h += '<div class="ekpi"><div class="ekl">Margen bruto</div><div class="ekv">'+mb+'%</div></div>';
     h += '<div class="ekpi"><div class="ekl">Margen neto</div><div class="ekv">'+mn+'%</div></div>';
