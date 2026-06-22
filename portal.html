@@ -682,6 +682,167 @@ function actualizarComp() {
   var repsIds = _reportes.filter(function(r) { return sel.indexOf(r.periodo) >= 0; }).map(function(r) { return r.id; });
   if (!repsIds.length) return;
 
+  sb_client.from('costos').select('reporte_id,monto,familia,categoria').in('reporte_id', repsIds).then(function(res) {
+    var allC = res.data || [];
+    var repMap = {};
+    _reportes.forEach(function(r) { repMap[r.id] = r.periodo; });
+
+    var dat = {};
+    sel.forEach(function(p) { dat[p] = { vb:0, vn:0, g:0, res:0, fams:{} }; });
+
+    _reportes.filter(function(r) { return sel.indexOf(r.periodo) >= 0; }).forEach(function(r) {
+      dat[r.periodo].vb = Number(r.ventas_brutas||0);
+      dat[r.periodo].vn = Number(r.ventas_netas||0);
+    });
+
+    // Acumular gastos por período y familia
+    allC.forEach(function(c) {
+      var p = repMap[c.reporte_id];
+      if (!p || !dat[p]) return;
+      if (/impuesto|iva/i.test(c.familia||'')) return;
+      dat[p].g += Number(c.monto||0);
+      var fam = c.familia || c.categoria || 'Sin familia';
+      if (!dat[p].fams[fam]) dat[p].fams[fam] = 0;
+      dat[p].fams[fam] += Number(c.monto||0);
+    });
+    sel.forEach(function(p) { dat[p].res = dat[p].vn - dat[p].g; });
+
+    // Obtener todas las familias únicas
+    var todasFams = [];
+    sel.forEach(function(p) {
+      Object.keys(dat[p].fams).forEach(function(f) {
+        if (todasFams.indexOf(f) < 0) todasFams.push(f);
+      });
+    });
+    todasFams.sort(function(a,b) {
+      var ta = sel.reduce(function(s,p){return s+(dat[p].fams[a]||0);},0);
+      var tb = sel.reduce(function(s,p){return s+(dat[p].fams[b]||0);},0);
+      return tb-ta;
+    });
+
+    // Construir thead
+    var thead = '<tr style="background:var(--navy);color:#fff"><th style="padding:8px 10px;color:#fff">Concepto</th>' +
+      sel.map(function(p) {
+        return '<th class="num" style="padding:8px 10px;font-size:11px;color:#fff">'+p.charAt(0).toUpperCase()+p.slice(1)+'</th>';
+      }).join('') + '<th class="num" style="padding:8px 10px;color:#fff">Total</th></tr>';
+
+    // Función para generar fila con flechas
+    function fila(label, vals, isGasto, bold, bg) {
+      var tot = vals.reduce(function(s,v){return s+v;},0);
+      var style = bold ? 'font-weight:700;' : '';
+      if (bg) style += 'background:'+bg+';';
+      return '<tr style="'+style+'"><td style="padding:7px 10px;font-size:12px">'+label+'</td>' +
+        vals.map(function(v, i) {
+          var prev = i < vals.length-1 ? vals[i+1] : null;
+          var arr = '';
+          if (prev !== null) {
+            if (isGasto) {
+              // Para gastos: bajar es bueno (verde), subir es malo (rojo)
+              if (v < prev) arr = ' <span style="color:#27AE60">&#9650;</span>';
+              else if (v > prev) arr = ' <span style="color:#E74C3C">&#9660;</span>';
+              else arr = ' <span style="color:#E67E22">&#9654;</span>';
+            } else {
+              if (v > prev) arr = ' <span style="color:#27AE60">&#9650;</span>';
+              else if (v < prev) arr = ' <span style="color:#E74C3C">&#9660;</span>';
+              else arr = ' <span style="color:#E67E22">&#9654;</span>';
+            }
+          }
+          return '<td class="num" style="font-size:12px">'+fmt(v)+arr+'</td>';
+        }).join('') +
+        '<td class="num" style="font-size:12px;font-weight:700">'+fmt(tot)+'</td></tr>';
+    }
+
+    var tbody = '';
+
+    // INGRESOS
+    tbody += '<tr style="background:var(--blue-l)"><td colspan="'+(sel.length+2)+'" style="padding:6px 10px;font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:1px">INGRESOS</td></tr>';
+    tbody += fila('Ventas brutas', sel.map(function(p){return dat[p].vb;}), false, false, '');
+    tbody += fila('Ventas netas', sel.map(function(p){return dat[p].vn;}), false, true, '');
+
+    // GASTOS
+    tbody += '<tr style="background:var(--blue-l)"><td colspan="'+(sel.length+2)+'" style="padding:6px 10px;font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:1px">GASTOS OPERACIONALES</td></tr>';
+    tbody += fila('Total gastos netos', sel.map(function(p){return dat[p].g;}), true, true, '');
+
+    // Familias desplegables
+    todasFams.forEach(function(fam) {
+      var vals = sel.map(function(p){return dat[p].fams[fam]||0;});
+      var tot = vals.reduce(function(s,v){return s+v;},0);
+      if (tot === 0) return;
+      tbody += '<tr class="comp-fam-row" onclick="toggleCompFam(this)" style="cursor:pointer;background:#F8FBFD"><td style="padding:6px 10px 6px 20px;font-size:12px;color:var(--navy)">&#9658; '+fam+'</td>' +
+        vals.map(function(v,i){
+          var prev = i < vals.length-1 ? vals[i+1] : null;
+          var arr = '';
+          if (prev !== null) {
+            if (v < prev) arr = ' <span style="color:#27AE60">&#9650;</span>';
+            else if (v > prev) arr = ' <span style="color:#E74C3C">&#9660;</span>';
+            else arr = ' <span style="color:#E67E22">&#9654;</span>';
+          }
+          return '<td class="num" style="font-size:12px">'+fmt(v)+arr+'</td>';
+        }).join('') +
+        '<td class="num" style="font-size:12px;font-weight:600">'+fmt(tot)+'</td></tr>';
+    });
+
+    // RESULTADO
+    tbody += '<tr style="background:var(--blue-l)"><td colspan="'+(sel.length+2)+'" style="padding:6px 10px;font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:1px">RESULTADO</td></tr>';
+    var resVals = sel.map(function(p){return dat[p].res;});
+    tbody += '<tr style="font-weight:700"><td style="padding:7px 10px;font-size:12px">Resultado operacional</td>' +
+      resVals.map(function(v,i){
+        var prev = i < resVals.length-1 ? resVals[i+1] : null;
+        var color = v >= 0 ? 'color:var(--green)' : 'color:var(--red)';
+        var arr = '';
+        if (prev !== null) {
+          if (v > prev) arr = ' <span style="color:#27AE60">&#9650;</span>';
+          else if (v < prev) arr = ' <span style="color:#E74C3C">&#9660;</span>';
+          else arr = ' <span style="color:#E67E22">&#9654;</span>';
+        }
+        return '<td class="num" style="font-size:12px;'+color+'">'+fmt(v)+arr+'</td>';
+      }).join('') +
+      '<td class="num" style="font-size:12px;font-weight:700;'+(resVals.reduce(function(s,v){return s+v;},0)>=0?'color:var(--green)':'color:var(--red)')+'">'+fmt(resVals.reduce(function(s,v){return s+v;},0))+'</td></tr>';
+
+    document.getElementById('th-comp').innerHTML = thead;
+    document.getElementById('tb-comp').innerHTML = tbody;
+  });
+}
+
+function toggleCompFam(row) {
+  // Por ahora toggle visual simple
+  var td = row.querySelector('td:first-child');
+  if (td) {
+    td.textContent = td.textContent.replace('\u25BC','\u25BA').replace('\u25BA', td.textContent.includes('\u25BC') ? '\u25BA' : '\u25BC');
+  }
+}
+
+
+function renderEvolucion() {
+  if (!_reportes.length) return;
+  var reps = _reportes.slice().reverse().slice(-12);
+  dc('evo');
+  charts['evo'] = new Chart(document.getElementById('c-evo').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: reps.map(function(r) { return r.periodo.slice(0,3)+'.'; }),
+      datasets: [
+        { label: 'Ventas brutas', data: reps.map(function(r){return Number(r.ventas_brutas||0);}), borderColor: '#3A8FD1', backgroundColor: 'rgba(58,143,209,.1)', tension: .3, fill: true, pointRadius: 3 },
+        { label: 'Ventas netas',  data: reps.map(function(r){return Number(r.ventas_netas||0);}),  borderColor: '#27AE60', backgroundColor: 'rgba(39,174,96,.05)', tension: .3, fill: false, pointRadius: 3 }
+      ]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size:10 }}}}, scales: { x: { grid: { display: false }, ticks: { font: { size:9 }}}, y: { grid: { color: '#EBF5FB' }, ticks: { font: { size:9 }, callback: function(v) { return v>=1000000?'$'+(v/1000000).toFixed(1)+'M':'$'+(v/1000).toFixed(0)+'K'; }}}}}
+  });
+}
+
+function actualizarComp() {
+  var desde = document.getElementById('comp-desde').value;
+  var hasta  = document.getElementById('comp-hasta').value;
+  if (!desde || !hasta || !_reportes.length) return;
+  var idxD = _periodos.indexOf(desde);
+  var idxH = _periodos.indexOf(hasta);
+  if (idxD < 0 || idxH < 0) return;
+  var start = Math.min(idxD, idxH);
+  var end   = Math.max(idxD, idxH);
+  var sel   = _periodos.slice(start, end+1);
+  var repsIds = _reportes.filter(function(r) { return sel.indexOf(r.periodo) >= 0; }).map(function(r) { return r.id; });
+  if (!repsIds.length) return;
+
   sb_client.from('costos').select('reporte_id,monto,familia').in('reporte_id', repsIds).then(function(res) {
     var allC = res.data || [];
     var repMap = {};
