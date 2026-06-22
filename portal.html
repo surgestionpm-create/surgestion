@@ -795,7 +795,7 @@ function actualizarComp() {
       if (famTot === 0) return;
       var famId = 'fam-'+fi;
 
-      tbody += '<tr class="fams-grupo comp-fam-tr" id="'+famId+'-row" onclick="toggleCompFam(''+famId+'')" style="cursor:pointer;background:#F8FBFD">' +
+      tbody += '<tr class="fams-grupo comp-fam-tr" data-famid="'+famId+'" onclick="toggleCompFam(this)" style="cursor:pointer;background:#F8FBFD">' +
         '<td style="padding:7px 10px 7px 24px;font-size:12px;color:var(--navy)">&#9658; '+fam+'</td>' +
         famVals.map(function(v,i){
           var prev = i < famVals.length-1 ? famVals[i+1] : null;
@@ -860,14 +860,17 @@ function toggleCompSection(el) {
   if (td) td.innerHTML = td.innerHTML.replace('&#9660;', isVisible?'&#9660;':'&#9650;').replace('&#9650;', isVisible?'&#9660;':'&#9650;');
 }
 
-function toggleCompFam(famId) {
-  var famRow = document.getElementById(famId+'-row');
+function toggleCompFam(el) {
+  var famId = el.getAttribute('data-famid');
+  if (!famId) return;
   var catRows = document.querySelectorAll('.'+famId+'-cats');
   var isOpen = catRows.length && catRows[0].style.display !== 'none';
   catRows.forEach(function(r){ r.style.display = isOpen ? 'none' : ''; });
-  var td = famRow && famRow.querySelector('td:first-child');
+  var td = el.querySelector('td:first-child');
   if (td) {
-    td.innerHTML = td.innerHTML.replace('&#9658;', isOpen?'&#9658;':'&#9660;').replace('&#9660;', isOpen?'&#9658;':'&#9660;');
+    td.innerHTML = td.innerHTML
+      .replace('&#9658;', isOpen ? '&#9658;' : '&#9660;')
+      .replace('&#9660;', isOpen ? '&#9658;' : '&#9660;');
   }
 }
 
