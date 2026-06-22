@@ -203,8 +203,8 @@ table.t tr:hover td{background:#F0F7FD}
         <select class="sel" id="comp-hasta" style="font-size:12px;padding:4px 10px"></select>
       </div>
     </div>
-    <div class="cb" style="padding:0;overflow-x:auto">
-      <table class="t"><thead id="th-comp"></thead><tbody id="tb-comp"></tbody></table>
+    <div class="cb" style="padding:0">
+      <div id="eerr-comp-body"></div>
     </div>
   </div>
 
@@ -679,178 +679,153 @@ function actualizarComp() {
   var start = Math.min(idxD, idxH);
   var end   = Math.max(idxD, idxH);
   var sel   = _periodos.slice(start, end+1);
-  var repsIds = _reportes.filter(function(r) { return sel.indexOf(r.periodo) >= 0; }).map(function(r) { return r.id; });
+  var repsIds = _reportes.filter(function(r){return sel.indexOf(r.periodo)>=0;}).map(function(r){return r.id;});
   if (!repsIds.length) return;
 
-  sb_client.from('costos').select('reporte_id,monto,familia,categoria,proveedor').in('reporte_id', repsIds).then(function(res) {
+  sb_client.from('costos').select('reporte_id,monto,familia,categoria').in('reporte_id', repsIds).then(function(res) {
     var allC = res.data || [];
     var repMap = {};
-    _reportes.forEach(function(r) { repMap[r.id] = r.periodo; });
+    _reportes.forEach(function(r){repMap[r.id]=r.periodo;});
 
     var dat = {};
-    sel.forEach(function(p) { dat[p] = { vb:0, vn:0, g:0, res:0, fams:{} }; });
-
-    _reportes.filter(function(r) { return sel.indexOf(r.periodo) >= 0; }).forEach(function(r) {
+    sel.forEach(function(p){dat[p]={vb:0,vn:0,g:0,res:0,fams:{},cats:{}};});
+    _reportes.filter(function(r){return sel.indexOf(r.periodo)>=0;}).forEach(function(r){
       dat[r.periodo].vb = Number(r.ventas_brutas||0);
       dat[r.periodo].vn = Number(r.ventas_netas||0);
     });
-
-    // Acumular gastos por período y familia
-    allC.forEach(function(c) {
+    allC.forEach(function(c){
       var p = repMap[c.reporte_id];
-      if (!p || !dat[p]) return;
-      if (/impuesto|iva/i.test(c.familia||'')) return;
-      dat[p].g += Number(c.monto||0);
-      var fam = c.familia || c.categoria || 'Sin familia';
-      if (!dat[p].fams[fam]) dat[p].fams[fam] = 0;
-      dat[p].fams[fam] += Number(c.monto||0);
+      if (!p||!dat[p]) return;
+      if (/impuesto|iva/i.test(c.familia||c.categoria||'')) return;
+      var mon = Number(c.monto||0);
+      var fam = c.familia||c.categoria||'Sin familia';
+      var cat = c.categoria||'Sin categoria';
+      dat[p].g += mon;
+      if (!dat[p].fams[fam]) dat[p].fams[fam]=0;
+      dat[p].fams[fam] += mon;
+      if (!dat[p].cats[fam]) dat[p].cats[fam]={};
+      if (!dat[p].cats[fam][cat]) dat[p].cats[fam][cat]=0;
+      dat[p].cats[fam][cat] += mon;
     });
-    sel.forEach(function(p) { dat[p].res = dat[p].vn - dat[p].g; });
+    sel.forEach(function(p){dat[p].res=dat[p].vn-dat[p].g;});
 
-    // Obtener todas las familias únicas
-    var todasFams = [];
-    sel.forEach(function(p) {
-      Object.keys(dat[p].fams).forEach(function(f) {
-        if (todasFams.indexOf(f) < 0) todasFams.push(f);
-      });
-    });
-    todasFams.sort(function(a,b) {
-      var ta = sel.reduce(function(s,p){return s+(dat[p].fams[a]||0);},0);
-      var tb = sel.reduce(function(s,p){return s+(dat[p].fams[b]||0);},0);
-      return tb-ta;
+    // Familias únicas ordenadas por total
+    var todasFams=[];
+    sel.forEach(function(p){Object.keys(dat[p].fams).forEach(function(f){if(todasFams.indexOf(f)<0)todasFams.push(f);});});
+    todasFams.sort(function(a,b){
+      return sel.reduce(function(s,p){return s+(dat[p].fams[b]||0);},0) - sel.reduce(function(s,p){return s+(dat[p].fams[a]||0);},0);
     });
 
-    // Construir thead
-    var thead = '<tr style="background:var(--navy);color:#fff"><th style="padding:8px 10px;color:#fff">Concepto</th>' +
-      sel.map(function(p) {
-        return '<th class="num" style="padding:8px 10px;font-size:11px;color:#fff">'+p.charAt(0).toUpperCase()+p.slice(1)+'</th>';
-      }).join('') + '<th class="num" style="padding:8px 10px;color:#fff">Total</th></tr>';
-
-    // Función para generar fila con flechas
-    function fila(label, vals, isGasto, bold, bg) {
-      var tot = vals.reduce(function(s,v){return s+v;},0);
-      var style = bold ? 'font-weight:700;' : '';
-      if (bg) style += 'background:'+bg+';';
-      return '<tr style="'+style+'"><td style="padding:7px 10px;font-size:12px">'+label+'</td>' +
-        vals.map(function(v, i) {
-          var prev = i < vals.length-1 ? vals[i+1] : null;
-          var arr = '';
-          if (prev !== null) {
-            if (isGasto) {
-              // Para gastos: bajar es bueno (verde), subir es malo (rojo)
-              if (v < prev) arr = ' <span style="color:#27AE60">&#9650;</span>';
-              else if (v > prev) arr = ' <span style="color:#E74C3C">&#9660;</span>';
-              else arr = ' <span style="color:#E67E22">&#9654;</span>';
-            } else {
-              if (v > prev) arr = ' <span style="color:#27AE60">&#9650;</span>';
-              else if (v < prev) arr = ' <span style="color:#E74C3C">&#9660;</span>';
-              else arr = ' <span style="color:#E67E22">&#9654;</span>';
-            }
-          }
-          return '<td class="num" style="font-size:12px">'+fmt(v)+arr+'</td>';
-        }).join('') +
-        '<td class="num" style="font-size:12px;font-weight:700">'+fmt(tot)+'</td></tr>';
+    function arrow(v, prev, invert) {
+      if (prev===null||prev===undefined) return '';
+      var up = invert ? v<prev : v>prev;
+      var dn = invert ? v>prev : v<prev;
+      if (up) return '<span style="color:#27AE60;margin-left:4px">&#9650;</span>';
+      if (dn) return '<span style="color:#E74C3C;margin-left:4px">&#9660;</span>';
+      return '<span style="color:#E67E22;margin-left:4px">&#9654;</span>';
     }
 
-    var tbody = '';
+    function rowComp(label, vals, invert, bold, bg, indent) {
+      var tot = vals.reduce(function(s,v){return s+v;},0);
+      var bst = bold ? 'font-weight:600;' : '';
+      var bgst = bg ? 'background:'+bg+';' : '';
+      var pad = indent ? 'padding-left:'+(12+indent*14)+'px' : 'padding-left:14px';
+      var cols = vals.map(function(v,i){
+        var prev = i<vals.length-1 ? vals[i+1] : null;
+        return '<span style="min-width:110px;text-align:right;display:inline-block">'+fmt(v)+arrow(v,prev,invert)+'</span>';
+      }).join('');
+      var totColor = invert ? (tot<vals[0]?'color:var(--green)':'') : (tot>=0?'':'color:var(--red)');
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px;'+bst+bgst+'border-top:1px solid var(--bg)">' +
+        '<span style="font-size:12px;flex:1;'+pad+'">'+label+'</span>' +
+        '<div style="display:flex;gap:8px">'+cols+'</div>' +
+        '<span style="min-width:100px;text-align:right;font-size:12px;font-weight:700;'+totColor+'">'+fmt(tot)+'</span>' +
+        '</div>';
+    }
+
+    // Header con períodos
+    var headerPeriodos = sel.map(function(p){
+      return '<span style="min-width:110px;text-align:right;display:inline-block;font-size:11px;font-weight:600;color:var(--muted)">'+p.charAt(0).toUpperCase()+p.slice(1)+'</span>';
+    }).join('');
+
+    var h = '';
+    // Header
+    h += '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--navy);color:#fff;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px">';
+    h += '<span style="flex:1">Concepto</span>';
+    h += '<div style="display:flex;gap:8px">'+headerPeriodos+'</div>';
+    h += '<span style="min-width:100px;text-align:right">Total</span>';
+    h += '</div>';
 
     // INGRESOS
-    tbody += '<tr style="background:var(--blue-l)"><td colspan="'+(sel.length+2)+'" style="padding:6px 10px;font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:1px">INGRESOS</td></tr>';
-    tbody += fila('Ventas brutas', sel.map(function(p){return dat[p].vb;}), false, false, '');
-    tbody += fila('Ventas netas', sel.map(function(p){return dat[p].vn;}), false, true, '');
+    h += '<div style="padding:6px 14px;background:var(--blue-l);font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.8px">INGRESOS</div>';
+    h += rowComp('Ventas brutas', sel.map(function(p){return dat[p].vb;}), false, false, '');
+    h += rowComp('Ventas netas (sin IVA)', sel.map(function(p){return dat[p].vn;}), false, true, '#F8FBFD');
 
-    // Acumular proveedores por familia y periodo
-    allC.forEach(function(c) {
-      var p = repMap[c.reporte_id];
-      if (!p || !dat[p]) return;
-      if (/impuesto|iva/i.test(c.familia||'')) return;
-      var fam = c.familia || c.categoria || 'Sin familia';
-      var cat = c.categoria || 'Sin categoria';
-      if (!dat[p].cats) dat[p].cats = {};
-      if (!dat[p].cats[fam]) dat[p].cats[fam] = {};
-      if (!dat[p].cats[fam][cat]) dat[p].cats[fam][cat] = 0;
-      dat[p].cats[fam][cat] += Number(c.monto||0);
-    });
-
-    // GASTOS - fila principal expandible
-    var nCols = sel.length + 2;
-    tbody += '<tr style="background:var(--blue-l)"><td colspan="'+nCols+'" style="padding:6px 10px;font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:1px">GASTOS OPERACIONALES</td></tr>';
-
-    // Fila total gastos - clickeable para expandir/colapsar todo
-    var gVals = sel.map(function(p){return dat[p].g;});
-    var gTot = gVals.reduce(function(s,v){return s+v;},0);
-    tbody += '<tr onclick="toggleCompSection(this)" style="cursor:pointer;font-weight:700;background:#EBF5FB">' +
-      '<td style="padding:8px 10px;font-size:12px;color:var(--navy)">&#9660; Gastos netos (por familia)</td>' +
-      gVals.map(function(v,i){
-        var prev = i < gVals.length-1 ? gVals[i+1] : null;
-        var arr = prev!==null ? (v<prev?' <span style="color:#27AE60">&#9650;</span>':v>prev?' <span style="color:#E74C3C">&#9660;</span>':' <span style="color:#E67E22">&#9654;</span>') : '';
-        return '<td class="num" style="font-size:12px;font-weight:700">'+fmt(v)+arr+'</td>';
-      }).join('') +
-      '<td class="num" style="font-size:12px;font-weight:700">'+fmt(gTot)+'</td></tr>';
+    // GASTOS
+    h += '<div style="padding:6px 14px;background:var(--blue-l);font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.8px">GASTOS OPERACIONALES</div>';
+    h += rowComp('Total gastos netos', sel.map(function(p){return dat[p].g;}), true, true, '#F8FBFD');
 
     // Familias expandibles
     todasFams.forEach(function(fam, fi) {
       var famVals = sel.map(function(p){return dat[p].fams[fam]||0;});
       var famTot = famVals.reduce(function(s,v){return s+v;},0);
-      if (famTot === 0) return;
-      var famId = 'fam-'+fi;
+      if (!famTot) return;
+      var famId = 'cf'+fi;
 
-      tbody += '<tr class="fams-grupo comp-fam-tr" data-famid="'+famId+'" onclick="toggleCompFam(this)" style="cursor:pointer;background:#F8FBFD">' +
-        '<td style="padding:7px 10px 7px 24px;font-size:12px;color:var(--navy)">&#9658; '+fam+'</td>' +
-        famVals.map(function(v,i){
-          var prev = i < famVals.length-1 ? famVals[i+1] : null;
-          var arr = prev!==null ? (v<prev?' <span style="color:#27AE60">&#9650;</span>':v>prev?' <span style="color:#E74C3C">&#9660;</span>':' <span style="color:#E67E22">&#9654;</span>') : '';
-          return '<td class="num" style="font-size:12px">'+fmt(v)+arr+'</td>';
-        }).join('') +
-        '<td class="num" style="font-size:12px;font-weight:600">'+fmt(famTot)+'</td></tr>';
+      // Fila familia - clickeable
+      var famCols = famVals.map(function(v,i){
+        var prev = i<famVals.length-1 ? famVals[i+1] : null;
+        return '<span style="min-width:110px;text-align:right;display:inline-block">'+fmt(v)+arrow(v,prev,true)+'</span>';
+      }).join('');
+      h += '<div id="'+famId+'" onclick="document.getElementById(\''+famId+'-cats\').style.display=document.getElementById(\''+famId+'-cats\').style.display===\'none\'?\'block\':\'none\';this.querySelector(\'.arr\').innerHTML=document.getElementById(\''+famId+'-cats\').style.display===\'none\'?\'&#9658;\':\'&#9660;\';" style="display:flex;align-items:center;justify-content:space-between;padding:7px 14px 7px 28px;background:#F0F7FD;cursor:pointer;border-top:1px solid var(--border)">';
+      h += '<span style="font-size:12px;color:var(--navy)"><span class="arr">&#9658;</span> '+fam+'</span>';
+      h += '<div style="display:flex;gap:8px">'+famCols+'</div>';
+      h += '<span style="min-width:100px;text-align:right;font-size:12px;font-weight:600">'+fmt(famTot)+'</span>';
+      h += '</div>';
 
-      // Categorías/proveedores dentro de la familia
-      var todasCats = [];
-      sel.forEach(function(p){
-        if (dat[p].cats && dat[p].cats[fam]) {
-          Object.keys(dat[p].cats[fam]).forEach(function(cat){
-            if (todasCats.indexOf(cat)<0) todasCats.push(cat);
-          });
-        }
-      });
-      todasCats.sort(function(a,b){
-        var ta=sel.reduce(function(s,p){return s+((dat[p].cats&&dat[p].cats[fam]&&dat[p].cats[fam][a])||0);},0);
-        var tb=sel.reduce(function(s,p){return s+((dat[p].cats&&dat[p].cats[fam]&&dat[p].cats[fam][b])||0);},0);
-        return tb-ta;
+      // Categorías dentro de la familia
+      var cats = sel.reduce(function(acc,p){
+        if (dat[p].cats[fam]) Object.keys(dat[p].cats[fam]).forEach(function(c){if(acc.indexOf(c)<0)acc.push(c);});
+        return acc;
+      },[]);
+      cats.sort(function(a,b){
+        return sel.reduce(function(s,p){return s+((dat[p].cats[fam]&&dat[p].cats[fam][b])||0);},0) -
+               sel.reduce(function(s,p){return s+((dat[p].cats[fam]&&dat[p].cats[fam][a])||0);},0);
       });
 
-      todasCats.forEach(function(cat) {
-        var catVals = sel.map(function(p){return (dat[p].cats&&dat[p].cats[fam]&&dat[p].cats[fam][cat])||0;});
+      h += '<div id="'+famId+'-cats" style="display:none">';
+      cats.forEach(function(cat){
+        var catVals = sel.map(function(p){return (dat[p].cats[fam]&&dat[p].cats[fam][cat])||0;});
         var catTot = catVals.reduce(function(s,v){return s+v;},0);
-        if (catTot===0) return;
-        tbody += '<tr class="'+famId+'-cats comp-cat-tr" style="display:none;background:var(--white)">' +
-          '<td style="padding:6px 10px 6px 40px;font-size:11px;color:var(--muted)">'+cat+'</td>' +
-          catVals.map(function(v){return '<td class="num" style="font-size:11px;color:var(--muted)">'+fmt(v)+'</td>';}).join('') +
-          '<td class="num" style="font-size:11px;color:var(--muted)">'+fmt(catTot)+'</td></tr>';
+        if (!catTot) return;
+        var catCols = catVals.map(function(v){return '<span style="min-width:110px;text-align:right;display:inline-block;color:var(--muted)">'+fmt(v)+'</span>';}).join('');
+        h += '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 14px 6px 44px;background:var(--white);border-top:1px solid var(--bg)">';
+        h += '<span style="font-size:11px;color:var(--muted)">'+cat+'</span>';
+        h += '<div style="display:flex;gap:8px">'+catCols+'</div>';
+        h += '<span style="min-width:100px;text-align:right;font-size:11px;color:var(--muted)">'+fmt(catTot)+'</span>';
+        h += '</div>';
       });
+      h += '</div>';
     });
 
     // RESULTADO
-    tbody += '<tr style="background:var(--blue-l)"><td colspan="'+(sel.length+2)+'" style="padding:6px 10px;font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:1px">RESULTADO</td></tr>';
+    h += '<div style="padding:6px 14px;background:var(--blue-l);font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.8px">RESULTADO</div>';
     var resVals = sel.map(function(p){return dat[p].res;});
-    tbody += '<tr style="font-weight:700"><td style="padding:7px 10px;font-size:12px">Resultado operacional</td>' +
-      resVals.map(function(v,i){
-        var prev = i < resVals.length-1 ? resVals[i+1] : null;
-        var color = v >= 0 ? 'color:var(--green)' : 'color:var(--red)';
-        var arr = '';
-        if (prev !== null) {
-          if (v > prev) arr = ' <span style="color:#27AE60">&#9650;</span>';
-          else if (v < prev) arr = ' <span style="color:#E74C3C">&#9660;</span>';
-          else arr = ' <span style="color:#E67E22">&#9654;</span>';
-        }
-        return '<td class="num" style="font-size:12px;'+color+'">'+fmt(v)+arr+'</td>';
-      }).join('') +
-      '<td class="num" style="font-size:12px;font-weight:700;'+(resVals.reduce(function(s,v){return s+v;},0)>=0?'color:var(--green)':'color:var(--red)')+'">'+fmt(resVals.reduce(function(s,v){return s+v;},0))+'</td></tr>';
+    var resTot = resVals.reduce(function(s,v){return s+v;},0);
+    var resCols = resVals.map(function(v,i){
+      var prev = i<resVals.length-1 ? resVals[i+1] : null;
+      var c = v>=0?'color:var(--green)':'color:var(--red)';
+      return '<span style="min-width:110px;text-align:right;display:inline-block;'+c+'">'+fmt(v)+arrow(v,prev,false)+'</span>';
+    }).join('');
+    h += '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;font-weight:700;background:'+(resTot>=0?'var(--gl)':'var(--rl)')+';border-top:2px solid var(--border)">';
+    h += '<span style="font-size:13px;'+(resTot>=0?'color:var(--green)':'color:var(--red)')+'">Resultado operacional</span>';
+    h += '<div style="display:flex;gap:8px">'+resCols+'</div>';
+    h += '<span style="min-width:100px;text-align:right;font-size:13px;font-weight:700;'+(resTot>=0?'color:var(--green)':'color:var(--red)')+'">'+fmt(resTot)+'</span>';
+    h += '</div>';
 
-    document.getElementById('th-comp').innerHTML = thead;
-    document.getElementById('tb-comp').innerHTML = tbody;
+    document.getElementById('eerr-comp-body').innerHTML = h;
   });
 }
+
 
 function toggleCompSection(el) {
   var rows = document.querySelectorAll('.fams-grupo');
