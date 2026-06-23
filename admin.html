@@ -341,8 +341,9 @@ function procesarGastos(input){
       // Acumular por cat+fam+prov
       var existe=gastosData[periodo].find(function(x){return x.cat===cat&&x.fam===fam&&x.prov===prov;});
       var tipo=String(r[tipoKey]||'').trim();
-      if(existe){existe.monto+=mon;}
-      else{gastosData[periodo].push({cat:cat,fam:fam,prov:prov,monto:mon,tipo:tipo});}
+      var monNeto=parseFloat(String(r['Monto Neto']||r['monto_neto']||'0').replace(/[^0-9.-]/g,''))||mon;
+      if(existe){existe.monto+=mon;existe.montoNeto+=monNeto;}
+      else{gastosData[periodo].push({cat:cat,fam:fam,prov:prov,monto:mon,montoNeto:monNeto,tipo:tipo});}
     });
     var periodos=Object.keys(gastosData);
     console.log('Periodos gastos:',periodos);
@@ -552,7 +553,7 @@ async function subirDatos(){
     if(rep.error){errores.push(periodo+': '+rep.error.message);continue;}
     var repId=rep.data.id;
     // Insertar costos
-    var costosList=(gastPer||[]).map(function(x){return {reporte_id:repId,categoria:x.cat,familia:x.fam,monto:x.monto,tipo_gasto:x.tipo||''};});
+    var costosList=(gastPer||[]).map(function(x){return {reporte_id:repId,categoria:x.cat,familia:x.fam,monto:x.monto,monto_neto:x.montoNeto||x.monto,tipo_gasto:x.tipo||''};});
     if(costosList.length)await sb.from('costos').insert(costosList);
     // Insertar productos
     var prodList=Object.entries(ventPer).map(function(e){return {reporte_id:repId,nombre:e[0],cantidad:e[1].cantidad,monto:e[1].monto,categoria:e[1].cat||'Sin categoria',forma_pago:e[1].fp||null};});
