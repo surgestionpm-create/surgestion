@@ -70,6 +70,7 @@ table.t tr:hover td{background:#F0F7FD}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 
@@ -343,111 +344,91 @@ function exportarExcel(){
 function exportarPDF(){
   var periodo = document.getElementById('periodo-pill').textContent || 'periodo';
   var empresa = document.getElementById('empresa-nombre').textContent || 'empresa';
-  var doc = new jspdf.jsPDF('p','mm','a4');
-  var y = 15;
+  var btn = document.querySelector('button[onclick="exportarPDF()"]');
+  var btnXls = document.querySelector('button[onclick="exportarExcel()"]');
 
-  // Header
-  doc.setFillColor(27,58,92);
-  doc.rect(0,0,210,25,'F');
-  doc.setTextColor(255,255,255);
-  doc.setFontSize(16);
-  doc.setFont('helvetica','bold');
-  doc.text('SurGestion - Reporte Financiero', 14, 16);
-  doc.setFontSize(10);
-  doc.setFont('helvetica','normal');
-  doc.text(empresa+' | '+periodo, 14, 22);
-  y = 35;
+  // Ocultar botones durante captura
+  if(btn) btn.style.display='none';
+  if(btnXls) btnXls.style.display='none';
 
-  // KPIs
-  doc.setTextColor(27,58,92);
-  doc.setFontSize(12);
-  doc.setFont('helvetica','bold');
-  doc.text('RESUMEN DEL PERIODO', 14, y);
-  y += 6;
+  var target = document.getElementById('dashboard');
 
-  var kpis = [
-    ['Ventas brutas', document.getElementById('kv-vb').textContent],
-    ['Ventas netas', document.getElementById('kv-vn').textContent],
-    ['Gastos brutos', document.getElementById('kv-gb').textContent],
-    ['Gastos netos', document.getElementById('kv-gn').textContent],
-    ['Resultado operacional', document.getElementById('iv-res').textContent],
-    ['Margen bruto', document.getElementById('iv-mb').textContent],
-    ['Margen neto', document.getElementById('iv-mn').textContent],
-  ];
+  html2canvas(target, {
+    scale: 1.5,
+    useCORS: true,
+    allowTaint: true,
+    backgroundColor: '#F5F9FC',
+    logging: false,
+    windowWidth: 1280
+  }).then(function(canvas){
+    // Restaurar botones
+    if(btn) btn.style.display='';
+    if(btnXls) btnXls.style.display='';
 
-  doc.autoTable({
-    startY: y,
-    head: [['Indicador','Valor']],
-    body: kpis,
-    theme: 'striped',
-    headStyles: {fillColor:[27,58,92], textColor:255, fontStyle:'bold'},
-    styles: {fontSize:10},
-    columnStyles: {0:{cellWidth:100}, 1:{cellWidth:60, halign:'right'}},
-    margin:{left:14}
+    var imgData = canvas.toDataURL('image/jpeg', 0.92);
+    var doc = new jspdf.jsPDF('p','mm','a4');
+    var pageW = 210;
+    var pageH = 297;
+    var margin = 12;
+    var logoH = 14;
+    var headerH = logoH + 6;
+
+    // Logo SurGestion (base64 desde el nav)
+    var logoEl = document.getElementById('nav-logo');
+    var logoSrc = logoEl ? logoEl.src : '';
+
+    // Total altura de la imagen
+    var imgW = canvas.width;
+    var imgH = canvas.height;
+
+    // Calcular cuántas páginas
+    var printW = pageW - margin*2;
+    var printH = pageH - headerH - margin - 10;
+    var scale = printW / (imgW / 1.5 * 0.264583); // px a mm
+    var totalMM = (imgH / 1.5) * 0.264583 * (printW / ((imgW/1.5)*0.264583));
+    var numPages = Math.ceil(totalMM / printH);
+
+    for(var page = 0; page < numPages; page++){
+      if(page > 0) doc.addPage();
+
+      // Header con logo
+      doc.setFillColor(27,58,92);
+      doc.rect(0, 0, 210, headerH, 'F');
+      if(logoSrc && logoSrc.indexOf('base64') >= 0){
+        try{ doc.addImage(logoSrc, 'PNG', margin, 3, 28, logoH-2); }catch(e){}
+      }
+      doc.setTextColor(255,255,255);
+      doc.setFontSize(9);
+      doc.setFont('helvetica','normal');
+      doc.text(empresa+' | '+periodo, margin+32, 11);
+      doc.text('Pagina '+(page+1)+' de '+numPages, pageW-margin, 11, {align:'right'});
+      doc.text('surgestionpm.cl', pageW-margin, 17, {align:'right'});
+      doc.setFontSize(7);
+      doc.setTextColor(200,220,240);
+      doc.text(new Date().toLocaleDateString('es-CL',{day:'2-digit',month:'long',year:'numeric'}), margin+32, 17);
+
+      // Calcular la porción de imagen para esta página
+      var srcY = page * printH / ((printW / ((imgW/1.5)*0.264583)));
+      var srcH = printH / ((printW / ((imgW/1.5)*0.264583)));
+
+      // Crear canvas de la porción
+      var sliceCanvas = document.createElement('canvas');
+      sliceCanvas.width = imgW;
+      sliceCanvas.height = Math.min(srcH * 1.5, imgH - page * srcH * 1.5);
+      var ctx = sliceCanvas.getContext('2d');
+      ctx.drawImage(canvas, 0, page * srcH * 1.5, sliceCanvas.width, sliceCanvas.height, 0, 0, sliceCanvas.width, sliceCanvas.height);
+      var sliceData = sliceCanvas.toDataURL('image/jpeg', 0.92);
+
+      var sliceMMH = sliceCanvas.height / 1.5 * 0.264583 * (printW / ((imgW/1.5)*0.264583));
+      doc.addImage(sliceData, 'JPEG', margin, headerH+2, printW, sliceMMH);
+    }
+
+    doc.save(empresa+' - '+periodo+'.pdf');
+  }).catch(function(err){
+    if(btn) btn.style.display='';
+    if(btnXls) btnXls.style.display='';
+    alert('Error al generar PDF: '+err.message);
   });
-  y = doc.lastAutoTable.finalY + 10;
-
-  // Ventas por categoria
-  doc.setTextColor(27,58,92);
-  doc.setFontSize(12);
-  doc.setFont('helvetica','bold');
-  doc.text('VENTAS POR CATEGORIA', 14, y);
-  y += 4;
-
-  var catRows = [];
-  document.querySelectorAll('#tb-catv tr').forEach(function(tr){
-    var tds = tr.querySelectorAll('td');
-    if(tds.length) catRows.push([tds[0].textContent, tds[1].textContent, tds[2].textContent]);
-  });
-
-  doc.autoTable({
-    startY: y,
-    head: [['Categoria','Monto','% Ventas']],
-    body: catRows,
-    theme: 'striped',
-    headStyles: {fillColor:[58,143,209], textColor:255, fontStyle:'bold'},
-    styles: {fontSize:9},
-    columnStyles: {0:{cellWidth:100}, 1:{cellWidth:45, halign:'right'}, 2:{cellWidth:25, halign:'right'}},
-    margin:{left:14}
-  });
-  y = doc.lastAutoTable.finalY + 10;
-
-  // Gastos por familia
-  if(y > 240){ doc.addPage(); y = 15; }
-  doc.setTextColor(27,58,92);
-  doc.setFontSize(12);
-  doc.setFont('helvetica','bold');
-  doc.text('GASTOS POR FAMILIA', 14, y);
-  y += 4;
-
-  var famRows = [];
-  document.querySelectorAll('#tb-gfam tr').forEach(function(tr){
-    var tds = tr.querySelectorAll('td');
-    if(tds.length) famRows.push([tds[0].textContent, tds[1].textContent, tds[2].textContent, tds[3].textContent]);
-  });
-
-  doc.autoTable({
-    startY: y,
-    head: [['Familia','Gasto Neto','% Gasto','% V.Neta']],
-    body: famRows,
-    theme: 'striped',
-    headStyles: {fillColor:[27,58,92], textColor:255, fontStyle:'bold'},
-    styles: {fontSize:9},
-    columnStyles: {0:{cellWidth:80}, 1:{cellWidth:45, halign:'right'}, 2:{cellWidth:25, halign:'right'}, 3:{cellWidth:25, halign:'right'}},
-    margin:{left:14}
-  });
-
-  // Footer
-  var pageCount = doc.internal.getNumberOfPages();
-  for(var i=1; i<=pageCount; i++){
-    doc.setPage(i);
-    doc.setFontSize(8);
-    doc.setTextColor(150,150,150);
-    doc.text('SurGestion | surgestionpm.cl | Pagina '+i+' de '+pageCount, 14, 290);
-    doc.text(new Date().toLocaleDateString('es-CL'), 180, 290);
-  }
-
-  doc.save(empresa+' - '+periodo+'.pdf');
 }
 
 function iniciar(){
