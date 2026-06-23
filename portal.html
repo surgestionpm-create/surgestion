@@ -678,151 +678,168 @@ function actualizarComp() {
   if (idxD < 0 || idxH < 0) return;
   var start = Math.min(idxD, idxH);
   var end   = Math.max(idxD, idxH);
-  var sel   = _periodos.slice(start, end+1);
+  // Orden cronologico: mas antiguo a mas nuevo
+  var sel = _periodos.slice(start, end+1).slice().reverse();
   var repsIds = _reportes.filter(function(r){return sel.indexOf(r.periodo)>=0;}).map(function(r){return r.id;});
   if (!repsIds.length) return;
 
   sb_client.from('costos').select('reporte_id,monto,familia,categoria').in('reporte_id', repsIds).then(function(res) {
     var allC = res.data || [];
     var repMap = {};
-    _reportes.forEach(function(r){repMap[r.id]=r.periodo;});
+    _reportes.forEach(function(r){ repMap[r.id] = r.periodo; });
 
     var dat = {};
-    sel.forEach(function(p){dat[p]={vb:0,vn:0,g:0,res:0,fams:{},cats:{}};});
-    _reportes.filter(function(r){return sel.indexOf(r.periodo)>=0;}).forEach(function(r){
+    sel.forEach(function(p){ dat[p] = {vb:0, vn:0, g:0, fams:{}, cats:{}}; });
+    _reportes.filter(function(r){ return sel.indexOf(r.periodo) >= 0; }).forEach(function(r){
       dat[r.periodo].vb = Number(r.ventas_brutas||0);
       dat[r.periodo].vn = Number(r.ventas_netas||0);
     });
     allC.forEach(function(c){
       var p = repMap[c.reporte_id];
-      if (!p||!dat[p]) return;
+      if (!p || !dat[p]) return;
       if (/impuesto|iva/i.test(c.familia||c.categoria||'')) return;
       var mon = Number(c.monto||0);
-      var fam = c.familia||c.categoria||'Sin familia';
-      var cat = c.categoria||'Sin categoria';
+      var fam = c.familia || c.categoria || 'Sin familia';
+      var cat = c.categoria || 'Sin categoria';
       dat[p].g += mon;
-      if (!dat[p].fams[fam]) dat[p].fams[fam]=0;
+      if (!dat[p].fams[fam]) dat[p].fams[fam] = 0;
       dat[p].fams[fam] += mon;
-      if (!dat[p].cats[fam]) dat[p].cats[fam]={};
-      if (!dat[p].cats[fam][cat]) dat[p].cats[fam][cat]=0;
+      if (!dat[p].cats[fam]) dat[p].cats[fam] = {};
+      if (!dat[p].cats[fam][cat]) dat[p].cats[fam][cat] = 0;
       dat[p].cats[fam][cat] += mon;
     });
-    sel.forEach(function(p){dat[p].res=dat[p].vn-dat[p].g;});
+    sel.forEach(function(p){ dat[p].res = dat[p].vn - dat[p].g; });
 
-    // Familias únicas ordenadas por total
-    var todasFams=[];
-    sel.forEach(function(p){Object.keys(dat[p].fams).forEach(function(f){if(todasFams.indexOf(f)<0)todasFams.push(f);});});
+    // Familias ordenadas por total desc
+    var todasFams = [];
+    sel.forEach(function(p){ Object.keys(dat[p].fams).forEach(function(f){ if (todasFams.indexOf(f)<0) todasFams.push(f); }); });
     todasFams.sort(function(a,b){
-      return sel.reduce(function(s,p){return s+(dat[p].fams[b]||0);},0) - sel.reduce(function(s,p){return s+(dat[p].fams[a]||0);},0);
+      return sel.reduce(function(s,p){return s+(dat[p].fams[b]||0);},0) -
+             sel.reduce(function(s,p){return s+(dat[p].fams[a]||0);},0);
     });
 
-    function arrow(v, prev, invert) {
+    function arr(v, prev, inv) {
       if (prev===null||prev===undefined) return '';
-      var up = invert ? v<prev : v>prev;
-      var dn = invert ? v>prev : v<prev;
-      if (up) return '<span style="color:#27AE60;margin-left:4px">&#9650;</span>';
-      if (dn) return '<span style="color:#E74C3C;margin-left:4px">&#9660;</span>';
-      return '<span style="color:#E67E22;margin-left:4px">&#9654;</span>';
+      var up = inv ? v<prev : v>prev;
+      var dn = inv ? v>prev : v<prev;
+      if (up) return '<span style="color:#27AE60"> &uarr;</span>';
+      if (dn) return '<span style="color:#E74C3C"> &darr;</span>';
+      return '<span style="color:#E67E22"> &rarr;</span>';
     }
 
-    function rowComp(label, vals, invert, bold, bg, indent) {
-      var tot = vals.reduce(function(s,v){return s+v;},0);
-      var bst = bold ? 'font-weight:600;' : '';
-      var bgst = bg ? 'background:'+bg+';' : '';
-      var pad = indent ? 'padding-left:'+(12+indent*14)+'px' : 'padding-left:14px';
-      var cols = vals.map(function(v,i){
-        var prev = i<vals.length-1 ? vals[i+1] : null;
-        return '<span style="min-width:110px;text-align:right;display:inline-block">'+fmt(v)+arrow(v,prev,invert)+'</span>';
+    function celdas(vals, inv) {
+      return vals.map(function(v,i){
+        var prev = i > 0 ? vals[i-1] : null;
+        return '<span style="min-width:110px;text-align:right;display:inline-block">'+fmt(v)+arr(v,prev,inv)+'</span>';
       }).join('');
-      var totColor = invert ? (tot<vals[0]?'color:var(--green)':'') : (tot>=0?'':'color:var(--red)');
-      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px;'+bst+bgst+'border-top:1px solid var(--bg)">' +
-        '<span style="font-size:12px;flex:1;'+pad+'">'+label+'</span>' +
-        '<div style="display:flex;gap:8px">'+cols+'</div>' +
-        '<span style="min-width:100px;text-align:right;font-size:12px;font-weight:700;'+totColor+'">'+fmt(tot)+'</span>' +
-        '</div>';
     }
 
-    // Header con períodos
-    var headerPeriodos = sel.map(function(p){
-      return '<span style="min-width:110px;text-align:right;display:inline-block;font-size:11px;font-weight:600;color:var(--muted)">'+p.charAt(0).toUpperCase()+p.slice(1)+'</span>';
-    }).join('');
+    var nPer = sel.length;
+    var W = 110;
 
+    // Construir HTML
     var h = '';
+
     // Header
-    h += '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--navy);color:#fff;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px">';
+    h += '<div style="display:flex;align-items:center;padding:10px 14px;background:var(--navy);color:#fff;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px">';
     h += '<span style="flex:1">Concepto</span>';
-    h += '<div style="display:flex;gap:8px">'+headerPeriodos+'</div>';
+    h += '<div style="display:flex;gap:8px">';
+    sel.forEach(function(p){ h += '<span style="min-width:'+W+'px;text-align:right;display:inline-block">'+p.charAt(0).toUpperCase()+p.slice(1)+'</span>'; });
+    h += '</div>';
     h += '<span style="min-width:100px;text-align:right">Total</span>';
     h += '</div>';
 
     // INGRESOS
-    h += '<div style="padding:6px 14px;background:var(--blue-l);font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.8px">INGRESOS</div>';
-    h += rowComp('Ventas brutas', sel.map(function(p){return dat[p].vb;}), false, false, '');
-    h += rowComp('Ventas netas (sin IVA)', sel.map(function(p){return dat[p].vn;}), false, true, '#F8FBFD');
+    h += '<div style="padding:5px 14px;background:var(--blue-l);font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase">INGRESOS</div>';
+
+    var vbVals = sel.map(function(p){return dat[p].vb;});
+    var vnVals = sel.map(function(p){return dat[p].vn;});
+    h += '<div style="display:flex;align-items:center;padding:7px 14px;border-top:1px solid var(--bg)">';
+    h += '<span style="flex:1;font-size:12px">Ventas brutas</span>';
+    h += '<div style="display:flex;gap:8px">'+celdas(vbVals,false)+'</div>';
+    h += '<span style="min-width:100px;text-align:right;font-size:12px;font-weight:700">'+fmt(vbVals.reduce(function(s,v){return s+v;},0))+'</span>';
+    h += '</div>';
+
+    h += '<div style="display:flex;align-items:center;padding:7px 14px;border-top:1px solid var(--bg);background:#F8FBFD">';
+    h += '<span style="flex:1;font-size:12px;font-weight:600">Ventas netas</span>';
+    h += '<div style="display:flex;gap:8px">'+celdas(vnVals,false)+'</div>';
+    h += '<span style="min-width:100px;text-align:right;font-size:12px;font-weight:700">'+fmt(vnVals.reduce(function(s,v){return s+v;},0))+'</span>';
+    h += '</div>';
 
     // GASTOS
-    h += '<div style="padding:6px 14px;background:var(--blue-l);font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.8px">GASTOS OPERACIONALES</div>';
-    h += rowComp('Total gastos netos', sel.map(function(p){return dat[p].g;}), true, true, '#F8FBFD');
+    h += '<div style="padding:5px 14px;background:var(--blue-l);font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase">GASTOS OPERACIONALES</div>';
 
-    // Familias expandibles
+    var gVals = sel.map(function(p){return dat[p].g;});
+    var gTot = gVals.reduce(function(s,v){return s+v;},0);
+    h += '<div class="comp-toggle" data-target="comp-fams" style="display:flex;align-items:center;padding:7px 14px;border-top:1px solid var(--bg);background:#EBF5FB;cursor:pointer">';
+    h += '<span style="flex:1;font-size:12px;font-weight:700;color:var(--navy)"><span class="comp-arr">&#9658;</span> Total gastos netos</span>';
+    h += '<div style="display:flex;gap:8px">'+celdas(gVals,true)+'</div>';
+    h += '<span style="min-width:100px;text-align:right;font-size:12px;font-weight:700">'+fmt(gTot)+'</span>';
+    h += '</div>';
+
+    // Familias
+    h += '<div class="comp-fams" style="display:none">';
     todasFams.forEach(function(fam, fi) {
       var famVals = sel.map(function(p){return dat[p].fams[fam]||0;});
       var famTot = famVals.reduce(function(s,v){return s+v;},0);
       if (!famTot) return;
-      var famId = 'cf'+fi;
-
-      // Fila familia - clickeable
-      var famCols = famVals.map(function(v,i){
-        var prev = i<famVals.length-1 ? famVals[i+1] : null;
-        return '<span style="min-width:110px;text-align:right;display:inline-block">'+fmt(v)+arrow(v,prev,true)+'</span>';
-      }).join('');
-      h += '<div id="'+famId+'" onclick="document.getElementById(\''+famId+'-cats\').style.display=document.getElementById(\''+famId+'-cats\').style.display===\'none\'?\'block\':\'none\';this.querySelector(\'.arr\').innerHTML=document.getElementById(\''+famId+'-cats\').style.display===\'none\'?\'&#9658;\':\'&#9660;\';" style="display:flex;align-items:center;justify-content:space-between;padding:7px 14px 7px 28px;background:#F0F7FD;cursor:pointer;border-top:1px solid var(--border)">';
-      h += '<span style="font-size:12px;color:var(--navy)"><span class="arr">&#9658;</span> '+fam+'</span>';
-      h += '<div style="display:flex;gap:8px">'+famCols+'</div>';
+      var famKey = 'compfam'+fi;
+      h += '<div class="comp-toggle" data-target="'+famKey+'" style="display:flex;align-items:center;padding:6px 14px 6px 26px;border-top:1px solid var(--bg);background:#F0F7FD;cursor:pointer">';
+      h += '<span style="flex:1;font-size:12px;color:var(--navy)"><span class="comp-arr">&#9658;</span> '+fam+'</span>';
+      h += '<div style="display:flex;gap:8px">'+celdas(famVals,true)+'</div>';
       h += '<span style="min-width:100px;text-align:right;font-size:12px;font-weight:600">'+fmt(famTot)+'</span>';
       h += '</div>';
 
-      // Categorías dentro de la familia
-      var cats = sel.reduce(function(acc,p){
-        if (dat[p].cats[fam]) Object.keys(dat[p].cats[fam]).forEach(function(c){if(acc.indexOf(c)<0)acc.push(c);});
-        return acc;
-      },[]);
+      // Categorias
+      var cats = [];
+      sel.forEach(function(p){ if(dat[p].cats[fam]) Object.keys(dat[p].cats[fam]).forEach(function(c){ if(cats.indexOf(c)<0) cats.push(c); }); });
       cats.sort(function(a,b){
         return sel.reduce(function(s,p){return s+((dat[p].cats[fam]&&dat[p].cats[fam][b])||0);},0) -
                sel.reduce(function(s,p){return s+((dat[p].cats[fam]&&dat[p].cats[fam][a])||0);},0);
       });
-
-      h += '<div id="'+famId+'-cats" style="display:none">';
+      h += '<div class="'+famKey+'" style="display:none">';
       cats.forEach(function(cat){
         var catVals = sel.map(function(p){return (dat[p].cats[fam]&&dat[p].cats[fam][cat])||0;});
         var catTot = catVals.reduce(function(s,v){return s+v;},0);
         if (!catTot) return;
-        var catCols = catVals.map(function(v){return '<span style="min-width:110px;text-align:right;display:inline-block;color:var(--muted)">'+fmt(v)+'</span>';}).join('');
-        h += '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 14px 6px 44px;background:var(--white);border-top:1px solid var(--bg)">';
-        h += '<span style="font-size:11px;color:var(--muted)">'+cat+'</span>';
-        h += '<div style="display:flex;gap:8px">'+catCols+'</div>';
+        h += '<div style="display:flex;align-items:center;padding:5px 14px 5px 42px;border-top:1px solid var(--bg);background:var(--white)">';
+        h += '<span style="flex:1;font-size:11px;color:var(--muted)">'+cat+'</span>';
+        h += '<div style="display:flex;gap:8px">'+catVals.map(function(v){return '<span style="min-width:'+W+'px;text-align:right;display:inline-block;font-size:11px;color:var(--muted)">'+fmt(v)+'</span>';}).join('')+'</div>';
         h += '<span style="min-width:100px;text-align:right;font-size:11px;color:var(--muted)">'+fmt(catTot)+'</span>';
         h += '</div>';
       });
       h += '</div>';
     });
+    h += '</div>';
 
     // RESULTADO
-    h += '<div style="padding:6px 14px;background:var(--blue-l);font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.8px">RESULTADO</div>';
+    h += '<div style="padding:5px 14px;background:var(--blue-l);font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase">RESULTADO</div>';
     var resVals = sel.map(function(p){return dat[p].res;});
     var resTot = resVals.reduce(function(s,v){return s+v;},0);
-    var resCols = resVals.map(function(v,i){
-      var prev = i<resVals.length-1 ? resVals[i+1] : null;
-      var c = v>=0?'color:var(--green)':'color:var(--red)';
-      return '<span style="min-width:110px;text-align:right;display:inline-block;'+c+'">'+fmt(v)+arrow(v,prev,false)+'</span>';
-    }).join('');
-    h += '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;font-weight:700;background:'+(resTot>=0?'var(--gl)':'var(--rl)')+';border-top:2px solid var(--border)">';
-    h += '<span style="font-size:13px;'+(resTot>=0?'color:var(--green)':'color:var(--red)')+'">Resultado operacional</span>';
-    h += '<div style="display:flex;gap:8px">'+resCols+'</div>';
+    h += '<div style="display:flex;align-items:center;padding:10px 14px;font-weight:700;background:'+(resTot>=0?'var(--gl)':'var(--rl)')+';">';
+    h += '<span style="flex:1;font-size:13px;'+(resTot>=0?'color:var(--green)':'color:var(--red)')+'">Resultado operacional</span>';
+    h += '<div style="display:flex;gap:8px">'+resVals.map(function(v,i){
+      var prev = i>0?resVals[i-1]:null;
+      var col = v>=0?'color:var(--green)':'color:var(--red)';
+      return '<span style="min-width:'+W+'px;text-align:right;display:inline-block;'+col+'">'+fmt(v)+arr(v,prev,false)+'</span>';
+    }).join('')+'</div>';
     h += '<span style="min-width:100px;text-align:right;font-size:13px;font-weight:700;'+(resTot>=0?'color:var(--green)':'color:var(--red)')+'">'+fmt(resTot)+'</span>';
     h += '</div>';
 
     document.getElementById('eerr-comp-body').innerHTML = h;
+
+    // Agregar event listeners para toggle (sin onclick inline)
+    document.querySelectorAll('.comp-toggle').forEach(function(el) {
+      el.addEventListener('click', function() {
+        var target = el.getAttribute('data-target');
+        var els = document.querySelectorAll('.'+target);
+        els.forEach(function(t){
+          t.style.display = t.style.display === 'none' ? '' : 'none';
+        });
+        var arrEl = el.querySelector('.comp-arr');
+        if (arrEl) arrEl.innerHTML = arrEl.innerHTML === '&#9658;' ? '&#9660;' : '&#9658;';
+      });
+    });
   });
 }
 
