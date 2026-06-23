@@ -323,11 +323,31 @@ function procesarGastos(input){
     var famKey=keys.find(function(k){return /familia/i.test(k);}) || 'Familia';
     var tipoKey=keys.find(function(k){return /tipo.*gasto/i.test(k)||/tipo de gasto/i.test(k);}) || 'Tipo de Gasto';
     var provKey=keys.find(function(k){return /proveedor/i.test(k);}) || 'Proveedor';
-    var monKey=keys.find(function(k){return /monto.*bruto/i.test(k);}) || keys.find(function(k){return /monto/i.test(k);}) || 'Monto Bruto';
+    var monKey=keys.find(function(k){return /monto.*bruto/i.test(k.trim());}) || keys.find(function(k){return /monto/i.test(k.trim());}) || 'Monto Bruto';
     console.log('Keys detectadas - ano:',anoKey,'mes:',mesKey,'cat:',catKey,'fam:',famKey,'prov:',provKey,'mon:',monKey);
     if(rows[0])console.log('Primera fila valores - ano:',rows[0][anoKey],'mes:',rows[0][mesKey],'cat:',rows[0][catKey],'fam:',rows[0][famKey],'mon:',rows[0][monKey]);
     // gastosData[periodo] = [{cat, fam, prov, monto}]
     gastosData={};
+    // Normalizar keys con espacios
+    rows = rows.map(function(r){
+      var clean={};
+      Object.keys(r).forEach(function(k){clean[k.trim()]=r[k];});
+      return clean;
+    });
+    // Re-detectar keys sin espacios
+    if(rows.length){
+      keys=Object.keys(rows[0]);
+      anoKey=keys.find(function(k){var kn=k.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();return kn==='ano'||kn==='year';}) || keys.find(function(k){return /^a.o$/i.test(k);}) || keys[0];
+      mesKey=keys.find(function(k){return k.toLowerCase()==='mes';}) || 'Mes';
+      catKey=keys.find(function(k){return /categ/i.test(k);}) || 'Categoria';
+      famKey=keys.find(function(k){return /familia/i.test(k);}) || 'Familia';
+      tipoKey=keys.find(function(k){return /tipo.*gasto/i.test(k);}) || 'Tipo de Gasto';
+      provKey=keys.find(function(k){return /proveedor/i.test(k);}) || 'Proveedor';
+      monKey=keys.find(function(k){return /monto.*bruto/i.test(k);}) || keys.find(function(k){return /monto/i.test(k);}) || 'Monto Bruto';
+      var monNetoKey2=keys.find(function(k){return /monto.*neto/i.test(k);});
+      if(monNetoKey2) monNetoKey=monNetoKey2;
+      console.log('Keys normalizadas - ano:',anoKey,'mes:',mesKey,'mon:',monKey,'monNeto:',monNetoKey);
+    }
     rows.forEach(function(r){
       var ano=String(r[anoKey]||'').trim();
       var mes=String(r[mesKey]||'').toLowerCase().trim();
