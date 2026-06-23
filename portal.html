@@ -230,6 +230,10 @@ function fmt(n) {
 function pct(v,t) {
   return t > 0 ? ((v/t)*100).toFixed(1)+'%' : '0.0%';
 }
+function montoNeto(c) {
+  var mn = c.monto_neto && Number(c.monto_neto) > 0 ? Number(c.monto_neto) : Math.round(Number(c.monto||0)/1.19);
+  return mn;
+}
 function dc(id) {
   if (charts[id]) { try { charts[id].destroy(); } catch(e) {} }
 }
@@ -458,7 +462,7 @@ function cargarPeriodo(periodo) {
     var costosAnt = repAnt ? (results[2].data||[]) : [];
     var vbAnt = repAnt ? Number(repAnt.ventas_brutas||0) : null;
     var vnAnt = repAnt ? Number(repAnt.ventas_netas||0) : null;
-    var gnAnt = costosAnt.reduce(function(s,c){return s+Number(c.monto||0);},0);
+    var gnAnt = costosAnt.reduce(function(s,c){return s+montoNeto(c);},0);
     var impAnt = costosAnt.filter(function(c){return /impuesto|iva/i.test(c.familia||c.categoria||'');}).reduce(function(s,c){return s+Number(c.monto||0);},0);
     var gnOpAnt = gnAnt - impAnt;
     var resAnt = vnAnt !== null ? vnAnt - gnOpAnt : null;
@@ -466,7 +470,7 @@ function cargarPeriodo(periodo) {
     var vb = Number(rep.ventas_brutas || 0);
     var vn = Number(rep.ventas_netas  || 0);
     var gb = costos.reduce(function(s,c) { return s + Number(c.monto||0); }, 0);
-    var gn = costos.reduce(function(s,c) { return s + Number(c.monto_neto||c.monto||0); }, 0);
+    var gn = costos.reduce(function(s,c) { return s + montoNeto(c); }, 0);
 
     var impuestos = costos.filter(function(c) {
       return /impuesto|iva/i.test(c.familia||c.categoria||'');
@@ -555,7 +559,7 @@ function cargarPeriodo(periodo) {
     costos.forEach(function(c) {
       var fam = c.familia || c.categoria || 'Sin familia';
       if (/impuesto|iva/i.test(fam)) return;
-      fams[fam] = (fams[fam]||0) + Number(c.monto_neto||c.monto||0);
+      var mn = c.monto_neto && Number(c.monto_neto)>0 ? Number(c.monto_neto) : Math.round(Number(c.monto||0)/1.19); fams[fam] = (fams[fam]||0) + mn;
     });
     var famArr = Object.entries(fams).sort(function(a,b) { return b[1]-a[1]; });
 
@@ -603,9 +607,9 @@ function cargarPeriodo(periodo) {
       var fam = c.familia || c.categoria || 'Sin familia';
       var cat = c.categoria || 'Sin categoria';
       if (/impuesto|iva/i.test(fam)) return;
-      famGastos[fam] = (famGastos[fam]||0) + Number(c.monto_neto||c.monto||0);
+      famGastos[fam] = (famGastos[fam]||0) + montoNeto(c);
       if (!famCats[fam]) famCats[fam] = {};
-      famCats[fam][cat] = (famCats[fam][cat]||0) + Number(c.monto_neto||c.monto||0);
+      famCats[fam][cat] = (famCats[fam][cat]||0) + montoNeto(c);
     });
     var famList = Object.entries(famGastos).sort(function(a,b) { return b[1]-a[1]; });
 
@@ -698,7 +702,7 @@ function actualizarComp() {
       var p = repMap[c.reporte_id];
       if (!p || !dat[p]) return;
       if (/impuesto|iva/i.test(c.familia||c.categoria||'')) return;
-      var mon = Number(c.monto||0);
+      var mon = montoNeto(c);
       var fam = c.familia || c.categoria || 'Sin familia';
       var cat = c.categoria || 'Sin categoria';
       dat[p].g += mon;
