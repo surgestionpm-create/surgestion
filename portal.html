@@ -624,6 +624,7 @@ function actualizarComp(){
 
     // Gastos - con toggle usando JS puro
     h+='<div style="padding:5px 14px;background:var(--blue-l);font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase">GASTOS OPERACIONALES</div>';
+    var totalVnRango = sel.reduce(function(s,p){return s+dat[p].vn;},0);
     var gnVals=sel.map(function(p){return dat[p].gn;});
     var gnTot=gnVals.reduce(function(s,v){return s+v;},0);
     var pctGnTotal = totalVnRango>0?((gnTot/totalVnRango)*100).toFixed(1)+'%':'--';
