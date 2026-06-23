@@ -67,6 +67,9 @@ table.t tr:hover td{background:#F0F7FD}
 @media(max-width:900px){.kpi5,.kpi4,.ind3{grid-template-columns:1fr 1fr}.g2{grid-template-columns:1fr}}
 @media(max-width:600px){.kpi5,.kpi4,.ind3{grid-template-columns:1fr}}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -84,6 +87,16 @@ table.t tr:hover td{background:#F0F7FD}
 <div class="main" id="dashboard" style="display:none">
   <div class="dash-header">
     <h1 class="dash-title">Hola, <span id="empresa-nombre">empresa</span></h1>
+    <div style="display:flex;gap:8px">
+      <button onclick="exportarExcel()" style="display:flex;align-items:center;gap:6px;background:#27AE60;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        Exportar Excel
+      </button>
+      <button onclick="exportarPDF()" style="display:flex;align-items:center;gap:6px;background:#E74C3C;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        Exportar PDF
+      </button>
+    </div>
   </div>
   <div class="periodo-nav">
     <label>Ano:</label>
@@ -259,6 +272,182 @@ function toggleProd(row){
     var r=row.nextElementSibling;
     while(r&&r.classList.contains('prow')){ r.classList.add('open'); r=r.nextElementSibling; }
   }
+}
+
+function exportarExcel(){
+  var periodo = document.getElementById('periodo-pill').textContent || 'periodo';
+  var empresa = document.getElementById('empresa-nombre').textContent || 'empresa';
+  var wb = XLSX.utils.book_new();
+
+  // Hoja 1: Resumen KPIs
+  var resumen = [
+    ['SurGestion - Resumen Financiero'],
+    ['Empresa:', empresa],
+    ['Periodo:', periodo],
+    [],
+    ['VENTAS',''],
+    ['Ventas brutas', document.getElementById('kv-vb').textContent],
+    ['Ventas netas', document.getElementById('kv-vn').textContent],
+    ['Gastos brutos', document.getElementById('kv-gb').textContent],
+    ['Gastos netos', document.getElementById('kv-gn').textContent],
+    ['Precio promedio', document.getElementById('kv-pp').textContent],
+    [],
+    ['INDICADORES',''],
+    ['Resultado operacional', document.getElementById('iv-res').textContent],
+    ['Margen bruto', document.getElementById('iv-mb').textContent],
+    ['Margen neto', document.getElementById('iv-mn').textContent],
+    [],
+    ['GASTOS DEL PERIODO',''],
+    ['Gastos brutos op.', document.getElementById('kv-gb2').textContent],
+    ['Gastos netos op.', document.getElementById('kv-gn2').textContent],
+    ['Costos fijos', document.getElementById('kv-cf').textContent],
+    ['Costos variables', document.getElementById('kv-cv').textContent],
+  ];
+  var ws1 = XLSX.utils.aoa_to_sheet(resumen);
+  ws1['!cols'] = [{wch:25},{wch:20}];
+  XLSX.utils.book_append_sheet(wb, ws1, 'Resumen');
+
+  // Hoja 2: Ventas por categoria
+  var rowsCat = [['Categoria','Monto','% Ventas']];
+  document.querySelectorAll('#tb-catv tr').forEach(function(tr){
+    var tds = tr.querySelectorAll('td');
+    if(tds.length) rowsCat.push([tds[0].textContent, tds[1].textContent, tds[2].textContent]);
+  });
+  var ws2 = XLSX.utils.aoa_to_sheet(rowsCat);
+  ws2['!cols'] = [{wch:30},{wch:15},{wch:10}];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Ventas por Categoria');
+
+  // Hoja 3: Gastos por familia
+  var rowsFam = [['Familia','Gasto Neto','% Gasto','% V.Neta']];
+  document.querySelectorAll('#tb-gfam tr').forEach(function(tr){
+    var tds = tr.querySelectorAll('td');
+    if(tds.length) rowsFam.push([tds[0].textContent, tds[1].textContent, tds[2].textContent, tds[3].textContent]);
+  });
+  var ws3 = XLSX.utils.aoa_to_sheet(rowsFam);
+  ws3['!cols'] = [{wch:25},{wch:15},{wch:10},{wch:10}];
+  XLSX.utils.book_append_sheet(wb, ws3, 'Gastos por Familia');
+
+  // Hoja 4: Detalle ventas
+  var rowsVdet = [['Categoria/Producto','Unidades','Monto','% Ventas']];
+  document.querySelectorAll('#tb-vdet tr').forEach(function(tr){
+    var tds = tr.querySelectorAll('td');
+    if(tds.length) rowsVdet.push([tds[0].textContent.replace(/[▶▼]/g,'').trim(), tds[1].textContent, tds[2].textContent, tds[3].textContent]);
+  });
+  var ws4 = XLSX.utils.aoa_to_sheet(rowsVdet);
+  ws4['!cols'] = [{wch:35},{wch:12},{wch:15},{wch:10}];
+  XLSX.utils.book_append_sheet(wb, ws4, 'Detalle Ventas');
+
+  XLSX.writeFile(wb, empresa+' - '+periodo+'.xlsx');
+}
+
+function exportarPDF(){
+  var periodo = document.getElementById('periodo-pill').textContent || 'periodo';
+  var empresa = document.getElementById('empresa-nombre').textContent || 'empresa';
+  var doc = new jspdf.jsPDF('p','mm','a4');
+  var y = 15;
+
+  // Header
+  doc.setFillColor(27,58,92);
+  doc.rect(0,0,210,25,'F');
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(16);
+  doc.setFont('helvetica','bold');
+  doc.text('SurGestion - Reporte Financiero', 14, 16);
+  doc.setFontSize(10);
+  doc.setFont('helvetica','normal');
+  doc.text(empresa+' | '+periodo, 14, 22);
+  y = 35;
+
+  // KPIs
+  doc.setTextColor(27,58,92);
+  doc.setFontSize(12);
+  doc.setFont('helvetica','bold');
+  doc.text('RESUMEN DEL PERIODO', 14, y);
+  y += 6;
+
+  var kpis = [
+    ['Ventas brutas', document.getElementById('kv-vb').textContent],
+    ['Ventas netas', document.getElementById('kv-vn').textContent],
+    ['Gastos brutos', document.getElementById('kv-gb').textContent],
+    ['Gastos netos', document.getElementById('kv-gn').textContent],
+    ['Resultado operacional', document.getElementById('iv-res').textContent],
+    ['Margen bruto', document.getElementById('iv-mb').textContent],
+    ['Margen neto', document.getElementById('iv-mn').textContent],
+  ];
+
+  doc.autoTable({
+    startY: y,
+    head: [['Indicador','Valor']],
+    body: kpis,
+    theme: 'striped',
+    headStyles: {fillColor:[27,58,92], textColor:255, fontStyle:'bold'},
+    styles: {fontSize:10},
+    columnStyles: {0:{cellWidth:100}, 1:{cellWidth:60, halign:'right'}},
+    margin:{left:14}
+  });
+  y = doc.lastAutoTable.finalY + 10;
+
+  // Ventas por categoria
+  doc.setTextColor(27,58,92);
+  doc.setFontSize(12);
+  doc.setFont('helvetica','bold');
+  doc.text('VENTAS POR CATEGORIA', 14, y);
+  y += 4;
+
+  var catRows = [];
+  document.querySelectorAll('#tb-catv tr').forEach(function(tr){
+    var tds = tr.querySelectorAll('td');
+    if(tds.length) catRows.push([tds[0].textContent, tds[1].textContent, tds[2].textContent]);
+  });
+
+  doc.autoTable({
+    startY: y,
+    head: [['Categoria','Monto','% Ventas']],
+    body: catRows,
+    theme: 'striped',
+    headStyles: {fillColor:[58,143,209], textColor:255, fontStyle:'bold'},
+    styles: {fontSize:9},
+    columnStyles: {0:{cellWidth:100}, 1:{cellWidth:45, halign:'right'}, 2:{cellWidth:25, halign:'right'}},
+    margin:{left:14}
+  });
+  y = doc.lastAutoTable.finalY + 10;
+
+  // Gastos por familia
+  if(y > 240){ doc.addPage(); y = 15; }
+  doc.setTextColor(27,58,92);
+  doc.setFontSize(12);
+  doc.setFont('helvetica','bold');
+  doc.text('GASTOS POR FAMILIA', 14, y);
+  y += 4;
+
+  var famRows = [];
+  document.querySelectorAll('#tb-gfam tr').forEach(function(tr){
+    var tds = tr.querySelectorAll('td');
+    if(tds.length) famRows.push([tds[0].textContent, tds[1].textContent, tds[2].textContent, tds[3].textContent]);
+  });
+
+  doc.autoTable({
+    startY: y,
+    head: [['Familia','Gasto Neto','% Gasto','% V.Neta']],
+    body: famRows,
+    theme: 'striped',
+    headStyles: {fillColor:[27,58,92], textColor:255, fontStyle:'bold'},
+    styles: {fontSize:9},
+    columnStyles: {0:{cellWidth:80}, 1:{cellWidth:45, halign:'right'}, 2:{cellWidth:25, halign:'right'}, 3:{cellWidth:25, halign:'right'}},
+    margin:{left:14}
+  });
+
+  // Footer
+  var pageCount = doc.internal.getNumberOfPages();
+  for(var i=1; i<=pageCount; i++){
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(150,150,150);
+    doc.text('SurGestion | surgestionpm.cl | Pagina '+i+' de '+pageCount, 14, 290);
+    doc.text(new Date().toLocaleDateString('es-CL'), 180, 290);
+  }
+
+  doc.save(empresa+' - '+periodo+'.pdf');
 }
 
 function iniciar(){
