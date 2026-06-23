@@ -317,7 +317,7 @@ function procesarGastos(input){
     const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
     if(!rows.length){alert('El archivo parece estar vacio.');return;}
     var keys=Object.keys(rows[0]);
-    var anoKey=keys.find(function(k){return /^ano$/i.test(k.normalize('NFD').replace(/[̀-ͯ]/g,''));}) || keys[0];
+    var anoKey=keys.find(function(k){var kn=k.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();return kn==='ano'||kn==='year';}) || keys.find(function(k){return /^a.o$/i.test(k);}) || keys[0];
     var mesKey=keys.find(function(k){return k.toLowerCase()==='mes';}) || 'Mes';
     var catKey=keys.find(function(k){return /categ/i.test(k);}) || 'Categoria';
     var famKey=keys.find(function(k){return /familia/i.test(k);}) || 'Familia';
@@ -325,6 +325,7 @@ function procesarGastos(input){
     var provKey=keys.find(function(k){return /proveedor/i.test(k);}) || 'Proveedor';
     var monKey=keys.find(function(k){return /monto.*bruto/i.test(k);}) || keys.find(function(k){return /monto/i.test(k);}) || 'Monto Bruto';
     console.log('Keys detectadas - ano:',anoKey,'mes:',mesKey,'cat:',catKey,'fam:',famKey,'prov:',provKey,'mon:',monKey);
+    if(rows[0])console.log('Primera fila valores - ano:',rows[0][anoKey],'mes:',rows[0][mesKey],'cat:',rows[0][catKey],'fam:',rows[0][famKey],'mon:',rows[0][monKey]);
     // gastosData[periodo] = [{cat, fam, prov, monto}]
     gastosData={};
     rows.forEach(function(r){
@@ -341,7 +342,7 @@ function procesarGastos(input){
       // Acumular por cat+fam+prov
       var existe=gastosData[periodo].find(function(x){return x.cat===cat&&x.fam===fam&&x.prov===prov;});
       var tipo=String(r[tipoKey]||'').trim();
-      var monNeto=parseFloat(String(r['Monto Neto']||r['monto_neto']||'0').replace(/[^0-9.-]/g,''))||mon;
+      var monNetoKey=keys.find(function(k){return /monto.*neto/i.test(k);});var monNeto=monNetoKey?parseFloat(String(r[monNetoKey]||'0').replace(/[^0-9.-]/g,''))||mon:mon;
       if(existe){existe.monto+=mon;existe.montoNeto+=monNeto;}
       else{gastosData[periodo].push({cat:cat,fam:fam,prov:prov,monto:mon,montoNeto:monNeto,tipo:tipo});}
     });
@@ -474,7 +475,7 @@ function procesarVentas(input){
 
     } else {
       // ESTÁNDAR
-      var anoKey=keys.find(function(k){return /^ano$/i.test(k.normalize('NFD').replace(/[̀-ͯ]/g,''));}) || keys[0];
+      var anoKey=keys.find(function(k){var kn=k.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();return kn==='ano'||kn==='year';}) || keys.find(function(k){return /^a.o$/i.test(k);}) || keys[0];
       var mesKey=keys.find(function(k){return k.toLowerCase()==='mes';}) || 'Mes';
       var nomKey=keys.find(function(k){return /^nombre$/i.test(k);}) || 'Nombre';
       var canKey=keys.find(function(k){return /cantidad/i.test(k);}) || 'Cantidad';
