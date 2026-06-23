@@ -111,6 +111,13 @@
           <div class="fg"><label>Rubro del negocio</label><input type="text" id="nc-rubro" placeholder="Ej: Restaurante, Retail, Servicios..."></div>
           <div class="fg"><label>Contraseña temporal</label><input type="text" id="nc-pass" value="SurGestion2026!"></div>
         </div>
+        <div class="fg" style="display:flex;align-items:center;gap:12px">
+          <label style="font-weight:600;font-size:13px">¿El cliente cobra IVA en sus ventas?</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="nc-iva" checked style="width:16px;height:16px;cursor:pointer">
+            <span id="nc-iva-label" style="font-size:13px;color:var(--blue);font-weight:500">Sí aplica IVA (ventas brutas ≠ netas)</span>
+          </label>
+        </div>
         <div class="fg">
           <label>Logo empresa</label>
           <input type="file" id="nc-logo-file" accept="image/*" style="display:none" onchange="previewLogo(this)">
@@ -268,6 +275,12 @@ function previewLogo(input){
   };
   reader.readAsDataURL(file);
 }
+
+document.getElementById('nc-iva').onchange = function(){
+  var lbl = document.getElementById('nc-iva-label');
+  lbl.textContent = this.checked ? 'Sí aplica IVA (ventas brutas ≠ netas)' : 'No aplica IVA (ventas brutas = netas)';
+  lbl.style.color = this.checked ? 'var(--blue)' : 'var(--muted)';
+};
 
 async function crearCliente(){
   const empresa=document.getElementById('nc-empresa').value.trim();

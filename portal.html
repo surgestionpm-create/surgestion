@@ -177,6 +177,7 @@ var _clienteId = null;
 var _periodos = [];
 var _reportes = [];
 var _mesesPorAnio = {};
+var _aplicaIva = true;
 var COLS = ['#3A8FD1','#1B3A5C','#27AE60','#E67E22','#8E44AD','#E74C3C','#16A085','#F39C12','#5BAEE8','#2ECC71','#C0392B','#9B59B6'];
 
 function fmt(n){ if(n==null||isNaN(n)) return '--'; return '$'+Number(n).toLocaleString('es-CL'); }
@@ -277,6 +278,7 @@ function cargarDatos(userId){
       return;
     }
     _clienteId = cliente.id;
+    _aplicaIva = cliente.aplica_iva !== false; // true por defecto
     document.getElementById('nav-empresa').textContent = cliente.nombre_empresa;
     document.getElementById('empresa-nombre').textContent = cliente.nombre_empresa;
     if(cliente.logo_url) document.getElementById('nav-logo').src = cliente.logo_url;
@@ -363,12 +365,12 @@ function cargarPeriodo(periodo){
     var costosAnt = repAnt ? (results[2].data||[]) : [];
 
     var vb = Number(rep.ventas_brutas||0);
-    var vn = Number(rep.ventas_netas||0);
+    var vn = _aplicaIva ? Number(rep.ventas_netas||0) : vb;
     
     // Gastos brutos = suma de monto (columna Monto Bruto del Excel)
     var gb = costos.reduce(function(s,c){ return s+Number(c.monto||0); },0);
-    // Gastos netos = suma de monto_neto si existe, sino monto/1.19
-    var gn = costos.reduce(function(s,c){ return s+getNeto(c); },0);
+    // Gastos netos = si no aplica IVA usar mismo valor bruto, sino calcular neto
+    var gn = _aplicaIva ? costos.reduce(function(s,c){ return s+getNeto(c); },0) : gb;
     
     // Separar impuestos
     var impBruto = costos.filter(function(c){ return /impuesto|iva/i.test(c.familia||c.categoria||''); }).reduce(function(s,c){ return s+Number(c.monto||0); },0);
@@ -561,7 +563,7 @@ function actualizarComp(){
     sel.forEach(function(p){dat[p]={vb:0,vn:0,gb:0,gn:0,fams:{},cats:{}};});
     _reportes.filter(function(r){return sel.indexOf(r.periodo)>=0;}).forEach(function(r){
       dat[r.periodo].vb=Number(r.ventas_brutas||0);
-      dat[r.periodo].vn=Number(r.ventas_netas||0);
+      dat[r.periodo].vn=_aplicaIva?Number(r.ventas_netas||0):Number(r.ventas_brutas||0);
     });
     allC.forEach(function(c){
       var p=repMap[c.reporte_id];
@@ -572,7 +574,7 @@ function actualizarComp(){
       var fam=c.familia||c.categoria||'Sin familia';
       var cat=c.categoria||'Sin categoria';
       dat[p].gb+=bruto;
-      dat[p].gn+=neto;
+      dat[p].gn+=_aplicaIva?neto:bruto;
       if(!dat[p].fams[fam])dat[p].fams[fam]=0;
       dat[p].fams[fam]+=neto;
       if(!dat[p].cats[fam])dat[p].cats[fam]={};
