@@ -423,7 +423,7 @@ function exportarPDF(){
     doc.text(label.toUpperCase(),x+bw/2,y+5,{align:'center'});
     doc.setFont('helvetica','bold');
     doc.setFontSize(10);
-    doc.setTextColor(color||[27,58,92]);
+    if(Array.isArray(color)){doc.setTextColor(color[0],color[1],color[2]);}else{doc.setTextColor(27,58,92);}
     doc.text(valor,x+bw/2,y+12,{align:'center'});
   }
 
@@ -525,7 +525,7 @@ function exportarPDF(){
       // Fondo
       if(r.res){
         var neg=r.valor.indexOf('-')>=0;
-        doc.setFillColor.apply(doc,neg?[253,237,236]:[233,247,239]);
+        if(neg){doc.setFillColor(253,237,236);}else{doc.setFillColor(233,247,239);}
       } else if(r.bold){
         doc.setFillColor(235,245,251);
       } else if(r.tax){
@@ -542,7 +542,7 @@ function exportarPDF(){
       doc.setFontSize(r.bold||r.res?9.5:8.5);
       if(r.res){
         var neg2=r.valor.indexOf('-')>=0;
-        doc.setTextColor.apply(doc,neg2?[180,60,50]:[39,134,86]);
+        if(neg2){doc.setTextColor(180,60,50);}else{doc.setTextColor(39,134,86);}
       } else if(r.tax){
         doc.setTextColor(180,120,30);
       } else if(r.bold){
