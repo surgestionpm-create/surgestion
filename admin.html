@@ -329,14 +329,14 @@ function procesarGastos(input){
     // gastosData[periodo] = [{cat, fam, prov, monto}]
     gastosData={};
     // Normalizar keys con espacios
-    rows = rows.map(function(r){
+    var rowsClean = rows.map(function(r){
       var clean={};
       Object.keys(r).forEach(function(k){clean[k.trim()]=r[k];});
       return clean;
     });
     // Re-detectar keys sin espacios
-    if(rows.length){
-      keys=Object.keys(rows[0]);
+    if(rowsClean.length){
+      keys=Object.keys(rowsClean[0]);
       anoKey=keys.find(function(k){var kn=k.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();return kn==='ano'||kn==='year';}) || keys.find(function(k){return /^a.o$/i.test(k);}) || keys[0];
       mesKey=keys.find(function(k){return k.toLowerCase()==='mes';}) || 'Mes';
       catKey=keys.find(function(k){return /categ/i.test(k);}) || 'Categoria';
@@ -348,7 +348,7 @@ function procesarGastos(input){
       if(monNetoKey2) monNetoKey=monNetoKey2;
       console.log('Keys normalizadas - ano:',anoKey,'mes:',mesKey,'mon:',monKey,'monNeto:',monNetoKey);
     }
-    rows.forEach(function(r){
+    rowsClean.forEach(function(r){
       var ano=String(r[anoKey]||'').trim();
       var mes=String(r[mesKey]||'').toLowerCase().trim();
       if(!ano||!mes)return;
