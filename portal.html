@@ -156,11 +156,13 @@ table.t tr:hover td{background:#F0F7FD}
   <div class="card">
     <div class="ch">
       <span class="ct">EERR Comparativo</span>
-      <div style="display:flex;align-items:center;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <label style="font-size:11px;color:var(--muted)">Desde:</label>
-        <select class="sel" id="comp-desde" style="font-size:12px;padding:4px 10px"></select>
+        <select class="sel" id="comp-anio-desde" style="font-size:12px;padding:4px 10px" onchange="actualizarMesesComp()"></select>
+        <select class="sel" id="comp-mes-desde" style="font-size:12px;padding:4px 10px" onchange="actualizarComp()"></select>
         <label style="font-size:11px;color:var(--muted)">Hasta:</label>
-        <select class="sel" id="comp-hasta" style="font-size:12px;padding:4px 10px"></select>
+        <select class="sel" id="comp-anio-hasta" style="font-size:12px;padding:4px 10px" onchange="actualizarMesesComp()"></select>
+        <select class="sel" id="comp-mes-hasta" style="font-size:12px;padding:4px 10px" onchange="actualizarComp()"></select>
       </div>
     </div>
     <div class="cb" style="padding:0"><div id="eerr-comp-body" style="overflow-x:auto"></div></div>
@@ -214,8 +216,7 @@ document.getElementById('sel-mes').onchange = function(){
   cargarPeriodo(mes+' '+anio);
 };
 
-document.getElementById('comp-desde').onchange = function(){ actualizarComp(); };
-document.getElementById('comp-hasta').onchange = function(){ actualizarComp(); };
+
 
 function poblarMeses(anio){
   var meses = _mesesPorAnio[anio] || [];
@@ -224,6 +225,26 @@ function poblarMeses(anio){
   document.getElementById('sel-mes').innerHTML = meses.map(function(m){
     return '<option value="'+m+'">'+m.charAt(0).toUpperCase()+m.slice(1)+'</option>';
   }).join('');
+}
+
+function actualizarMesesComp(){
+  var orden = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  var anioD = document.getElementById('comp-anio-desde').value;
+  var anioH = document.getElementById('comp-anio-hasta').value;
+  
+  var mesesD = _mesesPorAnio[anioD] || [];
+  mesesD = mesesD.slice().sort(function(a,b){return orden.indexOf(a)-orden.indexOf(b);});
+  document.getElementById('comp-mes-desde').innerHTML = mesesD.map(function(m){
+    return '<option value="'+m+'">'+m.charAt(0).toUpperCase()+m.slice(1)+'</option>';
+  }).join('');
+
+  var mesesH = _mesesPorAnio[anioH] || [];
+  mesesH = mesesH.slice().sort(function(a,b){return orden.indexOf(b)-orden.indexOf(a);});
+  document.getElementById('comp-mes-hasta').innerHTML = mesesH.map(function(m){
+    return '<option value="'+m+'">'+m.charAt(0).toUpperCase()+m.slice(1)+'</option>';
+  }).join('');
+
+  actualizarComp();
 }
 
 function toggleEERR(el){ el.nextElementSibling.classList.toggle('open'); }
@@ -287,10 +308,18 @@ function cargarDatos(userId){
       poblarMeses(anios[0]);
 
       // Selectores comparativo
-      var optsAsc = _periodos.slice().reverse().map(function(p){ return '<option value="'+p+'">'+p.charAt(0).toUpperCase()+p.slice(1)+'</option>'; }).join('');
-      var optsDes = _periodos.map(function(p){ return '<option value="'+p+'">'+p.charAt(0).toUpperCase()+p.slice(1)+'</option>'; }).join('');
-      document.getElementById('comp-desde').innerHTML = optsAsc;
-      document.getElementById('comp-hasta').innerHTML = optsDes;
+      // Poblar selectores comparativo con año/mes separados
+      var aniosComp = [];
+      _periodos.forEach(function(p){
+        var a = p.split(' ')[1];
+        if(a && aniosComp.indexOf(a)<0) aniosComp.push(a);
+      });
+      aniosComp.sort(function(a,b){return Number(a)-Number(b);});
+      var optsAnios = aniosComp.map(function(a){return '<option value="'+a+'">'+a+'</option>';}).join('');
+      var optsAniosRev = aniosComp.slice().reverse().map(function(a){return '<option value="'+a+'">'+a+'</option>';}).join('');
+      document.getElementById('comp-anio-desde').innerHTML = optsAnios;
+      document.getElementById('comp-anio-hasta').innerHTML = optsAniosRev;
+      actualizarMesesComp();
 
       // Ultima actualizacion
       var mas = _reportes[0];
@@ -507,15 +536,18 @@ function renderEvolucion(){
 }
 
 function actualizarComp(){
-  var desde=document.getElementById('comp-desde').value;
-  var hasta=document.getElementById('comp-hasta').value;
-  if(!desde||!hasta||!_reportes.length) return;
+  var anioD = document.getElementById('comp-anio-desde') ? document.getElementById('comp-anio-desde').value : '';
+  var mesD  = document.getElementById('comp-mes-desde')  ? document.getElementById('comp-mes-desde').value  : '';
+  var anioH = document.getElementById('comp-anio-hasta') ? document.getElementById('comp-anio-hasta').value : '';
+  var mesH  = document.getElementById('comp-mes-hasta')  ? document.getElementById('comp-mes-hasta').value  : '';
+  if(!anioD||!mesD||!anioH||!mesH||!_reportes.length) return;
+  var desde = mesD+' '+anioD;
+  var hasta = mesH+' '+anioH;
   var idxD=_periodos.indexOf(desde);
   var idxH=_periodos.indexOf(hasta);
   if(idxD<0||idxH<0) return;
   var start=Math.min(idxD,idxH);
   var end=Math.max(idxD,idxH);
-  // Orden cronologico: mas antiguo a mas nuevo
   var sel=_periodos.slice(start,end+1).slice().reverse();
   var repsIds=_reportes.filter(function(r){return sel.indexOf(r.periodo)>=0;}).map(function(r){return r.id;});
   if(!repsIds.length) return;
@@ -556,10 +588,9 @@ function actualizarComp(){
     });
 
     function celdas(vals,inv,color){
-      return vals.map(function(v,i){
-        var prev=i>0?vals[i-1]:null;
+      return vals.map(function(v){
         var cl=color?'color:'+color+';':'';
-        return '<span style="min-width:110px;text-align:right;display:inline-block;'+cl+'">'+fmt(v)+arr(v,prev,inv)+'</span>';
+        return '<span style="min-width:110px;text-align:right;display:inline-block;'+cl+'">'+fmt(v)+'</span>';
       }).join('');
     }
 
@@ -591,7 +622,14 @@ function actualizarComp(){
 
     // Gastos - con toggle usando JS puro
     h+='<div style="padding:5px 14px;background:var(--blue-l);font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase">GASTOS OPERACIONALES</div>';
-    h+=fila('Total gastos netos',sel.map(function(p){return dat[p].gn;}),true,true,'#EBF5FB');
+    var gnVals=sel.map(function(p){return dat[p].gn;});
+    var gnTot=gnVals.reduce(function(s,v){return s+v;},0);
+    h+='<div id="comp-gastos-header" style="display:flex;align-items:center;padding:8px 14px;background:#EBF5FB;cursor:pointer;border-top:1px solid var(--bg);font-weight:700">'
+      +'<span style="flex:1;font-size:12px;color:var(--navy)"><span id="comp-gastos-arr">&#9660;</span> Total gastos netos</span>'
+      +'<div style="display:flex;gap:8px">'+celdas(gnVals,true,'')+'</div>'
+      +'<span style="min-width:100px;text-align:right;font-size:12px;font-weight:700">'+fmt(gnTot)+'</span>'
+      +'</div>';
+    h+='<div id="comp-gastos-detalle">';
 
     // Familias
     todasFams.forEach(function(fam,fi){
@@ -624,6 +662,8 @@ function actualizarComp(){
       h+='</div>';
     });
 
+    h+='</div>'; // cierre comp-gastos-detalle
+
     // Resultado
     h+='<div style="padding:5px 14px;background:var(--blue-l);font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase">RESULTADO</div>';
     var resVals=sel.map(function(p){return dat[p].res;});
@@ -635,6 +675,19 @@ function actualizarComp(){
       '</div>';
 
     document.getElementById('eerr-comp-body').innerHTML=h;
+
+    // Event listener toggle gastos netos
+    var ghEl = document.getElementById('comp-gastos-header');
+    if(ghEl){
+      ghEl.addEventListener('click', function(){
+        var det = document.getElementById('comp-gastos-detalle');
+        var arrEl = document.getElementById('comp-gastos-arr');
+        if(!det) return;
+        var isOpen = det.style.display !== 'none';
+        det.style.display = isOpen ? 'none' : '';
+        if(arrEl) arrEl.innerHTML = isOpen ? '&#9658;' : '&#9660;';
+      });
+    }
 
     // Event listeners para toggle familias
     todasFams.forEach(function(fam,fi){
