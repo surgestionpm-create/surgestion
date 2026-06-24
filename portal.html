@@ -277,6 +277,9 @@ var _periodos = [];
 var _reportes = [];
 var _mesesPorAnio = {};
 var _aplicaIva = true;
+var _eerrDesde = null;
+var _eerrHasta = null;
+var _eerrBloqueado = false;
 var COLS = ['#3A8FD1','#1B3A5C','#27AE60','#E67E22','#8E44AD','#E74C3C','#16A085','#F39C12','#5BAEE8','#2ECC71','#C0392B','#9B59B6'];
 
 function fmt(n){ if(n==null||isNaN(n)) return '--'; return '$'+Number(n).toLocaleString('es-CL'); }
@@ -696,7 +699,10 @@ function cargarDatos(userId){
       return;
     }
     _clienteId = cliente.id;
-    _aplicaIva = cliente.aplica_iva !== false; // true por defecto
+    _aplicaIva = cliente.aplica_iva !== false;
+    _eerrDesde = cliente.eerr_desde || null;
+    _eerrHasta = cliente.eerr_hasta || null;
+    _eerrBloqueado = cliente.eerr_bloqueado === true;
     document.getElementById('nav-empresa').textContent = cliente.nombre_empresa;
     document.getElementById('empresa-nombre').textContent = cliente.nombre_empresa;
     if(cliente.logo_url) document.getElementById('nav-logo').src = cliente.logo_url;
@@ -739,22 +745,54 @@ function cargarDatos(userId){
       var optsAniosRev = aniosComp.slice().reverse().map(function(a){return '<option value="'+a+'">'+a+'</option>';}).join('');
       document.getElementById('comp-anio-desde').innerHTML = optsAnios;
       document.getElementById('comp-anio-hasta').innerHTML = optsAniosRev;
-      // Default: desde enero 2026 hasta mes actual
+      // Default: desde enero 2026 hasta mes actual (o config especial del cliente)
       var hoyComp = new Date();
-      var anioDefDesde = '2026';
-      var anioDefHasta = hoyComp.getFullYear().toString();
       var mesesES2=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-      var mesDefHasta = mesesES2[hoyComp.getMonth()];
+      var anioDefDesde, mesDefDesde, anioDefHasta, mesDefHasta;
+
+      if(_eerrBloqueado && _eerrDesde && _eerrHasta){
+        // Cliente con EERR bloqueado: usar fechas predefinidas
+        var partsD = _eerrDesde.split(' ');
+        var partsH = _eerrHasta.split(' ');
+        mesDefDesde = partsD[0]; anioDefDesde = partsD[1];
+        mesDefHasta = partsH[0]; anioDefHasta = partsH[1];
+      } else {
+        // Default general
+        anioDefDesde = '2026'; mesDefDesde = 'enero';
+        anioDefHasta = hoyComp.getFullYear().toString();
+        mesDefHasta = mesesES2[hoyComp.getMonth()];
+      }
+
       var selAD = document.getElementById('comp-anio-desde');
       var selAH = document.getElementById('comp-anio-hasta');
       for(var oi=0;oi<selAD.options.length;oi++){if(selAD.options[oi].value===anioDefDesde){selAD.selectedIndex=oi;break;}}
       for(var oi=0;oi<selAH.options.length;oi++){if(selAH.options[oi].value===anioDefHasta){selAH.selectedIndex=oi;break;}}
       actualizarMesesComp();
-      // Seleccionar enero en desde y mes actual en hasta
       var selMD=document.getElementById('comp-mes-desde');
       var selMH=document.getElementById('comp-mes-hasta');
-      for(var oi=0;oi<selMD.options.length;oi++){if(selMD.options[oi].value==='enero'){selMD.selectedIndex=oi;break;}}
+      for(var oi=0;oi<selMD.options.length;oi++){if(selMD.options[oi].value===mesDefDesde){selMD.selectedIndex=oi;break;}}
       for(var oi=0;oi<selMH.options.length;oi++){if(selMH.options[oi].value===mesDefHasta){selMH.selectedIndex=oi;break;}}
+
+      // Bloquear selectores si el cliente tiene EERR fijo
+      var compSelectors = ['comp-anio-desde','comp-mes-desde','comp-anio-hasta','comp-mes-hasta'];
+      compSelectors.forEach(function(id){
+        var el = document.getElementById(id);
+        if(el){
+          el.disabled = _eerrBloqueado;
+          el.style.opacity = _eerrBloqueado ? '0.6' : '1';
+          el.style.cursor = _eerrBloqueado ? 'not-allowed' : 'pointer';
+        }
+      });
+      if(_eerrBloqueado){
+        var badge = document.createElement('span');
+        badge.style.cssText = 'font-size:11px;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:3px 10px;margin-left:4px';
+        badge.textContent = 'Periodo fijo: '+_eerrDesde+' - '+_eerrHasta;
+        var compCh = document.querySelector('#eerr-comp-body').closest('.card').querySelector('.ch');
+        if(compCh && !compCh.querySelector('.badge-fijo')){
+          badge.className = 'badge-fijo';
+          compCh.appendChild(badge);
+        }
+      }
 
       // Ultima actualizacion
       var mas = _reportes[0];
