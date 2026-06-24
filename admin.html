@@ -343,6 +343,7 @@ function procesarGastos(input){
     var catKey=keys.find(function(k){return /categ/i.test(k);}) || 'Categoria';
     var famKey=keys.find(function(k){return /familia/i.test(k);}) || 'Familia';
     var tipoKey=keys.find(function(k){return /tipo.*gasto/i.test(k)||/tipo de gasto/i.test(k);}) || 'Tipo de Gasto';
+    var tipoDocKey=keys.find(function(k){return /tipo.*doc/i.test(k)||/tipo documento/i.test(k);}) || 'Tipo Documento';
     var provKey=keys.find(function(k){return /proveedor/i.test(k);}) || 'Proveedor';
     var monKey=keys.find(function(k){return /monto.*bruto/i.test(k.trim());}) || keys.find(function(k){return /monto/i.test(k.trim());}) || 'Monto Bruto';
     console.log('Keys detectadas - ano:',anoKey,'mes:',mesKey,'cat:',catKey,'fam:',famKey,'prov:',provKey,'mon:',monKey);
@@ -383,9 +384,10 @@ function procesarGastos(input){
       // Acumular por cat+fam+prov
       var existe=gastosData[periodo].find(function(x){return x.cat===cat&&x.fam===fam&&x.prov===prov;});
       var tipo=String(r[tipoKey]||'').trim();
+      var tipoDoc=String(r[tipoDocKey]||'').trim();
       var monNetoKey=keys.find(function(k){return /monto.*neto/i.test(k);});var monNeto=monNetoKey?parseFloat(String(r[monNetoKey]||'0').replace(/[^0-9.-]/g,''))||mon:mon;
       if(existe){existe.monto+=mon;existe.montoNeto+=monNeto;}
-      else{gastosData[periodo].push({cat:cat,fam:fam,prov:prov,monto:mon,montoNeto:monNeto,tipo:tipo});}
+      else{gastosData[periodo].push({cat:cat,fam:fam,prov:prov,monto:mon,montoNeto:monNeto,tipo:tipo,tipoDoc:tipoDoc});}
     });
     var periodos=Object.keys(gastosData);
     console.log('Periodos gastos:',periodos);
@@ -595,7 +597,7 @@ async function subirDatos(){
     if(rep.error){errores.push(periodo+': '+rep.error.message);continue;}
     var repId=rep.data.id;
     // Insertar costos
-    var costosList=(gastPer||[]).map(function(x){return {reporte_id:repId,categoria:x.cat,familia:x.fam,monto:x.monto,monto_neto:x.montoNeto||x.monto,tipo_gasto:x.tipo||''};});
+    var costosList=(gastPer||[]).map(function(x){return {reporte_id:repId,categoria:x.cat,familia:x.fam,monto:x.monto,monto_neto:x.montoNeto||x.monto,tipo_gasto:x.tipo||'',tipo_documento:x.tipoDoc||''};});
     if(costosList.length)await sb.from('costos').insert(costosList);
     // Insertar productos
     var prodList=Object.entries(ventPer).map(function(e){return {reporte_id:repId,nombre:e[0],cantidad:e[1].cantidad,monto:e[1].monto,categoria:e[1].cat||'Sin categoria',forma_pago:e[1].fp||null};});

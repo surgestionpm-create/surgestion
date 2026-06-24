@@ -162,7 +162,17 @@ table.t tr:hover td{background:#F0F7FD}
 
   <div class="g2">
     <div class="card"><div class="ch"><span class="ct">Fijos vs Variables</span></div><div class="cb"><canvas id="c-fv" height="220"></canvas></div></div>
-    <div class="card"><div class="ch"><span class="ct">Evolucion mensual</span></div><div class="cb"><canvas id="c-evo" height="220"></canvas></div></div>
+    <div class="card"><div class="ch"><span class="ct">Evolucion mensual (ano en curso)</span></div><div class="cb"><canvas id="c-evo" height="220"></canvas></div></div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div class="ch"><span class="ct">Gastos por tipo de documento</span></div>
+    <div class="cb" style="padding:0">
+      <table class="t">
+        <thead><tr><th>Tipo Documento</th><th class="num">Monto</th><th class="pct">% del total</th></tr></thead>
+        <tbody id="tb-tipo-doc"></tbody>
+      </table>
+    </div>
   </div>
 
   <p class="sec">Indicadores financieros</p>
@@ -670,9 +680,34 @@ function cargarDatos(userId){
         document.getElementById('ult-act').style.display='inline-flex';
       }
 
-      // Cargar primer periodo
-      var primerMes = document.getElementById('sel-mes').value;
-      cargarPeriodo(primerMes+' '+anios[0]);
+      // Cargar mes actual por defecto
+      var mesesES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+      var hoy=new Date();
+      var mesActual=mesesES[hoy.getMonth()];
+      var anioActual=hoy.getFullYear().toString();
+      // Buscar si existe el periodo del mes actual
+      var periodoActual=mesActual+' '+anioActual;
+      var anioSel=anioActual;
+      var mesSel=mesActual;
+      if(_periodos.indexOf(periodoActual)>=0){
+        // Seleccionar año y mes actual en los selectores
+        var selAnio=document.getElementById('sel-anio');
+        var selMes=document.getElementById('sel-mes');
+        for(var oi=0;oi<selAnio.options.length;oi++){
+          if(selAnio.options[oi].value===anioActual){selAnio.selectedIndex=oi;break;}
+        }
+        poblarMeses(anioActual);
+        var selMes2=document.getElementById('sel-mes');
+        for(var oi2=0;oi2<selMes2.options.length;oi2++){
+          if(selMes2.options[oi2].value===mesActual){selMes2.selectedIndex=oi2;break;}
+        }
+      } else {
+        // Si no existe el mes actual, usar el más reciente
+        anioSel=anios[0];
+        mesSel=document.getElementById('sel-mes').value;
+        periodoActual=mesSel+' '+anioSel;
+      }
+      cargarPeriodo(periodoActual);
       renderEvolucion();
     });
   });
@@ -799,6 +834,31 @@ function cargarPeriodo(periodo){
       if(/impuesto|iva/i.test(fam)) return;
       fams[fam]=(fams[fam]||0)+getNeto(c);
     });
+
+    // Gastos por tipo de documento
+    // Facturas electronicas y Notas de credito = valor neto, resto = valor bruto
+    var tiposDocs={};
+    var totalTipoDoc=0;
+    costos.forEach(function(c){
+      var td=c.tipo_documento||'Sin documento';
+      var esNeto=/factura.*elec|nota.*cred/i.test(td);
+      var val=esNeto?getNeto(c):Number(c.monto||0);
+      tiposDocs[td]=(tiposDocs[td]||0)+val;
+      totalTipoDoc+=val;
+    });
+    var tdArr=Object.entries(tiposDocs).sort(function(a,b){return b[1]-a[1];});
+    var tbTD=document.getElementById('tb-tipo-doc');
+    if(tbTD){
+      if(tdArr.length && tdArr[0][0]!=='Sin documento'){
+        tbTD.innerHTML=tdArr.map(function(e){
+          var esNeto=/factura.*elec|nota.*cred/i.test(e[0]);
+          var badge=esNeto?'<span style="font-size:9px;background:#EBF5FB;color:#3A8FD1;border-radius:4px;padding:1px 5px;margin-left:4px">Neto</span>':'<span style="font-size:9px;background:#F8F3EC;color:#E67E22;border-radius:4px;padding:1px 5px;margin-left:4px">Bruto</span>';
+          return '<tr><td style="padding:7px 10px;font-size:12px">'+e[0]+badge+'</td><td class="num">'+fmt(e[1])+'</td><td class="pct">'+pct(e[1],totalTipoDoc)+'</td></tr>';
+        }).join('');
+      } else {
+        tbTD.innerHTML='<tr><td colspan="3" style="padding:12px;text-align:center;color:var(--muted);font-size:12px">Sin datos de tipo de documento. Vuelve a subir el Excel de gastos.</td></tr>';
+      }
+    }
     var famArr=Object.entries(fams).sort(function(a,b){return b[1]-a[1];});
 
     dc('gfam');
@@ -862,7 +922,13 @@ function cargarPeriodo(periodo){
 
 function renderEvolucion(){
   if(!_reportes.length) return;
-  var reps=_reportes.slice().reverse().slice(-12);
+  // Solo periodo del ano en curso
+  var anioActual = new Date().getFullYear().toString();
+  var reps = _reportes.slice().reverse().filter(function(r){
+    return r.periodo && r.periodo.split(' ')[1] === anioActual;
+  });
+  // Si no hay datos del ano actual, usar últimos 12
+  if(!reps.length) reps = _reportes.slice().reverse().slice(-12);
   dc('evo');
   charts['evo']=new Chart(document.getElementById('c-evo').getContext('2d'),{
     type:'line',data:{
