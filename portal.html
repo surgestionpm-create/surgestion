@@ -793,7 +793,6 @@ function cargarPeriodo(periodo){
     document.getElementById('kv-gb').textContent = fmt(gb);
     document.getElementById('kv-gn').textContent = fmt(gn);
     var totalCant = productos.reduce(function(s,p){return s+Number(p.cantidad||0);},0);
-    document.getElementById('kv-pp').textContent = totalCant>0?fmt(Math.round(vb/totalCant)):'--';
     var resMes = document.getElementById('kv-res-mes');
     if(resMes){
       resMes.textContent = (resultado>=0?'+':'')+fmt(Math.abs(resultado));
