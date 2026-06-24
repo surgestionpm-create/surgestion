@@ -117,11 +117,12 @@ table.t tr:hover td{background:#F0F7FD}
   </div>
 
   <p class="sec">Ventas del periodo</p>
-  <div class="kpi5">
+  <div class="kpi5" style="grid-template-columns:repeat(6,1fr)">
     <div class="kpi"><div class="kl">Ventas brutas</div><div class="kv" id="kv-vb">--</div><span class="kb bb">Con IVA</span></div>
     <div class="kpi"><div class="kl">Ventas netas</div><div class="kv" id="kv-vn">--</div><span class="kb bb">Sin IVA</span></div>
     <div class="kpi"><div class="kl">Gastos brutos</div><div class="kv" id="kv-gb">--</div><span class="kb bo">Con IVA</span></div>
     <div class="kpi"><div class="kl">Gastos netos</div><div class="kv" id="kv-gn">--</div><span class="kb bo">Sin IVA</span></div>
+    <div class="kpi"><div class="kl">Resultado del mes</div><div class="kv" id="kv-res-mes">--</div><span class="kb bb">Vtas netas - Gtos netos</span></div>
     <div class="kpi"><div class="kl">Precio promedio</div><div class="kv" id="kv-pp">--</div><span class="kb bb">VB / Cantidad</span></div>
   </div>
 
@@ -673,7 +674,22 @@ function cargarDatos(userId){
       var optsAniosRev = aniosComp.slice().reverse().map(function(a){return '<option value="'+a+'">'+a+'</option>';}).join('');
       document.getElementById('comp-anio-desde').innerHTML = optsAnios;
       document.getElementById('comp-anio-hasta').innerHTML = optsAniosRev;
+      // Default: desde enero 2026 hasta mes actual
+      var hoyComp = new Date();
+      var anioDefDesde = '2026';
+      var anioDefHasta = hoyComp.getFullYear().toString();
+      var mesesES2=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+      var mesDefHasta = mesesES2[hoyComp.getMonth()];
+      var selAD = document.getElementById('comp-anio-desde');
+      var selAH = document.getElementById('comp-anio-hasta');
+      for(var oi=0;oi<selAD.options.length;oi++){if(selAD.options[oi].value===anioDefDesde){selAD.selectedIndex=oi;break;}}
+      for(var oi=0;oi<selAH.options.length;oi++){if(selAH.options[oi].value===anioDefHasta){selAH.selectedIndex=oi;break;}}
       actualizarMesesComp();
+      // Seleccionar enero en desde y mes actual en hasta
+      var selMD=document.getElementById('comp-mes-desde');
+      var selMH=document.getElementById('comp-mes-hasta');
+      for(var oi=0;oi<selMD.options.length;oi++){if(selMD.options[oi].value==='enero'){selMD.selectedIndex=oi;break;}}
+      for(var oi=0;oi<selMH.options.length;oi++){if(selMH.options[oi].value===mesDefHasta){selMH.selectedIndex=oi;break;}}
 
       // Ultima actualizacion
       var mas = _reportes[0];
@@ -781,6 +797,11 @@ function cargarPeriodo(periodo){
     document.getElementById('kv-gn').textContent = fmt(gn);
     var totalCant = productos.reduce(function(s,p){return s+Number(p.cantidad||0);},0);
     document.getElementById('kv-pp').textContent = totalCant>0?fmt(Math.round(vb/totalCant)):'--';
+    var resMes = document.getElementById('kv-res-mes');
+    if(resMes){
+      resMes.textContent = (resultado>=0?'+':'')+fmt(Math.abs(resultado));
+      resMes.style.color = resultado>=0?'var(--green)':'var(--red)';
+    }
 
     // KPIs gastos
     document.getElementById('kv-gb2').textContent = fmt(gbOp);

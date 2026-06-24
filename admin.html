@@ -590,18 +590,33 @@ async function subirDatos(){
     var ventPer=ventasData&&ventasData[periodo]?ventasData[periodo]:{};
     var totalB=Object.values(ventPer).reduce(function(s,v){return s+v.monto;},0);
     var totalN=Math.round(totalB/1.19);
-    // Eliminar reporte anterior de ese período
-    await sb.from('reportes').delete().eq('cliente_id',clienteId).eq('periodo',periodo);
-    // Insertar nuevo reporte
-    var rep=await sb.from('reportes').insert({cliente_id:clienteId,periodo:periodo,ventas_brutas:totalB,ventas_netas:totalN}).select().single();
-    if(rep.error){errores.push(periodo+': '+rep.error.message);continue;}
-    var repId=rep.data.id;
-    // Insertar costos
-    var costosList=(gastPer||[]).map(function(x){return {reporte_id:repId,categoria:x.cat,familia:x.fam,monto:x.monto,monto_neto:x.montoNeto||x.monto,tipo_gasto:x.tipo||'',tipo_documento:x.tipoDoc||''};});
-    if(costosList.length)await sb.from('costos').insert(costosList);
-    // Insertar productos
-    var prodList=Object.entries(ventPer).map(function(e){return {reporte_id:repId,nombre:e[0],cantidad:e[1].cantidad,monto:e[1].monto,categoria:e[1].cat||'Sin categoria',forma_pago:e[1].fp||null};});
-    if(prodList.length)await sb.from('productos').insert(prodList);
+    // Buscar reporte existente
+    var repExist=await sb.from('reportes').select('*').eq('cliente_id',clienteId).eq('periodo',periodo).single();
+    var repId=null;
+    if(repExist.data){
+      repId=repExist.data.id;
+      // Actualizar solo los campos que tenemos datos nuevos
+      var upd={};
+      if(tieneVentas){upd.ventas_brutas=totalB;upd.ventas_netas=totalN;}
+      if(Object.keys(upd).length>0)await sb.from('reportes').update(upd).eq('id',repId);
+    } else {
+      // Crear nuevo reporte
+      var repNew=await sb.from('reportes').insert({cliente_id:clienteId,periodo:periodo,ventas_brutas:totalB,ventas_netas:totalN}).select().single();
+      if(repNew.error){errores.push(periodo+': '+repNew.error.message);continue;}
+      repId=repNew.data.id;
+    }
+    // Insertar/reemplazar costos solo si hay gastos nuevos
+    if(gastPer&&gastPer.length>0){
+      await sb.from('costos').delete().eq('reporte_id',repId);
+      var costosList=gastPer.map(function(x){return {reporte_id:repId,categoria:x.cat,familia:x.fam,monto:x.monto,monto_neto:x.montoNeto||x.monto,tipo_gasto:x.tipo||'',tipo_documento:x.tipoDoc||''};});
+      await sb.from('costos').insert(costosList);
+    }
+    // Insertar/reemplazar productos solo si hay ventas nuevas
+    if(tieneVentas&&Object.keys(ventPer).length>0){
+      await sb.from('productos').delete().eq('reporte_id',repId);
+      var prodList=Object.entries(ventPer).map(function(e){return {reporte_id:repId,nombre:e[0],cantidad:e[1].cantidad,monto:e[1].monto,categoria:e[1].cat||'Sin categoria',forma_pago:e[1].fp||null};});
+      await sb.from('productos').insert(prodList);
+    }
   }
   if(errores.length){showMsg('up-msg','err','Errores: '+errores.join(', '));}
   else{showMsg('up-msg','ok',periodos.length+' período(s) guardados: '+periodos.map(function(p){return p.charAt(0).toUpperCase()+p.slice(1);}).join(', '));}
