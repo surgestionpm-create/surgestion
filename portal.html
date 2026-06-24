@@ -218,8 +218,11 @@ function dc(id){ if(charts[id]){try{charts[id].destroy();}catch(e){}} }
 
 // Calcula gasto neto: usa monto_neto si existe, sino divide monto/1.19
 function getNeto(c){ 
+  // Gastos SIEMPRE: neto = monto_neto si existe y es diferente al bruto, sino bruto/1.19
+  var bruto = Number(c.monto||0);
   var mn = Number(c.monto_neto||0);
-  return mn > 0 ? mn : Math.round(Number(c.monto||0)/1.19);
+  if(mn > 0 && Math.abs(mn - bruto) > bruto * 0.01) return mn;
+  return Math.round(bruto/1.19);
 }
 
 // Flecha de tendencia
@@ -744,7 +747,7 @@ function cargarPeriodo(periodo){
     // Gastos brutos = suma de monto (columna Monto Bruto del Excel)
     var gb = costos.reduce(function(s,c){ return s+Number(c.monto||0); },0);
     // Gastos netos = si no aplica IVA usar mismo valor bruto, sino calcular neto
-    var gn = _aplicaIva ? costos.reduce(function(s,c){ return s+getNeto(c); },0) : gb;
+    var gn = costos.reduce(function(s,c){ return s+getNeto(c); },0); // Gastos netos SIEMPRE calculados sin IVA
     
     // Separar impuestos
     var impBruto = costos.filter(function(c){ return /impuesto|iva/i.test(c.familia||c.categoria||''); }).reduce(function(s,c){ return s+Number(c.monto||0); },0);
@@ -841,7 +844,7 @@ function cargarPeriodo(periodo){
     var totalTipoDoc=0;
     costos.forEach(function(c){
       var td=c.tipo_documento||'Sin documento';
-      var esNeto=/factura.*elec|nota.*cred/i.test(td);
+      var esNeto=/factura.*elec|nota.*cr/i.test(td)||/nc.*elec/i.test(td);
       var val=esNeto?getNeto(c):Number(c.monto||0);
       tiposDocs[td]=(tiposDocs[td]||0)+val;
       totalTipoDoc+=val;
@@ -979,7 +982,7 @@ function actualizarComp(){
       var fam=c.familia||c.categoria||'Sin familia';
       var cat=c.categoria||'Sin categoria';
       dat[p].gb+=bruto;
-      dat[p].gn+=_aplicaIva?neto:bruto;
+      dat[p].gn+=neto; // Gastos netos siempre sin IVA
       if(!dat[p].fams[fam])dat[p].fams[fam]=0;
       dat[p].fams[fam]+=neto;
       if(!dat[p].cats[fam])dat[p].cats[fam]={};
