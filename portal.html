@@ -218,12 +218,11 @@ function pct(v,t){ return t>0?((v/t)*100).toFixed(1)+'%':'0.0%'; }
 function dc(id){ if(charts[id]){try{charts[id].destroy();}catch(e){}} }
 
 // Calcula gasto neto: usa monto_neto si existe, sino divide monto/1.19
-function getNeto(c){ 
-  // Gastos SIEMPRE: neto = monto_neto si existe y es diferente al bruto, sino bruto/1.19
-  var bruto = Number(c.monto||0);
+function getNeto(c){
+  // Gasto Neto = columna Monto Neto del Excel (campo monto_neto en Supabase)
+  // Si no existe monto_neto, usar monto_bruto como fallback
   var mn = Number(c.monto_neto||0);
-  if(mn > 0 && Math.abs(mn - bruto) > bruto * 0.01) return mn;
-  return Math.round(bruto/1.19);
+  return mn > 0 ? mn : Number(c.monto||0);
 }
 
 // Flecha de tendencia
@@ -765,19 +764,19 @@ function cargarPeriodo(periodo){
     // Gastos netos = si no aplica IVA usar mismo valor bruto, sino calcular neto
     var gn = costos.reduce(function(s,c){ return s+getNeto(c); },0); // Gastos netos SIEMPRE calculados sin IVA
     
-    // Separar impuestos
+    // Separar impuestos (excluir de operacional)
     var impBruto = costos.filter(function(c){ return /impuesto|iva/i.test(c.familia||c.categoria||''); }).reduce(function(s,c){ return s+Number(c.monto||0); },0);
     var impNeto  = costos.filter(function(c){ return /impuesto|iva/i.test(c.familia||c.categoria||''); }).reduce(function(s,c){ return s+getNeto(c); },0);
-    
-    var gbOp = gb - impBruto;
-    var gnOp = gn - impNeto;
-    var resultado = vn - gnOp;
 
-    // Fijos/variables
+    var gbOp = gb - impBruto;  // Gastos brutos operacionales
+    var gnOp = gn - impNeto;   // Gastos netos operacionales
+    var resultado = vn - gnOp; // Resultado = Venta Neta - Gasto Neto
+
+    // Fijos/variables - usar Gasto Neto
     var hasTipo = costos.some(function(c){ return c.tipo_gasto&&c.tipo_gasto.trim()!==''; });
     var cf = costos.filter(function(c){ return (c.tipo_gasto||'').toLowerCase().includes('fijo'); }).reduce(function(s,c){ return s+getNeto(c); },0);
     var cv = costos.filter(function(c){ return (c.tipo_gasto||'').toLowerCase().includes('variable'); }).reduce(function(s,c){ return s+getNeto(c); },0);
-    if(!hasTipo){ cf=gnOp; cv=0; }
+    if(!hasTipo){ cf=gnOp; cv=0; } // Si no hay tipo, asumir todo fijo
 
     var mb = vn>0?((resultado/vn)*100).toFixed(1):0;
     var mn = vb>0?((resultado/vb)*100).toFixed(1):0;
@@ -851,7 +850,7 @@ function cargarPeriodo(periodo){
     });
     document.getElementById('tb-vdet').innerHTML=rows;
 
-    // Gastos por familia (NETO)
+    // Gastos por familia - Gasto Neto = Monto Neto del Excel
     var fams={};
     costos.forEach(function(c){
       var fam=c.familia||c.categoria||'Sin familia';
@@ -891,6 +890,7 @@ function cargarPeriodo(periodo){
       options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return ' '+fmt(c.raw)+' ('+pct(c.raw,gnOp)+')';} }}},scales:{x:{grid:{color:'#EBF5FB'},ticks:{font:{size:10},callback:function(v){return v>=1000000?'$'+(v/1000000).toFixed(1)+'M':'$'+(v/1000).toFixed(0)+'K';}}},y:{grid:{display:false},ticks:{font:{size:10}}}}}
     });
 
+    // Tabla: % sobre Gasto Neto total y sobre Venta Neta
     document.getElementById('tb-gfam').innerHTML=famArr.map(function(e){
       return '<tr><td style="padding:7px 10px;font-size:12px">'+e[0]+'</td><td class="num">'+fmt(e[1])+'</td><td class="pct">'+pct(e[1],gnOp)+'</td><td class="pct">'+pct(e[1],vn)+'</td></tr>';
     }).join('');
@@ -905,12 +905,13 @@ function cargarPeriodo(periodo){
     }
 
     // EERR con flechas
+    // EERR: Gastos por familia y categoría usando Gasto Neto (Monto Neto)
     var famGastos={},famCats={};
     costos.forEach(function(c){
       var fam=c.familia||c.categoria||'Sin familia';
       var cat=c.categoria||'Sin categoria';
       if(/impuesto|iva/i.test(fam)) return;
-      var neto=getNeto(c);
+      var neto=getNeto(c); // Monto Neto directo del Excel
       famGastos[fam]=(famGastos[fam]||0)+neto;
       if(!famCats[fam])famCats[fam]={};
       famCats[fam][cat]=(famCats[fam][cat]||0)+neto;
@@ -1002,15 +1003,15 @@ function actualizarComp(){
       var neto=getNeto(c);
       var fam=c.familia||c.categoria||'Sin familia';
       var cat=c.categoria||'Sin categoria';
-      dat[p].gb+=bruto;
-      dat[p].gn+=neto; // Gastos netos siempre sin IVA
+      dat[p].gb+=bruto;      // Monto Bruto
+      dat[p].gn+=neto;       // Monto Neto (getNeto usa monto_neto directo)
       if(!dat[p].fams[fam])dat[p].fams[fam]=0;
       dat[p].fams[fam]+=neto;
       if(!dat[p].cats[fam])dat[p].cats[fam]={};
       if(!dat[p].cats[fam][cat])dat[p].cats[fam][cat]=0;
       dat[p].cats[fam][cat]+=neto;
     });
-    sel.forEach(function(p){dat[p].res=dat[p].vn-dat[p].gn;});
+    sel.forEach(function(p){dat[p].res=dat[p].vn-dat[p].gn;}); // Resultado = Venta Neta - Gasto Neto
 
     var todasFams=[];
     sel.forEach(function(p){Object.keys(dat[p].fams).forEach(function(f){if(todasFams.indexOf(f)<0)todasFams.push(f);});});
