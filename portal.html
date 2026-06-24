@@ -123,7 +123,6 @@ table.t tr:hover td{background:#F0F7FD}
     <div class="kpi"><div class="kl">Gastos brutos</div><div class="kv" id="kv-gb">--</div><span class="kb bo">Con IVA</span></div>
     <div class="kpi"><div class="kl">Gastos netos</div><div class="kv" id="kv-gn">--</div><span class="kb bo">Sin IVA</span></div>
     <div class="kpi"><div class="kl">Resultado del mes</div><div class="kv" id="kv-res-mes">--</div><span class="kb bb">Vtas netas - Gtos netos</span></div>
-    <div class="kpi"><div class="kl">Precio promedio</div><div class="kv" id="kv-pp">--</div><span class="kb bb">VB / Cantidad</span></div>
   </div>
 
   <div class="g2">
@@ -312,7 +311,6 @@ function exportarExcel(){
     ['Ventas netas', document.getElementById('kv-vn').textContent],
     ['Gastos brutos', document.getElementById('kv-gb').textContent],
     ['Gastos netos', document.getElementById('kv-gn').textContent],
-    ['Precio promedio', document.getElementById('kv-pp').textContent],
     [],
     ['INDICADORES',''],
     ['Resultado operacional', document.getElementById('iv-res').textContent],
