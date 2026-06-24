@@ -117,12 +117,13 @@ table.t tr:hover td{background:#F0F7FD}
   </div>
 
   <p class="sec">Ventas del periodo</p>
-  <div class="kpi5" style="grid-template-columns:repeat(6,1fr)">
+  <div class="kpi5" style="grid-template-columns:repeat(5,1fr)">
     <div class="kpi"><div class="kl">Ventas brutas</div><div class="kv" id="kv-vb">--</div><span class="kb bb">Con IVA</span></div>
     <div class="kpi"><div class="kl">Ventas netas</div><div class="kv" id="kv-vn">--</div><span class="kb bb">Sin IVA</span></div>
     <div class="kpi"><div class="kl">Gastos brutos</div><div class="kv" id="kv-gb">--</div><span class="kb bo">Con IVA</span></div>
     <div class="kpi"><div class="kl">Gastos netos</div><div class="kv" id="kv-gn">--</div><span class="kb bo">Sin IVA</span></div>
     <div class="kpi"><div class="kl">Resultado del mes</div><div class="kv" id="kv-res-mes">--</div><span class="kb bb">Vtas netas - Gtos netos</span></div>
+
   </div>
 
   <div class="g2">
@@ -311,6 +312,7 @@ function exportarExcel(){
     ['Ventas netas', document.getElementById('kv-vn').textContent],
     ['Gastos brutos', document.getElementById('kv-gb').textContent],
     ['Gastos netos', document.getElementById('kv-gn').textContent],
+    ['Precio promedio', document.getElementById('kv-pp').textContent],
     [],
     ['INDICADORES',''],
     ['Resultado operacional', document.getElementById('iv-res').textContent],
@@ -792,7 +794,7 @@ function cargarPeriodo(periodo){
     document.getElementById('kv-vn').textContent = fmt(vn);
     document.getElementById('kv-gb').textContent = fmt(gb);
     document.getElementById('kv-gn').textContent = fmt(gn);
-    var totalCant = productos.reduce(function(s,p){return s+Number(p.cantidad||0);},0);
+
     var resMes = document.getElementById('kv-res-mes');
     if(resMes){
       resMes.textContent = (resultado>=0?'+':'')+fmt(Math.abs(resultado));
@@ -1019,17 +1021,23 @@ function actualizarComp(){
     function celdas(vals,inv,color){
       return vals.map(function(v){
         var cl=color?'color:'+color+';':'';
-        return '<span style="min-width:110px;text-align:right;display:inline-block;'+cl+'">'+fmt(v)+'</span>';
+        return '<span style="min-width:'+W+'px;text-align:right;display:inline-block;font-size:'+FS+'px;'+cl+'">'+fmt(v)+'</span>';
       }).join('');
     }
 
     var h='';
-    var W=110;
+    // Ancho dinámico según cantidad de periodos
+    var nPer = sel.length;
+    var W = nPer <= 3 ? 100 : nPer <= 6 ? 80 : nPer <= 9 ? 65 : nPer <= 12 ? 55 : 45;
+    var FS = nPer <= 3 ? 12 : nPer <= 6 ? 11 : nPer <= 9 ? 10 : 9; // font-size
 
     // Header
     h+='<div style="display:flex;align-items:center;padding:10px 14px;background:var(--navy);color:#fff;font-size:11px;font-weight:600;text-transform:uppercase">';
     h+='<span style="flex:1">Concepto</span><div style="display:flex;gap:8px">';
-    sel.forEach(function(p){h+='<span style="min-width:'+W+'px;text-align:right;display:inline-block">'+p.charAt(0).toUpperCase()+p.slice(1)+'</span>';});
+    sel.forEach(function(p){
+      var label = nPer>6 ? p.slice(0,3).charAt(0).toUpperCase()+p.slice(1,3)+' '+p.split(' ')[1] : p.charAt(0).toUpperCase()+p.slice(1);
+      h+='<span style="min-width:'+W+'px;text-align:right;display:inline-block;font-size:'+(FS-1)+'px;font-weight:600">'+label+'</span>';
+    });
     h+='</div><span style="min-width:100px;text-align:right">Total</span></div>';
 
     function fila(label,vals,inv,bold,bg,indent,showPct,vnTotal){
@@ -1039,9 +1047,9 @@ function actualizarComp(){
       var pd='padding-left:'+(14+(indent||0)*14)+'px';
       var pctCol = showPct && vnTotal>0 ? '<span style="min-width:80px;text-align:right;font-size:12px;color:var(--muted)">'+((tot/vnTotal)*100).toFixed(1)+'%</span>' : '<span style="min-width:80px"></span>';
       return '<div style="display:flex;align-items:center;'+bgs+bs+'border-top:1px solid var(--bg)">'
-        +'<span style="flex:1;font-size:12px;'+pd+'">'+label+'</span>'
-        +'<div style="display:flex;gap:8px">'+celdas(vals,inv,'')+'</div>'
-        +'<span style="min-width:100px;text-align:right;font-size:12px;font-weight:700">'+fmt(tot)+'</span>'
+        +'<span style="flex:1;font-size:'+FS+'px;'+pd+'">'+label+'</span>'
+        +'<div style="display:flex;gap:4px">'+celdas(vals,inv,'')+'</div>'
+        +'<span style="min-width:80px;text-align:right;font-size:'+FS+'px;font-weight:700">'+fmt(tot)+'</span>'
         +pctCol
         +'</div>';
     }
@@ -1062,7 +1070,7 @@ function actualizarComp(){
     var pctGnTotal = totalVnRango>0?((gnTot/totalVnRango)*100).toFixed(1)+'%':'--';
     h+='<div id="comp-gastos-header" style="display:flex;align-items:center;padding:8px 14px;background:#EBF5FB;cursor:pointer;border-top:1px solid var(--bg);font-weight:700">'
       +'<span style="flex:1;font-size:12px;color:var(--navy)"><span id="comp-gastos-arr">&#9660;</span> Total gastos netos</span>'
-      +'<div style="display:flex;gap:8px">'+celdas(gnVals,true,'')+'</div>'
+      +'<div style="display:flex;gap:4px">'+celdas(gnVals,true,'')+'</div>'
       +'<span style="min-width:100px;text-align:right;font-size:12px;font-weight:700">'+fmt(gnTot)+'</span>'
       +'<span style="min-width:80px;text-align:right;font-size:12px;color:var(--muted)">'+pctGnTotal+'</span>'
       +'</div>';
@@ -1078,7 +1086,7 @@ function actualizarComp(){
       var pctFam = totalVnRango>0?((famTot/totalVnRango)*100).toFixed(1)+'%':'--';
       h+='<div id="'+famId+'" style="display:flex;align-items:center;padding:7px 14px 7px 28px;background:#F0F7FD;cursor:pointer;border-top:1px solid var(--bg)">'
         +'<span style="flex:1;font-size:12px;color:var(--navy)"><span id="'+famId+'arr">&#9658;</span> '+fam+'</span>'
-        +'<div style="display:flex;gap:8px">'+celdas(famVals,true,'')+'</div>'
+        +'<div style="display:flex;gap:4px">'+celdas(famVals,true,'')+'</div>'
         +'<span style="min-width:100px;text-align:right;font-size:12px;font-weight:600">'+fmt(famTot)+'</span>'
         +'<span style="min-width:80px;text-align:right;font-size:12px;color:var(--muted)">'+pctFam+'</span>'
         +'</div>';
@@ -1094,7 +1102,7 @@ function actualizarComp(){
         if(!catTot)return;
         h+='<div style="display:flex;align-items:center;padding:5px 14px 5px 44px;border-top:1px solid var(--bg);background:var(--white)">'
           +'<span style="flex:1;font-size:11px;color:var(--muted)">'+cat+'</span>'
-          +'<div style="display:flex;gap:8px">'+catVals.map(function(v){return '<span style="min-width:110px;text-align:right;display:inline-block;font-size:11px;color:var(--muted)">'+fmt(v)+'</span>';}).join('')+'</div>'
+          +'<div style="display:flex;gap:4px">'+catVals.map(function(v){return '<span style="min-width:110px;text-align:right;display:inline-block;font-size:11px;color:var(--muted)">'+fmt(v)+'</span>';}).join('')+'</div>'
           +'<span style="min-width:100px;text-align:right;font-size:11px;color:var(--muted)">'+fmt(catTot)+'</span>'
           +'</div>';
       });
@@ -1112,11 +1120,11 @@ function actualizarComp(){
     var resBg = resTot<0?'background:var(--rl)':'background:var(--bg)';
     var resCeldas = resVals.map(function(v){
       var c = v<0?'color:var(--red)':'color:var(--text)';
-      return '<span style="min-width:110px;text-align:right;display:inline-block;'+c+'">'+fmt(v)+'</span>';
+      return '<span style="min-width:'+W+'px;text-align:right;display:inline-block;font-size:'+FS+'px;'+c+'">'+fmt(v)+'</span>';
     }).join('');
     h+='<div style="display:flex;align-items:center;padding:10px 14px;font-weight:700;'+resBg+'">'+
       '<span style="flex:1;font-size:13px;'+resColor+'">Resultado operacional</span>'+
-      '<div style="display:flex;gap:8px">'+resCeldas+'</div>'+
+      '<div style="display:flex;gap:4px">'+resCeldas+'</div>'+
       '<span style="min-width:100px;text-align:right;font-size:13px;font-weight:700;'+resColor+'">'+fmt(resTot)+'</span>'+
       '<span style="min-width:80px;text-align:right;font-size:12px;'+resColor+'">'+pctRes+'</span>'+
       '</div>';
