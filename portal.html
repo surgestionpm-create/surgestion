@@ -1144,7 +1144,16 @@ function cargarDatos(userId){
 
       // Cargar rango inicial (mes actual)
       renderEvolucion();
-      cargarRango();
+      // Asegurar que los selectores tienen el mes actual antes de cargar
+      setTimeout(function(){
+        var selMD=document.getElementById('sel-mes-desde');
+        var selMH=document.getElementById('sel-mes-hasta');
+        var mesesES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+        var mesActual=mesesES[new Date().getMonth()];
+        for(var oi=0;oi<selMD.options.length;oi++){if(selMD.options[oi].value===mesActual){selMD.selectedIndex=oi;break;}}
+        for(var oi=0;oi<selMH.options.length;oi++){if(selMH.options[oi].value===mesActual){selMH.selectedIndex=oi;break;}}
+        cargarRango();
+      }, 50);
     });
   });
 }
