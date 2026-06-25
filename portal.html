@@ -877,6 +877,8 @@ function renderCompMensual(productos, sel, repsIds, reportes){
   var repMap={};
   reportes.filter(function(r){return sel.indexOf(r.periodo)>=0;}).forEach(function(r){repMap[r.id]=r.periodo;});
 
+  console.log('CompMensual - productos:',productos.length,'sel:',sel,'repMap keys:',Object.keys(repMap).length);
+
   var data={};
   var totalPorPeriodo={};
 
