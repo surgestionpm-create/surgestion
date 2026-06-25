@@ -354,7 +354,11 @@ function cargarRango(){
   var mesD  = document.getElementById('sel-mes-desde').value;
   var anioH = document.getElementById('sel-anio-hasta').value;
   var mesH  = document.getElementById('sel-mes-hasta').value;
-  if(!anioD||!mesD||!anioH||!mesH||!_reportes.length) return;
+  console.log('cargarRango valores:',anioD,mesD,anioH,mesH,'reportes:',_reportes.length);
+  if(!anioD||!mesD||!anioH||!mesH||!_reportes.length){
+    console.log('cargarRango: retorno temprano - valores vacios o sin reportes');
+    return;
+  }
 
   var periodoD = mesD+' '+anioD;
   var periodoH = mesH+' '+anioH;
