@@ -206,6 +206,22 @@ table.t tr:hover td{background:#F0F7FD}
     <div class="cb" style="padding:0"><table class="t"><thead><tr><th>Forma de pago</th><th class="num">Monto</th><th class="pct">% Ventas</th></tr></thead><tbody id="tb-pagos"></tbody></table></div>
   </div>
 
+  <div class="card" style="margin-bottom:16px">
+    <div class="ch"><span class="ct">Comparativo por turno</span></div>
+    <div class="cb" style="padding:0">
+      <table class="t">
+        <thead><tr>
+          <th>Turno</th>
+          <th class="num">Monto</th>
+          <th class="pct">% Ventas</th>
+          <th class="num">Transacciones</th>
+          <th class="num">Ticket prom.</th>
+        </tr></thead>
+        <tbody id="tb-turnos"></tbody>
+      </table>
+    </div>
+  </div>
+
   <div class="card">
     <div class="ch"><span class="ct">Detalle ventas - Categoria / Producto</span><span style="font-size:11px;color:var(--muted)">Clic en categoria para desplegar</span></div>
     <div class="cb" style="padding:0"><table class="t">
@@ -477,6 +493,46 @@ function cargarRango(){
     var pagArr=Object.entries(pagos).sort(function(a,b){return b[1]-a[1];});
     var tbPag=document.getElementById('tb-pagos');
     if(tbPag) tbPag.innerHTML=pagArr.map(function(e){return '<tr><td style="padding:7px 10px;font-size:12px">'+e[0]+'</td><td class="num">'+fmt(e[1])+'</td><td class="pct">'+pct(e[1],vb)+'</td></tr>';}).join('');
+
+    // Comparativo por turno - transacciones = folios únicos por turno
+    var turnos={};
+    productos.forEach(function(p){
+      var t=p.turno||'Sin turno';
+      if(!turnos[t])turnos[t]={monto:0,folios:{}};
+      turnos[t].monto+=Number(p.monto||0);
+      // Contar folio único
+      if(p.folio&&p.folio!==''){
+        turnos[t].folios[p.folio]=1;
+      } else {
+        // Sin folio: cada línea es una transacción
+        turnos[t].folios['__'+Math.random()]=1;
+      }
+    });
+    var turnoArr=Object.entries(turnos).sort(function(a,b){
+      var orden=['Mañana','Manana','Tarde','Noche'];
+      var ia=orden.indexOf(a[0]); var ib=orden.indexOf(b[0]);
+      if(ia>=0&&ib>=0) return ia-ib;
+      return b[1].monto-a[1].monto;
+    });
+    var tbTurnos=document.getElementById('tb-turnos');
+    if(tbTurnos){
+      var tieneTurnos=turnoArr.some(function(e){return e[0]!=='Sin turno';});
+      if(tieneTurnos){
+        tbTurnos.innerHTML=turnoArr.map(function(e){
+          var nTrans=Object.keys(e[1].folios).filter(function(f){return f.indexOf('__')<0;}).length;
+          var ticket=nTrans>0?Math.round(e[1].monto/nTrans):0;
+          var color=e[0]==='Mañana'||e[0]==='Manana'?'#3A8FD1':e[0]==='Tarde'?'#E67E22':'#1B3A5C';
+          return '<tr><td style="padding:7px 10px;font-size:12px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+color+';margin-right:6px"></span>'+e[0]+'</td>'
+            +'<td class="num">'+fmt(e[1].monto)+'</td>'
+            +'<td class="pct">'+pct(e[1].monto,vb)+'</td>'
+            +'<td class="num">'+nTrans+'</td>'
+            +'<td class="num">'+fmt(ticket)+'</td>'
+            +'</tr>';
+        }).join('');
+      } else {
+        tbTurnos.innerHTML='<tr><td colspan="5" style="padding:12px;text-align:center;color:var(--muted);font-size:12px">Sin datos de turno. Vuelve a subir el Excel de ventas.</td></tr>';
+      }
+    }
 
     // Gastos por familia
     var fams={};
