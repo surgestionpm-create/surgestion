@@ -174,10 +174,12 @@ table.t tr:hover td{background:#F0F7FD}
     </div>
   </div>
   <div class="periodo-nav">
-    <label>Ano:</label>
-    <select class="sel" id="sel-anio"></select>
-    <label>Mes:</label>
-    <select class="sel" id="sel-mes"></select>
+    <label>Desde:</label>
+    <select class="sel" id="sel-anio-desde"></select>
+    <select class="sel" id="sel-mes-desde"></select>
+    <label style="margin-left:6px">Hasta:</label>
+    <select class="sel" id="sel-anio-hasta"></select>
+    <select class="sel" id="sel-mes-hasta"></select>
     <span class="periodo-pill" id="periodo-pill">--</span>
     <span id="ult-act" class="ult-act" style="display:none">Actualizado: <strong id="fecha-act">--</strong></span>
   </div>
@@ -308,28 +310,49 @@ document.getElementById('btn-logout').onclick = function(){
   sb_client.auth.signOut().then(function(){ window.location.href='https://surgestionpm.cl/login.html'; });
 };
 
-document.getElementById('sel-anio').onchange = function(){
-  var anio = this.value;
-  poblarMeses(anio);
-  var mes = document.getElementById('sel-mes').value;
-  cargarPeriodo(mes+' '+anio);
+document.getElementById('sel-anio-desde').onchange = function(){
+  poblarMesesRango();
+  cargarRango();
 };
-
-document.getElementById('sel-mes').onchange = function(){
-  var anio = document.getElementById('sel-anio').value;
-  var mes  = this.value;
-  cargarPeriodo(mes+' '+anio);
+document.getElementById('sel-mes-desde').onchange = function(){ cargarRango(); };
+document.getElementById('sel-anio-hasta').onchange = function(){
+  poblarMesesRango();
+  cargarRango();
 };
+document.getElementById('sel-mes-hasta').onchange = function(){ cargarRango(); };
 
 
 
-function poblarMeses(anio){
-  var meses = _mesesPorAnio[anio] || [];
+function poblarMesesRango(){
   var orden = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-  meses = meses.slice().sort(function(a,b){ return orden.indexOf(a)-orden.indexOf(b); });
-  document.getElementById('sel-mes').innerHTML = meses.map(function(m){
+  var anioD = document.getElementById('sel-anio-desde').value;
+  var anioH = document.getElementById('sel-anio-hasta').value;
+
+  var mesesD = (_mesesPorAnio[anioD]||[]).slice().sort(function(a,b){return orden.indexOf(a)-orden.indexOf(b);});
+  document.getElementById('sel-mes-desde').innerHTML = mesesD.map(function(m){
     return '<option value="'+m+'">'+m.charAt(0).toUpperCase()+m.slice(1)+'</option>';
   }).join('');
+
+  var mesesH = (_mesesPorAnio[anioH]||[]).slice().sort(function(a,b){return orden.indexOf(a)-orden.indexOf(b);});
+  document.getElementById('sel-mes-hasta').innerHTML = mesesH.map(function(m){
+    return '<option value="'+m+'">'+m.charAt(0).toUpperCase()+m.slice(1)+'</option>';
+  }).join('');
+}
+
+function cargarRango(){
+  var anioD = document.getElementById('sel-anio-desde').value;
+  var mesD  = document.getElementById('sel-mes-desde').value;
+  var anioH = document.getElementById('sel-anio-hasta').value;
+  var mesH  = document.getElementById('sel-mes-hasta').value;
+  if(!anioD||!mesD||!anioH||!mesH) return;
+  // Cargar el período más reciente del rango seleccionado para KPIs/gráficos
+  // El período principal sigue siendo el "hasta" (el más reciente)
+  var periodoActivo = mesH+' '+anioH;
+  if(_periodos.indexOf(periodoActivo)>=0){
+    cargarPeriodo(periodoActivo);
+  }
+  // Badge muestra el rango
+  document.getElementById('periodo-pill').textContent = mesD.slice(0,3)+'. '+anioD+' - '+mesH.slice(0,3)+'. '+anioH;
 }
 
 function actualizarMesesComp(){
@@ -728,10 +751,10 @@ function cargarDatos(userId){
       });
       anios.sort(function(a,b){ return Number(b)-Number(a); });
 
-      document.getElementById('sel-anio').innerHTML = anios.map(function(a){
-        return '<option value="'+a+'">'+a+'</option>';
-      }).join('');
-      poblarMeses(anios[0]);
+      var optsAnios = anios.map(function(a){ return '<option value="'+a+'">'+a+'</option>'; }).join('');
+      document.getElementById('sel-anio-desde').innerHTML = optsAnios;
+      document.getElementById('sel-anio-hasta').innerHTML = optsAnios;
+      poblarMesesRango();
 
       // Selectores comparativo
       // Poblar selectores comparativo con año/mes separados
@@ -802,34 +825,30 @@ function cargarDatos(userId){
         document.getElementById('ult-act').style.display='inline-flex';
       }
 
-      // Cargar mes actual por defecto
+      // Default: Desde = mes actual, Hasta = mes actual (mismo mes)
       var mesesES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
       var hoy=new Date();
       var mesActual=mesesES[hoy.getMonth()];
       var anioActual=hoy.getFullYear().toString();
-      // Buscar si existe el periodo del mes actual
-      var periodoActual=mesActual+' '+anioActual;
-      var anioSel=anioActual;
-      var mesSel=mesActual;
-      if(_periodos.indexOf(periodoActual)>=0){
-        // Seleccionar año y mes actual en los selectores
-        var selAnio=document.getElementById('sel-anio');
-        var selMes=document.getElementById('sel-mes');
-        for(var oi=0;oi<selAnio.options.length;oi++){
-          if(selAnio.options[oi].value===anioActual){selAnio.selectedIndex=oi;break;}
-        }
-        poblarMeses(anioActual);
-        var selMes2=document.getElementById('sel-mes');
-        for(var oi2=0;oi2<selMes2.options.length;oi2++){
-          if(selMes2.options[oi2].value===mesActual){selMes2.selectedIndex=oi2;break;}
-        }
-      } else {
-        // Si no existe el mes actual, usar el más reciente
-        anioSel=anios[0];
-        mesSel=document.getElementById('sel-mes').value;
-        periodoActual=mesSel+' '+anioSel;
-      }
-      cargarPeriodo(periodoActual);
+
+      // Seleccionar año actual en ambos selectores
+      var selAD=document.getElementById('sel-anio-desde');
+      var selAH=document.getElementById('sel-anio-hasta');
+      for(var oi=0;oi<selAD.options.length;oi++){if(selAD.options[oi].value===anioActual){selAD.selectedIndex=oi;break;}}
+      for(var oi=0;oi<selAH.options.length;oi++){if(selAH.options[oi].value===anioActual){selAH.selectedIndex=oi;break;}}
+
+      poblarMesesRango();
+
+      // Mes desde = mes actual, mes hasta = mes actual
+      var selMD=document.getElementById('sel-mes-desde');
+      var selMH=document.getElementById('sel-mes-hasta');
+      for(var oi=0;oi<selMD.options.length;oi++){if(selMD.options[oi].value===mesActual){selMD.selectedIndex=oi;break;}}
+      for(var oi=0;oi<selMH.options.length;oi++){if(selMH.options[oi].value===mesActual){selMH.selectedIndex=oi;break;}}
+
+      // Si no existe el mes actual, usar el período más reciente
+      var periodoActivo = mesActual+' '+anioActual;
+      if(_periodos.indexOf(periodoActivo)<0) periodoActivo = _periodos[0];
+      cargarPeriodo(periodoActivo);
       renderEvolucion();
     });
   });
