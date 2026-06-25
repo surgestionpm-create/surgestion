@@ -344,15 +344,162 @@ function cargarRango(){
   var mesD  = document.getElementById('sel-mes-desde').value;
   var anioH = document.getElementById('sel-anio-hasta').value;
   var mesH  = document.getElementById('sel-mes-hasta').value;
-  if(!anioD||!mesD||!anioH||!mesH) return;
-  // Cargar el período más reciente del rango seleccionado para KPIs/gráficos
-  // El período principal sigue siendo el "hasta" (el más reciente)
-  var periodoActivo = mesH+' '+anioH;
-  if(_periodos.indexOf(periodoActivo)>=0){
-    cargarPeriodo(periodoActivo);
+  if(!anioD||!mesD||!anioH||!mesH||!_reportes.length) return;
+
+  var periodoD = mesD+' '+anioD;
+  var periodoH = mesH+' '+anioH;
+  var idxD = _periodos.indexOf(periodoD);
+  var idxH = _periodos.indexOf(periodoH);
+  if(idxD<0||idxH<0){
+    // Si no existen exactos, usar el más cercano
+    if(idxD<0) idxD = _periodos.length-1;
+    if(idxH<0) idxH = 0;
   }
+  var start = Math.min(idxD,idxH);
+  var end   = Math.max(idxD,idxH);
+  var sel   = _periodos.slice(start,end+1);
+
   // Badge muestra el rango
-  document.getElementById('periodo-pill').textContent = mesD.slice(0,3)+'. '+anioD+' - '+mesH.slice(0,3)+'. '+anioH;
+  var pill = document.getElementById('periodo-pill');
+  if(sel.length===1){
+    pill.textContent = sel[0].charAt(0).toUpperCase()+sel[0].slice(1);
+  } else {
+    pill.textContent = mesD.slice(0,3)+'. '+anioD+' - '+mesH.slice(0,3)+'. '+anioH;
+  }
+
+  // Obtener IDs de reportes del rango
+  var repsIds = _reportes.filter(function(r){return sel.indexOf(r.periodo)>=0;}).map(function(r){return r.id;});
+  if(!repsIds.length) return;
+
+  document.getElementById('loading').style.display='flex';
+  document.getElementById('dashboard').style.display='none';
+
+  Promise.all([
+    sb_client.from('costos').select('*').in('reporte_id',repsIds),
+    sb_client.from('productos').select('*').in('reporte_id',repsIds)
+  ]).then(function(results){
+    var costos    = results[0].data||[];
+    var productos = results[1].data||[];
+
+    // Sumar ventas de todos los reportes del rango
+    var repsRango = _reportes.filter(function(r){return sel.indexOf(r.periodo)>=0;});
+    var vb = repsRango.reduce(function(s,r){return s+Number(r.ventas_brutas||0);},0);
+    var vn = _aplicaIva
+      ? repsRango.reduce(function(s,r){return s+Number(r.ventas_netas||0);},0)
+      : vb;
+
+    // Gastos acumulados
+    var gb = costos.reduce(function(s,c){return s+Number(c.monto||0);},0);
+    var gn = costos.reduce(function(s,c){return s+getNeto(c);},0);
+
+    var impBruto = costos.filter(function(c){return /impuesto|iva/i.test(c.familia||c.categoria||'');}).reduce(function(s,c){return s+Number(c.monto||0);},0);
+    var impNeto  = costos.filter(function(c){return /impuesto|iva/i.test(c.familia||c.categoria||'');}).reduce(function(s,c){return s+getNeto(c);},0);
+    var gbOp = gb-impBruto;
+    var gnOp = gn-impNeto;
+    var resultado = vn-gnOp;
+
+    var hasTipo = costos.some(function(c){return c.tipo_gasto&&c.tipo_gasto.trim()!=='';});
+    var cf = costos.filter(function(c){return (c.tipo_gasto||'').toLowerCase().includes('fijo');}).reduce(function(s,c){return s+getNeto(c);},0);
+    var cv = costos.filter(function(c){return (c.tipo_gasto||'').toLowerCase().includes('variable');}).reduce(function(s,c){return s+getNeto(c);},0);
+    if(!hasTipo){cf=gnOp;cv=0;}
+
+    var mb = vn>0?((resultado/vn)*100).toFixed(1):0;
+    var mn = vb>0?((resultado/vb)*100).toFixed(1):0;
+
+    // KPIs top
+    document.getElementById('kv-vb').textContent = fmt(vb);
+    document.getElementById('kv-vn').textContent = fmt(vn);
+    document.getElementById('kv-gb').textContent = fmt(gb);
+    document.getElementById('kv-gn').textContent = fmt(gn);
+
+    // KPIs gastos
+    document.getElementById('kv-gb2').textContent = fmt(gbOp);
+    document.getElementById('kv-gn2').textContent = fmt(gnOp);
+    document.getElementById('kv-cf').textContent  = fmt(cf);
+    document.getElementById('kv-cv').textContent  = fmt(cv);
+
+    // Resultado del mes (en este caso del rango)
+    var resMes = document.getElementById('kv-res-mes');
+    if(resMes){
+      resMes.textContent = (resultado>=0?'+':'')+fmt(Math.abs(resultado));
+      resMes.style.color = resultado>=0?'var(--green)':'var(--red)';
+    }
+
+    // Indicadores
+    document.getElementById('iv-res').textContent = (resultado>=0?'+':'')+fmt(Math.abs(resultado));
+    document.getElementById('iv-res').style.color = resultado>=0?'#5DECA0':'#FF6B6B';
+    document.getElementById('iv-mb').textContent = mb+'%';
+    document.getElementById('iv-mn').textContent = mn+'%';
+
+    // Gráfico ventas por categoría
+    var catV={};
+    productos.forEach(function(p){var cat=p.categoria||'Sin categoria';catV[cat]=(catV[cat]||0)+Number(p.monto||0);});
+    var catArr=Object.entries(catV).sort(function(a,b){return b[1]-a[1];});
+    _catVData=catArr; _vdetVb=vb;
+    dc('vcat');
+    charts['vcat']=new Chart(document.getElementById('c-vcat').getContext('2d'),{
+      type:'bar',data:{labels:catArr.map(function(e){return e[0];}),datasets:[{data:catArr.map(function(e){return e[1];}),backgroundColor:COLS,borderRadius:5,borderWidth:0}]},
+      options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#EBF5FB'},ticks:{font:{size:10},callback:function(v){return v>=1000000?'$'+(v/1000000).toFixed(1)+'M':'$'+(v/1000).toFixed(0)+'K';}}},y:{grid:{display:false},ticks:{font:{size:10}}}}}
+    });
+    renderCatV(catArr,vb);
+
+    // Tabla ventas
+    var cats={};
+    productos.forEach(function(p){var cat=p.categoria||'Sin categoria';if(!cats[cat])cats[cat]={items:[],total:0,cant:0};cats[cat].items.push(p);cats[cat].total+=Number(p.monto||0);cats[cat].cant+=Number(p.cantidad||0);});
+    _vdetData=cats;
+    renderVDet(cats,vb);
+
+    // Formas de pago
+    var pagos={};
+    productos.forEach(function(p){var fp=p.forma_pago||'Sin datos';pagos[fp]=(pagos[fp]||0)+Number(p.monto||0);});
+    var pagArr=Object.entries(pagos).sort(function(a,b){return b[1]-a[1];});
+    var tbPag=document.getElementById('tb-pagos');
+    if(tbPag) tbPag.innerHTML=pagArr.map(function(e){return '<tr><td style="padding:7px 10px;font-size:12px">'+e[0]+'</td><td class="num">'+fmt(e[1])+'</td><td class="pct">'+pct(e[1],vb)+'</td></tr>';}).join('');
+
+    // Gastos por familia
+    var fams={};
+    costos.forEach(function(c){var fam=c.familia||c.categoria||'Sin familia';if(/impuesto|iva/i.test(fam))return;fams[fam]=(fams[fam]||0)+getNeto(c);});
+    var famArr=Object.entries(fams).sort(function(a,b){return b[1]-a[1];});
+    dc('gfam');
+    charts['gfam']=new Chart(document.getElementById('c-gfam').getContext('2d'),{
+      type:'bar',data:{labels:famArr.map(function(e){return e[0];}),datasets:[{data:famArr.map(function(e){return e[1];}),backgroundColor:COLS,borderRadius:5,borderWidth:0}]},
+      options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#EBF5FB'},ticks:{font:{size:10},callback:function(v){return v>=1000000?'$'+(v/1000000).toFixed(1)+'M':'$'+(v/1000).toFixed(0)+'K';}}},y:{grid:{display:false},ticks:{font:{size:10}}}}}
+    });
+    document.getElementById('tb-gfam').innerHTML=famArr.map(function(e){return '<tr><td style="padding:7px 10px;font-size:12px">'+e[0]+'</td><td class="num">'+fmt(e[1])+'</td><td class="pct">'+pct(e[1],gnOp)+'</td><td class="pct">'+pct(e[1],vn)+'</td></tr>';}).join('');
+
+    // Fijos vs Variables
+    dc('fv');
+    if(cf>0||cv>0){charts['fv']=new Chart(document.getElementById('c-fv').getContext('2d'),{type:'doughnut',data:{labels:['Fijos','Variables'],datasets:[{data:[cf,cv],backgroundColor:['#1B3A5C','#3A8FD1'],borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:11}}}}}}); }
+
+    // Tipo documento
+    var tiposDocs={};var totalTipoDoc=0;
+    costos.forEach(function(c){var td=c.tipo_documento||'Sin documento';var esNeto=/factura.*elec|nota.*cr/i.test(td)||/nc.*elec/i.test(td);var val=esNeto?getNeto(c):Number(c.monto||0);tiposDocs[td]=(tiposDocs[td]||0)+val;totalTipoDoc+=val;});
+    var tdArr=Object.entries(tiposDocs).sort(function(a,b){return b[1]-a[1];});
+    var tbTD=document.getElementById('tb-tipo-doc');
+    if(tbTD){if(tdArr.length&&tdArr[0][0]!=='Sin documento'){tbTD.innerHTML=tdArr.map(function(e){var esNeto=/factura.*elec|nota.*cr/i.test(e[0])||/nc.*elec/i.test(e[0]);var badge=esNeto?'<span style="font-size:9px;background:#EBF5FB;color:#3A8FD1;border-radius:4px;padding:1px 5px;margin-left:4px">Neto</span>':'<span style="font-size:9px;background:#F8F3EC;color:#E67E22;border-radius:4px;padding:1px 5px;margin-left:4px">Bruto</span>';return '<tr><td style="padding:7px 10px;font-size:12px">'+e[0]+badge+'</td><td class="num">'+fmt(e[1])+'</td><td class="pct">'+pct(e[1],totalTipoDoc)+'</td></tr>';}).join('');}else{tbTD.innerHTML='<tr><td colspan="3" style="padding:12px;text-align:center;color:var(--muted);font-size:12px">Vuelve a subir el Excel de gastos para ver tipo de documento.</td></tr>';}}
+
+    // EERR
+    var famGastos={},famCats={};
+    costos.forEach(function(c){var fam=c.familia||c.categoria||'Sin familia';var cat=c.categoria||'Sin categoria';if(/impuesto|iva/i.test(fam))return;var neto=getNeto(c);famGastos[fam]=(famGastos[fam]||0)+neto;if(!famCats[fam])famCats[fam]={};famCats[fam][cat]=(famCats[fam][cat]||0)+neto;});
+    var famList=Object.entries(famGastos).sort(function(a,b){return b[1]-a[1];});
+    var notaRango=sel.length>1?'<span style="font-size:10px;color:rgba(255,255,255,.5);margin-left:8px">'+mesD.slice(0,3)+'. '+anioD+' - '+mesH.slice(0,3)+'. '+anioH+'</span>':'';
+    var h='';
+    h+='<div class="eg"><div class="egh" onclick="toggleEERR(this)"><span>INGRESOS'+notaRango+'</span><span>'+fmt(vb)+'</span></div><div class="egb open">';
+    h+='<div class="ech"><span>Ventas brutas</span><span>'+fmt(vb)+'</span></div>';
+    h+='<div class="ech"><span>Ventas netas (sin IVA)</span><span>'+fmt(vn)+'</span></div>';
+    h+='</div></div>';
+    h+='<div class="eg"><div class="egh" onclick="toggleEERR(this)"><span>GASTOS OPERACIONALES</span><span>'+fmt(gnOp)+'</span></div><div class="egb open">';
+    famList.forEach(function(fe){h+='<div class="ech" onclick="toggleEERRCat(this)"><span>'+fe[0]+'</span><span>'+fmt(fe[1])+'</span></div><div class="ecb">';Object.entries(famCats[fe[0]]||{}).sort(function(a,b){return b[1]-a[1];}).forEach(function(ce){h+='<div class="erow"><span>'+ce[0]+'</span><span>'+fmt(ce[1])+'</span></div>';});h+='</div>';});
+    h+='</div></div>';
+    if(impNeto>0)h+='<div class="etax"><span>Impuestos / IVA (no incluido en resultado)</span><span>'+fmt(impNeto)+'</span></div>';
+    var resStyle=resultado>=0?'background:var(--gl);color:var(--green)':'background:var(--rl);color:var(--red)';
+    h+='<div class="eres" style="'+resStyle+'"><span>RESULTADO OPERACIONAL</span><span>'+(resultado>=0?'+':'')+fmt(Math.abs(resultado))+'</span></div>';
+    h+='<div class="ekpis"><div class="ekpi"><div class="ekl">Margen bruto</div><div class="ekv">'+mb+'%</div></div><div class="ekpi"><div class="ekl">Margen neto</div><div class="ekv">'+mn+'%</div></div></div>';
+    document.getElementById('eerr-body').innerHTML=h;
+
+    document.getElementById('loading').style.display='none';
+    document.getElementById('dashboard').style.display='block';
+  });
 }
 
 function actualizarMesesComp(){
@@ -845,11 +992,9 @@ function cargarDatos(userId){
       for(var oi=0;oi<selMD.options.length;oi++){if(selMD.options[oi].value===mesActual){selMD.selectedIndex=oi;break;}}
       for(var oi=0;oi<selMH.options.length;oi++){if(selMH.options[oi].value===mesActual){selMH.selectedIndex=oi;break;}}
 
-      // Si no existe el mes actual, usar el período más reciente
-      var periodoActivo = mesActual+' '+anioActual;
-      if(_periodos.indexOf(periodoActivo)<0) periodoActivo = _periodos[0];
-      cargarPeriodo(periodoActivo);
+      // Cargar rango inicial (mes actual)
       renderEvolucion();
+      cargarRango();
     });
   });
 }
