@@ -496,8 +496,11 @@ function cargarRango(){
 
     // Comparativo por turno - transacciones = folios únicos por turno
     var turnos={};
+    var turnosUnicos=[];
+    productos.forEach(function(p){if(p.turno&&turnosUnicos.indexOf(p.turno)<0)turnosUnicos.push(p.turno);});
+    console.log('Turnos encontrados:',turnosUnicos,'Total productos:',productos.length);
     productos.forEach(function(p){
-      var t=p.turno||'Sin turno';
+      var t=p.turno&&p.turno.trim()!==''?p.turno.trim():'Sin turno';
       if(!turnos[t])turnos[t]={monto:0,folios:{}};
       turnos[t].monto+=Number(p.monto||0);
       // Contar folio único
@@ -516,12 +519,14 @@ function cargarRango(){
     });
     var tbTurnos=document.getElementById('tb-turnos');
     if(tbTurnos){
-      var tieneTurnos=turnoArr.some(function(e){return e[0]!=='Sin turno';});
+      var tieneTurnos=turnoArr.some(function(e){return e[0]!=='Sin turno'&&e[0]!==''&&e[0]!==null;});
       if(tieneTurnos){
-        tbTurnos.innerHTML=turnoArr.map(function(e){
+        tbTurnos.innerHTML=turnoArr.filter(function(e){return e[0]!=='Sin turno'&&e[0]!==''&&e[0]!==null;}).map(function(e){
           var nTrans=Object.keys(e[1].folios).filter(function(f){return f.indexOf('__')<0;}).length;
           var ticket=nTrans>0?Math.round(e[1].monto/nTrans):0;
-          var color=e[0]==='Mañana'||e[0]==='Manana'?'#3A8FD1':e[0]==='Tarde'?'#E67E22':'#1B3A5C';
+          // Color por turno - normalizar texto para comparar
+          var tn=e[0].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+          var color=tn.indexOf('ma')===0?'#3A8FD1':tn.indexOf('ta')===0?'#E67E22':'#1B3A5C';
           return '<tr><td style="padding:7px 10px;font-size:12px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+color+';margin-right:6px"></span>'+e[0]+'</td>'
             +'<td class="num">'+fmt(e[1].monto)+'</td>'
             +'<td class="pct">'+pct(e[1].monto,vb)+'</td>'
