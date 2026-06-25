@@ -441,13 +441,21 @@ function cargarRango(){
       type:'bar',data:{labels:catArr.map(function(e){return e[0];}),datasets:[{data:catArr.map(function(e){return e[1];}),backgroundColor:COLS,borderRadius:5,borderWidth:0}]},
       options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#EBF5FB'},ticks:{font:{size:10},callback:function(v){return v>=1000000?'$'+(v/1000000).toFixed(1)+'M':'$'+(v/1000).toFixed(0)+'K';}}},y:{grid:{display:false},ticks:{font:{size:10}}}}}
     });
-    renderCatV(catArr,vb);
+    // Tabla % catV
+    var tbCatv=document.getElementById('tb-catv');
+    if(tbCatv) tbCatv.innerHTML=catArr.map(function(e){return '<tr><td style="padding:7px 10px;font-size:12px">'+e[0]+'</td><td class="num">'+fmt(e[1])+'</td><td class="pct">'+pct(e[1],vb)+'</td></tr>';}).join('');
 
     // Tabla ventas
     var cats={};
     productos.forEach(function(p){var cat=p.categoria||'Sin categoria';if(!cats[cat])cats[cat]={items:[],total:0,cant:0};cats[cat].items.push(p);cats[cat].total+=Number(p.monto||0);cats[cat].cant+=Number(p.cantidad||0);});
-    _vdetData=cats;
-    renderVDet(cats,vb);
+    var rows='';
+    Object.entries(cats).sort(function(a,b){return b[1].total-a[1].total;}).forEach(function(e){
+      rows+='<tr class="crow" onclick="toggleProd(this)"><td style="padding:8px 10px;font-size:13px">&#9658; '+e[0]+'</td><td class="num">'+e[1].cant+'</td><td class="num">'+fmt(e[1].total)+'</td><td class="pct">'+pct(e[1].total,vb)+'</td></tr>';
+      e[1].items.sort(function(a,b){return Number(b.monto||0)-Number(a.monto||0);}).forEach(function(p){
+        rows+='<tr class="prow"><td style="padding:6px 10px 6px 26px;font-size:12px">'+p.nombre+'</td><td class="num">'+(p.cantidad||0)+'</td><td class="num">'+fmt(p.monto)+'</td><td class="pct">'+pct(p.monto,vb)+'</td></tr>';
+      });
+    });
+    document.getElementById('tb-vdet').innerHTML=rows;
 
     // Formas de pago
     var pagos={};
