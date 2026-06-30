@@ -385,7 +385,7 @@ function procesarGastos(input){
       var periodo=mes+' '+ano;
       var cat=String(r[catKey]||'Sin categoria').trim()||'Sin categoria';
       var fam=String(r[famKey]||'Sin familia').trim()||'Sin familia';
-      var prov=String(r[provKey]||'').trim();
+      var prov=String(r[provKey]||'').trim(); if(!window._provLogged){console.log('DEBUG prov - provKey:',provKey,'valor:',r[provKey],'r completo:',r);window._provLogged=true;}
       var mon=parseFloat(String(r[monKey]||'0').replace(/[^0-9.-]/g,''))||0;
       if(!mon)return;
       if(!gastosData[periodo])gastosData[periodo]=[];
