@@ -354,6 +354,7 @@ function procesarGastos(input){
     var provKey=keys.find(function(k){return /proveedor/i.test(k);}) || 'Proveedor';
     var monKey=keys.find(function(k){return /monto.*bruto/i.test(k.trim());}) || keys.find(function(k){return /monto/i.test(k.trim());}) || 'Monto Bruto';
     console.log('Keys detectadas - ano:',anoKey,'mes:',mesKey,'cat:',catKey,'fam:',famKey,'prov:',provKey,'mon:',monKey);
+    console.log('TODAS las keys del Excel:',keys);
     if(rows[0])console.log('Primera fila valores - ano:',rows[0][anoKey],'mes:',rows[0][mesKey],'cat:',rows[0][catKey],'fam:',rows[0][famKey],'mon:',rows[0][monKey]);
     // gastosData[periodo] = [{cat, fam, prov, monto}]
     gastosData={};
