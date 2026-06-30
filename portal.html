@@ -564,7 +564,7 @@ function cargarRango(){
 
     // EERR
     var famGastos={},famCats={};
-    costos.forEach(function(c){var fam=c.familia||c.categoria||'Sin familia';var cat=c.categoria||'Sin categoria';if(/impuesto|iva/i.test(fam))return;var neto=getNeto(c);famGastos[fam]=(famGastos[fam]||0)+neto;if(!famCats[fam])famCats[fam]={};famCats[fam][cat]=(famCats[fam][cat]||0)+neto;});
+    costos.forEach(function(c){var fam=c.familia||c.categoria||'Sin familia';var prov=c.proveedor||'Sin proveedor';if(/impuesto|iva/i.test(fam))return;var neto=getNeto(c);famGastos[fam]=(famGastos[fam]||0)+neto;if(!famCats[fam])famCats[fam]={};famCats[fam][prov]=(famCats[fam][prov]||0)+neto;});
     var famList=Object.entries(famGastos).sort(function(a,b){return b[1]-a[1];});
     var notaRango=sel.length>1?'<span style="font-size:10px;color:rgba(255,255,255,.5);margin-left:8px">'+mesD.slice(0,3)+'. '+anioD+' - '+mesH.slice(0,3)+'. '+anioH+'</span>':'';
     var h='';
@@ -1492,7 +1492,7 @@ function actualizarComp() {
   var repsIds = _reportes.filter(function(r){return sel.indexOf(r.periodo)>=0;}).map(function(r){return r.id;});
   if(!repsIds.length) return;
 
-  sb_client.from('costos').select('reporte_id,monto,monto_neto,familia,categoria').in('reporte_id',repsIds).then(function(res){
+  sb_client.from('costos').select('reporte_id,monto,monto_neto,familia,categoria,proveedor').in('reporte_id',repsIds).then(function(res){
     var allC = res.data||[];
     var repMap = {};
     _reportes.forEach(function(r){repMap[r.id]=r.periodo;});
@@ -1510,14 +1510,14 @@ function actualizarComp() {
       var bruto = Number(c.monto||0);
       var neto  = getNeto(c);
       var fam   = c.familia||c.categoria||'Sin familia';
-      var cat   = c.categoria||'Sin categoria';
+      var prov  = c.proveedor||'Sin proveedor';
       dat[p].gb += bruto;
       dat[p].gn += neto;
       if(!dat[p].fams[fam]) dat[p].fams[fam]=0;
       dat[p].fams[fam] += neto;
       if(!dat[p].cats[fam]) dat[p].cats[fam]={};
-      if(!dat[p].cats[fam][cat]) dat[p].cats[fam][cat]=0;
-      dat[p].cats[fam][cat] += neto;
+      if(!dat[p].cats[fam][prov]) dat[p].cats[fam][prov]=0;
+      dat[p].cats[fam][prov] += neto;
     });
     sel.forEach(function(p){dat[p].res=dat[p].vn-dat[p].gn;});
 

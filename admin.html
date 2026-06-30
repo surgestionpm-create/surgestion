@@ -623,7 +623,7 @@ async function subirDatos(){
     // Insertar/reemplazar costos solo si hay gastos nuevos
     if(gastPer&&gastPer.length>0){
       await sb.from('costos').delete().eq('reporte_id',repId);
-      var costosList=gastPer.map(function(x){return {reporte_id:repId,categoria:x.cat,familia:x.fam,monto:x.monto,monto_neto:x.montoNeto||x.monto,tipo_gasto:x.tipo||'',tipo_documento:x.tipoDoc||''};});
+      var costosList=gastPer.map(function(x){return {reporte_id:repId,categoria:x.cat,familia:x.fam,proveedor:x.prov||null,monto:x.monto,monto_neto:x.montoNeto||x.monto,tipo_gasto:x.tipo||'',tipo_documento:x.tipoDoc||''};});
       await sb.from('costos').insert(costosList);
     }
     // Insertar/reemplazar productos solo si hay ventas nuevas
