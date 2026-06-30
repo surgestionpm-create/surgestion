@@ -385,7 +385,7 @@ function procesarGastos(input){
       var periodo=mes+' '+ano;
       var cat=String(r[catKey]||'Sin categoria').trim()||'Sin categoria';
       var fam=String(r[famKey]||'Sin familia').trim()||'Sin familia';
-      var prov=String(r[provKey]||'').trim(); if(!window._provLogged){console.log('DEBUG prov - provKey:',provKey,'valor:',r[provKey],'r completo:',r);window._provLogged=true;}
+      var prov=String(r[provKey]||'').trim();
       var mon=parseFloat(String(r[monKey]||'0').replace(/[^0-9.-]/g,''))||0;
       if(!mon)return;
       if(!gastosData[periodo])gastosData[periodo]=[];
@@ -500,8 +500,9 @@ function procesarVentas(input){
         var fp=String(r['Forma de Pago']||r['Forma de pago']||'').trim();
         var turno=String(r['Turno']||r['turno']||'').trim();
         var folio=String(r['ID de orden']||r['N Orden Folio']||r['Folio']||'').trim();
+        var precioBase=parseFloat(String(r[precioBaseKey]||'0').replace(/[^0-9.-]/g,''))||0;
         if(!ventasData[periodo])ventasData[periodo]={};
-        if(!ventasData[periodo][nom])ventasData[periodo][nom]={cantidad:0,monto:0,cat:cat,fp:fp,turno:turno,folio:folio};
+        if(!ventasData[periodo][nom])ventasData[periodo][nom]={cantidad:0,monto:0,precio_base:precioBase,cat:cat,fp:fp,turno:turno,folio:folio};
         ventasData[periodo][nom].cantidad+=can;
         ventasData[periodo][nom].monto+=mon*can;
       });
@@ -522,8 +523,9 @@ function procesarVentas(input){
         var fp=String(r['Forma de Pago']||r['Medio de Pago']||'').trim();
         var turno=String(r['Turno']||r['turno']||'').trim();
         var folio=String(r['ID de orden']||r['N Orden Folio']||r['Folio']||'').trim();
+        var precioBase=parseFloat(String(r[precioBaseKey]||'0').replace(/[^0-9.-]/g,''))||0;
         if(!ventasData[periodo])ventasData[periodo]={};
-        if(!ventasData[periodo][nom])ventasData[periodo][nom]={cantidad:0,monto:0,cat:cat,fp:fp,turno:turno,folio:folio};
+        if(!ventasData[periodo][nom])ventasData[periodo][nom]={cantidad:0,monto:0,precio_base:precioBase,cat:cat,fp:fp,turno:turno,folio:folio};
         ventasData[periodo][nom].cantidad+=can;
         ventasData[periodo][nom].monto+=mon;
       });
@@ -535,6 +537,7 @@ function procesarVentas(input){
       var nomKey=keys.find(function(k){return /^nombre$/i.test(k);}) || 'Nombre';
       var canKey=keys.find(function(k){return /cantidad/i.test(k);}) || 'Cantidad';
       var pagKey=keys.find(function(k){return /total.*pagar/i.test(k)||/valor.*boleta/i.test(k);}) || 'Total a Pagar';
+      var precioBaseKey=keys.find(function(k){return /precio.*base/i.test(k)||/precio base/i.test(k)||/precio unitario/i.test(k);}) || 'Precio Base';
       var catKey=keys.find(function(k){return /categ/i.test(k);}) || 'Categoria';
       rows.forEach(function(r){
         var ano=String(r[anoKey]||'').trim();
@@ -553,8 +556,9 @@ function procesarVentas(input){
         var turno=String(r[turnoKey]||'').trim();
         var folioKey=keys.find(function(k){return /folio/i.test(k)||/orden/i.test(k)||/n.*orden/i.test(k);})||'N Orden Folio';
         var folio=String(r[folioKey]||'').trim();
+        var precioBase=parseFloat(String(r[precioBaseKey]||'0').replace(/[^0-9.-]/g,''))||0;
         if(!ventasData[periodo])ventasData[periodo]={};
-        if(!ventasData[periodo][nom])ventasData[periodo][nom]={cantidad:0,monto:0,cat:cat,fp:fp,turno:turno,folio:folio};
+        if(!ventasData[periodo][nom])ventasData[periodo][nom]={cantidad:0,monto:0,precio_base:precioBase,cat:cat,fp:fp,turno:turno,folio:folio};
         ventasData[periodo][nom].cantidad+=can;
         ventasData[periodo][nom].monto+=mon;
       });
@@ -630,7 +634,9 @@ async function subirDatos(){
     // Insertar/reemplazar productos solo si hay ventas nuevas
     if(tieneVentas&&Object.keys(ventPer).length>0){
       await sb.from('productos').delete().eq('reporte_id',repId);
-      var prodList=Object.entries(ventPer).map(function(e){return {reporte_id:repId,nombre:e[0],cantidad:e[1].cantidad,monto:e[1].monto,categoria:e[1].cat||'Sin categoria',forma_pago:e[1].fp||null,turno:e[1].turno||null,folio:e[1].folio||null};});
+      var prodList=Object.entries(ventPer).map(function(e){
+      return {reporte_id:repId,nombre:e[0],cantidad:e[1].cantidad,monto:e[1].monto,precio_base:e[1].precio_base||0,categoria:e[1].cat||'Sin categoria',forma_pago:e[1].fp||null,turno:e[1].turno||null,folio:e[1].folio||null};
+    });
       await sb.from('productos').insert(prodList);
     }
   }

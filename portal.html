@@ -316,6 +316,13 @@ function pct(v,t){ return t>0?((v/t)*100).toFixed(1)+'%':'0.0%'; }
 function dc(id){ if(charts[id]){try{charts[id].destroy();}catch(e){}} }
 
 // Calcula gasto neto: usa monto_neto si existe, sino divide monto/1.19
+function getMontoProducto(p){
+  // Para detalle ventas: cantidad * precio_base si existe, sino monto original
+  var pb = Number(p.precio_base||0);
+  var cant = Number(p.cantidad||0);
+  return pb > 0 && cant > 0 ? pb * cant : Number(p.monto||0);
+}
+
 function getNeto(c){
   // Gasto Neto = columna Monto Neto del Excel (campo monto_neto en Supabase)
   // Si no existe monto_neto, usar monto_bruto como fallback
@@ -478,12 +485,13 @@ function cargarRango(){
 
     // Tabla ventas
     var cats={};
-    productos.forEach(function(p){var cat=p.categoria||'Sin categoria';if(!cats[cat])cats[cat]={items:[],total:0,cant:0};cats[cat].items.push(p);cats[cat].total+=Number(p.monto||0);cats[cat].cant+=Number(p.cantidad||0);});
+    productos.forEach(function(p){var cat=p.categoria||'Sin categoria';if(!cats[cat])cats[cat]={items:[],total:0,cant:0};cats[cat].items.push(p);cats[cat].total+=getMontoProducto(p);cats[cat].cant+=Number(p.cantidad||0);});
     var rows='';
     Object.entries(cats).sort(function(a,b){return b[1].total-a[1].total;}).forEach(function(e){
       rows+='<tr class="crow" onclick="toggleProd(this)"><td style="padding:8px 10px;font-size:13px">&#9658; '+e[0]+'</td><td class="num">'+e[1].cant+'</td><td class="num">'+fmt(e[1].total)+'</td><td class="pct">'+pct(e[1].total,vb)+'</td></tr>';
-      e[1].items.sort(function(a,b){return Number(b.monto||0)-Number(a.monto||0);}).forEach(function(p){
-        rows+='<tr class="prow"><td style="padding:6px 10px 6px 26px;font-size:12px">'+p.nombre+'</td><td class="num">'+(p.cantidad||0)+'</td><td class="num">'+fmt(p.monto)+'</td><td class="pct">'+pct(p.monto,vb)+'</td></tr>';
+      e[1].items.sort(function(a,b){return getMontoProducto(b)-getMontoProducto(a);}).forEach(function(p){
+        var mp=getMontoProducto(p);
+        rows+='<tr class="prow"><td style="padding:6px 10px 6px 26px;font-size:12px">'+p.nombre+'</td><td class="num">'+(p.cantidad||0)+'</td><td class="num">'+fmt(mp)+'</td><td class="pct">'+pct(mp,vb)+'</td></tr>';
       });
     });
     document.getElementById('tb-vdet').innerHTML=rows;
@@ -956,9 +964,10 @@ function renderCompMensual(productos, sel, repsIds, reportes){
     if(!data[cat]) data[cat]={};
     if(!data[cat][nom]) data[cat][nom]={};
     if(!data[cat][nom][per]) data[cat][nom][per]={monto:0,cant:0};
-    data[cat][nom][per].monto += Number(p.monto||0);
+    var mp=getMontoProducto(p);
+    data[cat][nom][per].monto += mp;
     data[cat][nom][per].cant  += Number(p.cantidad||0);
-    totalPorPeriodo[per]=(totalPorPeriodo[per]||0)+Number(p.monto||0);
+    totalPorPeriodo[per]=(totalPorPeriodo[per]||0)+mp;
   });
 
   var periodos = sel.slice().reverse();
@@ -1352,8 +1361,9 @@ function cargarPeriodo(periodo){
     var rows='';
     Object.entries(cats).sort(function(a,b){return b[1].total-a[1].total;}).forEach(function(e){
       rows+='<tr class="crow" onclick="toggleProd(this)"><td style="padding:8px 10px;font-size:13px">&#9658; '+e[0]+'</td><td class="num">'+e[1].cant+'</td><td class="num">'+fmt(e[1].total)+'</td><td class="pct">'+pct(e[1].total,vb)+'</td></tr>';
-      e[1].items.sort(function(a,b){return Number(b.monto||0)-Number(a.monto||0);}).forEach(function(p){
-        rows+='<tr class="prow"><td style="padding:6px 10px 6px 26px;font-size:12px">'+p.nombre+'</td><td class="num">'+(p.cantidad||0)+'</td><td class="num">'+fmt(p.monto)+'</td><td class="pct">'+pct(p.monto,vb)+'</td></tr>';
+      e[1].items.sort(function(a,b){return getMontoProducto(b)-getMontoProducto(a);}).forEach(function(p){
+        var mp=getMontoProducto(p);
+        rows+='<tr class="prow"><td style="padding:6px 10px 6px 26px;font-size:12px">'+p.nombre+'</td><td class="num">'+(p.cantidad||0)+'</td><td class="num">'+fmt(mp)+'</td><td class="pct">'+pct(mp,vb)+'</td></tr>';
       });
     });
     document.getElementById('tb-vdet').innerHTML=rows;
