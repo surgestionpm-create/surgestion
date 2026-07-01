@@ -621,7 +621,7 @@ async function subirDatos(){
       if(Object.keys(upd).length>0)await sb.from('reportes').update(upd).eq('id',repId);
     } else {
       // Crear nuevo reporte
-      var repNew=await sb.from('reportes').insert({cliente_id:clienteId,periodo:periodo,ventas_brutas:totalB,ventas_netas:totalN}).select().single();
+      var repNew=await sb.from('reportes').insert({cliente_id:clienteId,periodo:periodo,ventas_brutas:totalB,ventas_netas:totalN,updated_at:new Date().toISOString()}).select().single();
       if(repNew.error){errores.push(periodo+': '+repNew.error.message);continue;}
       repId=repNew.data.id;
     }

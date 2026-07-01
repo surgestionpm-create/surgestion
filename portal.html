@@ -1118,7 +1118,7 @@ function cargarDatos(userId){
     document.getElementById('empresa-nombre').textContent = cliente.nombre_empresa;
     if(cliente.logo_url) document.getElementById('nav-logo').src = cliente.logo_url;
 
-    sb_client.from('reportes').select('id,periodo,ventas_brutas,ventas_netas,created_at').eq('cliente_id',cliente.id).order('created_at',{ascending:false}).then(function(r2){
+    sb_client.from('reportes').select('id,periodo,ventas_brutas,ventas_netas,created_at,updated_at').eq('cliente_id',cliente.id).order('created_at',{ascending:false}).then(function(r2){
       _reportes = r2.data||[];
       _periodos = _reportes.map(function(r){ return r.periodo; });
       if(!_periodos.length){
@@ -1207,8 +1207,9 @@ function cargarDatos(userId){
 
       // Ultima actualizacion
       var mas = _reportes[0];
-      if(mas && mas.created_at){
-        var fecha = new Date(mas.created_at);
+      var fechaRef = mas && (mas.updated_at||mas.created_at);
+      if(fechaRef){
+        var fecha = new Date(fechaRef);
         document.getElementById('fecha-act').textContent = fecha.toLocaleDateString('es-CL',{day:'2-digit',month:'long',year:'numeric'});
         document.getElementById('ult-act').style.display='inline-flex';
       }
