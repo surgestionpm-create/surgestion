@@ -413,12 +413,27 @@ function cargarRango(){
   document.getElementById('loading').style.display='flex';
   document.getElementById('dashboard').style.display='none';
 
+  // Función para paginar queries de Supabase (evita límite de 1000 filas)
+  function fetchAll(table, repsIds){
+    var PAGE = 1000;
+    var allData = [];
+    function fetchPage(from){
+      return sb_client.from(table).select('*').in('reporte_id',repsIds).range(from, from+PAGE-1).then(function(r){
+        var rows = r.data||[];
+        allData = allData.concat(rows);
+        if(rows.length===PAGE) return fetchPage(from+PAGE);
+        return allData;
+      });
+    }
+    return fetchPage(0);
+  }
+
   Promise.all([
-    sb_client.from('costos').select('*').in('reporte_id',repsIds).limit(10000),
-    sb_client.from('productos').select('*').in('reporte_id',repsIds).limit(10000)
+    fetchAll('costos', repsIds),
+    fetchAll('productos', repsIds)
   ]).then(function(results){
-    var costos    = results[0].data||[];
-    var productos = results[1].data||[];
+    var costos    = results[0]||[];
+    var productos = results[1]||[];
 
     // Sumar ventas de todos los reportes del rango
     var repsRango = _reportes.filter(function(r){return sel.indexOf(r.periodo)>=0;});
