@@ -407,15 +407,15 @@ function cargarRango(){
 
   // Obtener IDs de reportes del rango
   var repsIds = _reportes.filter(function(r){return sel.indexOf(r.periodo)>=0;}).map(function(r){return r.id;});
-  console.log('cargarRango sel:',sel,'repsIds:',repsIds,'_periodos:',_periodos);
+
   if(!repsIds.length) return;
 
   document.getElementById('loading').style.display='flex';
   document.getElementById('dashboard').style.display='none';
 
   Promise.all([
-    sb_client.from('costos').select('*').in('reporte_id',repsIds),
-    sb_client.from('productos').select('*').in('reporte_id',repsIds)
+    sb_client.from('costos').select('*').in('reporte_id',repsIds).limit(10000),
+    sb_client.from('productos').select('*').in('reporte_id',repsIds).limit(10000)
   ]).then(function(results){
     var costos    = results[0].data||[];
     var productos = results[1].data||[];
@@ -952,7 +952,7 @@ function renderCompMensual(productos, sel, repsIds, reportes){
   var repMap={};
   reportes.filter(function(r){return sel.indexOf(r.periodo)>=0;}).forEach(function(r){repMap[r.id]=r.periodo;});
 
-  console.log('CompMensual - productos:',productos.length,'sel:',JSON.stringify(sel),'repMap:',JSON.stringify(Object.keys(repMap)));
+  
 
   var data={};
   var totalPorPeriodo={};
@@ -1514,7 +1514,7 @@ function actualizarComp() {
   var end2  = Math.max(idxD,idxH);
   var sel   = _periodos.slice(start,end2+1).slice().reverse();
   var repsIds = _reportes.filter(function(r){return sel.indexOf(r.periodo)>=0;}).map(function(r){return r.id;});
-  console.log('cargarRango sel:',sel,'repsIds:',repsIds,'_periodos:',_periodos);
+
   if(!repsIds.length) return;
 
   sb_client.from('costos').select('reporte_id,monto,monto_neto,familia,categoria,proveedor').in('reporte_id',repsIds).then(function(res){
