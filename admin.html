@@ -567,7 +567,7 @@ function procesarVentas(input){
     var html2='<div style="font-size:11px;color:#5E7A94;margin-bottom:8px">Formato detectado: <b>'+formato.toUpperCase()+'</b></div>';
     periodos.forEach(function(p){
       var prods=Array.isArray(ventasData[p])?ventasData[p]:Object.values(ventasData[p]||{});
-      var totalB=(prods||[]).reduce(function(s,v){return s+Number(v.monto||0)*Number(v.cantidad||1);},0);
+      var totalB=(prods||[]).reduce(function(s,v){return s+Number(v.monto||0);},0);
       html2+='<div style="font-weight:600;color:#1B3A5C;margin:10px 0 4px;font-size:13px">'+p.charAt(0).toUpperCase()+p.slice(1)+'</div>';
       (prods||[]).slice(0,5).forEach(function(e){
         html2+='<div class="pi"><span>'+e.nombre+'</span><span>'+e.cantidad+' · '+fmt(e.monto)+'</span></div>';
@@ -600,7 +600,7 @@ async function subirDatos(){
     var periodo=periodos[i];
     var gastPer=gastosData&&gastosData[periodo]?gastosData[periodo]:[];
     var ventPer=ventasData&&ventasData[periodo]?ventasData[periodo]:[];
-    var totalB=(ventPer||[]).reduce(function(s,v){return s+Number(v.monto||0)*Number(v.cantidad||1);},0);
+    var totalB=(ventPer||[]).reduce(function(s,v){return s+Number(v.monto||0);},0);
     var totalN=Math.round(totalB/1.19);
     // Buscar reporte existente
     var repExist=await sb.from('reportes').select('*').eq('cliente_id',clienteId).eq('periodo',periodo).single();
