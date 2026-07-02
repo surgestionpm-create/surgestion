@@ -407,6 +407,7 @@ function cargarRango(){
 
   // Obtener IDs de reportes del rango
   var repsIds = _reportes.filter(function(r){return sel.indexOf(r.periodo)>=0;}).map(function(r){return r.id;});
+  console.log('cargarRango sel:',sel,'repsIds:',repsIds,'_periodos:',_periodos);
   if(!repsIds.length) return;
 
   document.getElementById('loading').style.display='flex';
@@ -1513,6 +1514,7 @@ function actualizarComp() {
   var end2  = Math.max(idxD,idxH);
   var sel   = _periodos.slice(start,end2+1).slice().reverse();
   var repsIds = _reportes.filter(function(r){return sel.indexOf(r.periodo)>=0;}).map(function(r){return r.id;});
+  console.log('cargarRango sel:',sel,'repsIds:',repsIds,'_periodos:',_periodos);
   if(!repsIds.length) return;
 
   sb_client.from('costos').select('reporte_id,monto,monto_neto,familia,categoria,proveedor').in('reporte_id',repsIds).then(function(res){
