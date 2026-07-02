@@ -506,17 +506,20 @@ function cargarRango(){
       var cat=p.categoria||'Sin categoria';
       var nom=p.nombre||'Sin nombre';
       if(!cats[cat])cats[cat]={prods:{},total:0,cant:0};
-      if(!cats[cat].prods[nom])cats[cat].prods[nom]={nombre:nom,cantidad:0,monto:0,precio_base:p.precio_base||0,categoria:cat};
-      cats[cat].prods[nom].cantidad+=Number(p.cantidad||0);
+      if(!cats[cat].prods[nom])cats[cat].prods[nom]={nombre:nom,cantidad:0,monto:0,monto_pb:0,categoria:cat};
+      var cant=Number(p.cantidad||0);
+      var pb=Number(p.precio_base||0);
+      cats[cat].prods[nom].cantidad+=cant;
       cats[cat].prods[nom].monto+=Number(p.monto||0);
-      cats[cat].total+=getMontoProducto(p);
+      cats[cat].prods[nom].monto_pb+=pb>0?pb*cant:Number(p.monto||0);
+      cats[cat].total+=pb>0?pb*cant:Number(p.monto||0);
       cats[cat].cant+=Number(p.cantidad||0);
     });
     var rows='';
     Object.entries(cats).sort(function(a,b){return b[1].total-a[1].total;}).forEach(function(e){
       rows+='<tr class="crow" onclick="toggleProd(this)"><td style="padding:8px 10px;font-size:13px">&#9658; '+e[0]+'</td><td class="num">'+e[1].cant+'</td><td class="num">'+fmt(e[1].total)+'</td><td class="pct">'+pct(e[1].total,vb)+'</td></tr>';
-      Object.values(e[1].prods).sort(function(a,b){return getMontoProducto(b)-getMontoProducto(a);}).forEach(function(p){
-        var mp=getMontoProducto(p);
+      Object.values(e[1].prods).sort(function(a,b){return b.monto_pb-a.monto_pb;}).forEach(function(p){
+        var mp=p.monto_pb;
         rows+='<tr class="prow"><td style="padding:6px 10px 6px 26px;font-size:12px">'+p.nombre+'</td><td class="num">'+(p.cantidad||0)+'</td><td class="num">'+fmt(mp)+'</td><td class="pct">'+pct(mp,vb)+'</td></tr>';
       });
     });
@@ -1400,8 +1403,8 @@ function cargarPeriodo(periodo){
     var rows='';
     Object.entries(cats).sort(function(a,b){return b[1].total-a[1].total;}).forEach(function(e){
       rows+='<tr class="crow" onclick="toggleProd(this)"><td style="padding:8px 10px;font-size:13px">&#9658; '+e[0]+'</td><td class="num">'+e[1].cant+'</td><td class="num">'+fmt(e[1].total)+'</td><td class="pct">'+pct(e[1].total,vb)+'</td></tr>';
-      Object.values(e[1].prods).sort(function(a,b){return getMontoProducto(b)-getMontoProducto(a);}).forEach(function(p){
-        var mp=getMontoProducto(p);
+      Object.values(e[1].prods).sort(function(a,b){return b.monto_pb-a.monto_pb;}).forEach(function(p){
+        var mp=p.monto_pb;
         rows+='<tr class="prow"><td style="padding:6px 10px 6px 26px;font-size:12px">'+p.nombre+'</td><td class="num">'+(p.cantidad||0)+'</td><td class="num">'+fmt(mp)+'</td><td class="pct">'+pct(mp,vb)+'</td></tr>';
       });
     });
