@@ -579,7 +579,7 @@ function procesarVentas(input){
       html2+='<div class="pi" style="font-weight:600"><span>TOTAL</span><span>'+fmt(totalB)+'</span></div>';
     });
     items.innerHTML=html2;
-    document.getElementById('pv-b').textContent=fmt(Object.values(ventasData).reduce(function(s,arr){return s+(arr||[]).reduce(function(s2,v){return s2+Number(v.monto||0)*Number(v.cantidad||1);},0);},0));},0);},0));
+    document.getElementById('pv-b').textContent=fmt(Object.values(ventasData).reduce(function(s,arr){return s+(arr||[]).reduce(function(s2,v){return s2+Number(v.monto||0)*Number(v.cantidad||1);},0);},0));
     document.getElementById('pv-n').textContent='Ver por período';
     box.style.display='block';
   };
