@@ -544,15 +544,15 @@ function procesarVentas(input){
         if(!nom)return;
         var can=parseInt(r[canKey]||0)||0;
         var mon=parseFloat(String(r[pagKey]||'0').replace(/[^0-9.-]/g,''))||0;
-        if(!mon)return;
-        var cat=String(r[catKey]||'Sin categoria').trim();
+        var precioBase=parseFloat(String(r[precioBaseKey]||'0').replace(/[^0-9.-]/g,''))||0;
+        if(!mon&&!precioBase)return; // saltar solo si ambos son 0
         var fpKey=keys.find(function(k){return /forma.*pago/i.test(k)||/pago/i.test(k);})||'Forma de Pago';
         var fp=String(r[fpKey]||'').trim();
         var turnoKey=keys.find(function(k){return /turno/i.test(k);})||'Turno';
         var turno=String(r[turnoKey]||'').trim();
         var folioKey=keys.find(function(k){return /folio/i.test(k)||/orden/i.test(k)||/n.*orden/i.test(k);})||'N Orden Folio';
         var folio=String(r[folioKey]||'').trim();
-        var precioBase=parseFloat(String(r[precioBaseKey]||'0').replace(/[^0-9.-]/g,''))||0;
+        // precioBase ya calculado arriba
         if(!ventasData[periodo])ventasData[periodo]=[];
         ventasData[periodo].push({nombre:nom,cantidad:can,monto:mon,precio_base:precioBase,cat:cat,fp:fp,turno:turno,folio:folio});
       });
