@@ -629,7 +629,12 @@ async function subirDatos(){
       var prodList=(ventPer||[]).map(function(p){
       return {reporte_id:repId,nombre:p.nombre,cantidad:p.cantidad,monto:p.monto,precio_base:p.precio_base||0,categoria:p.cat||'Sin categoria',forma_pago:p.fp||null,turno:p.turno||null,folio:p.folio||null};
     });
-      await sb.from('productos').insert(prodList);
+      // Insertar en lotes de 500 para evitar límite de Supabase
+      var BATCH=500;
+      for(var b=0;b<prodList.length;b+=BATCH){
+        var lote=prodList.slice(b,b+BATCH);
+        await sb.from('productos').insert(lote);
+      }
     }
   }
   if(errores.length){showMsg('up-msg','err','Errores: '+errores.join(', '));}

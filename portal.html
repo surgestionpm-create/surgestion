@@ -412,24 +412,32 @@ function cargarRango(){
   document.getElementById('loading').style.display='flex';
   document.getElementById('dashboard').style.display='none';
 
-  // Cargar datos paginando por reporte_id para evitar límite de 1000 filas
+  // Cargar datos paginando - usar offset manual con orden fijo
   function fetchById(table, id){
     var PAGE=1000;
     var all=[];
-    function page(from){
-      return sb_client.from(table).select('*').eq('reporte_id',id).range(from,from+PAGE-1).then(function(r){
+    function page(offset){
+      return sb_client.from(table).select('*').eq('reporte_id',id).order('id',{ascending:true}).range(offset,offset+PAGE-1).then(function(r){
         var rows=r.data||[];
+        console.log('fetchById',table,'reporte',id,'offset',offset,'filas',rows.length);
         all=all.concat(rows);
-        if(rows.length===PAGE) return page(from+PAGE);
+        if(rows.length===PAGE) return page(offset+PAGE);
         return all;
       });
     }
     return page(0);
   }
   function fetchByIds(table, ids){
-    return Promise.all(ids.map(function(id){return fetchById(table,id);})).then(function(arrays){
-      return arrays.reduce(function(acc,arr){return acc.concat(arr);},[]);
-    });
+    // Procesar secuencialmente para no saturar Supabase
+    var result=[];
+    function next(i){
+      if(i>=ids.length) return Promise.resolve(result);
+      return fetchById(table,ids[i]).then(function(rows){
+        result=result.concat(rows);
+        return next(i+1);
+      });
+    }
+    return next(0);
   }
 
   Promise.all([
