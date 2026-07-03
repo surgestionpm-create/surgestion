@@ -412,24 +412,19 @@ function cargarRango(){
   document.getElementById('loading').style.display='flex';
   document.getElementById('dashboard').style.display='none';
 
-  // Función para paginar queries de Supabase (evita límite de 1000 filas)
-  function fetchAll(table, repsIds){
-    var PAGE = 1000;
-    var allData = [];
-    function fetchPage(from){
-      return sb_client.from(table).select('*').in('reporte_id',repsIds).range(from, from+PAGE-1).then(function(r){
-        var rows = r.data||[];
-        allData = allData.concat(rows);
-        if(rows.length===PAGE) return fetchPage(from+PAGE);
-        return allData;
-      });
-    }
-    return fetchPage(0);
+  // Cargar datos por reporte_id individual para evitar límite de 1000 filas
+  function fetchByIds(table, ids){
+    var promises = ids.map(function(id){
+      return sb_client.from(table).select('*').eq('reporte_id',id).then(function(r){return r.data||[];});
+    });
+    return Promise.all(promises).then(function(arrays){
+      return arrays.reduce(function(acc,arr){return acc.concat(arr);}, []);
+    });
   }
 
   Promise.all([
-    fetchAll('costos', repsIds),
-    fetchAll('productos', repsIds)
+    fetchByIds('costos', repsIds),
+    fetchByIds('productos', repsIds)
   ]).then(function(results){
     var costos    = results[0]||[];
     var productos = results[1]||[];
