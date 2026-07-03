@@ -535,6 +535,10 @@ function procesarVentas(input){
       var pagKey=keys.find(function(k){return /total.*pagar/i.test(k)||/valor.*boleta/i.test(k);}) || 'Total a Pagar';
       var precioBaseKey=keys.find(function(k){return /precio.*base/i.test(k)||/precio base/i.test(k)||/precio unitario/i.test(k);}) || 'Precio Base';
       var catKey=keys.find(function(k){return /categ/i.test(k);}) || 'Categoria';
+      var fpKey=keys.find(function(k){return /forma.*pago/i.test(k)||/pago/i.test(k);})||'Forma de Pago';
+      var turnoKey=keys.find(function(k){return /turno/i.test(k);})||'Turno';
+      var folioKey=keys.find(function(k){return /folio/i.test(k)||/orden/i.test(k)||/n.*orden/i.test(k);})||'N Orden Folio';
+      console.log('Procesando',rows.length,'filas para formato',formato);
       rows.forEach(function(r){
         var ano=String(r[anoKey]||'').trim();
         var mes=String(r[mesKey]||'').toLowerCase().trim();
@@ -545,14 +549,14 @@ function procesarVentas(input){
         var can=parseInt(r[canKey]||0)||0;
         var mon=parseFloat(String(r[pagKey]||'0').replace(/[^0-9.-]/g,''))||0;
         var precioBase=parseFloat(String(r[precioBaseKey]||'0').replace(/[^0-9.-]/g,''))||0;
-        if(!mon&&!precioBase)return; // saltar solo si ambos son 0
-        var fpKey=keys.find(function(k){return /forma.*pago/i.test(k)||/pago/i.test(k);})||'Forma de Pago';
+        var cat=String(r[catKey]||'Sin categoria').trim();
         var fp=String(r[fpKey]||'').trim();
-        var turnoKey=keys.find(function(k){return /turno/i.test(k);})||'Turno';
         var turno=String(r[turnoKey]||'').trim();
-        var folioKey=keys.find(function(k){return /folio/i.test(k)||/orden/i.test(k)||/n.*orden/i.test(k);})||'N Orden Folio';
         var folio=String(r[folioKey]||'').trim();
-        // precioBase ya calculado arriba
+        if(!nom||!can)return; // saltar filas sin nombre o cantidad
+
+
+
         if(!ventasData[periodo])ventasData[periodo]=[];
         ventasData[periodo].push({nombre:nom,cantidad:can,monto:mon,precio_base:precioBase,cat:cat,fp:fp,turno:turno,folio:folio});
       });
