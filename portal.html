@@ -195,6 +195,11 @@ table.t tr:hover td{background:#F0F7FD}
 
   </div>
 
+  <div class="card" style="margin-bottom:16px">
+    <div class="ch"><span class="ct">Comparativo anual de ventas brutas</span></div>
+    <div class="cb" style="padding:0;overflow-x:auto"><div id="tabla-comp-anual"></div></div>
+  </div>
+
   <div class="g2">
     <div class="card"><div class="ch"><span class="ct">Ventas por categoria</span></div><div class="cb"><canvas id="c-vcat" height="260"></canvas></div></div>
     <div class="card"><div class="ch"><span class="ct">% por categoria sobre ventas</span></div><div class="cb" style="padding:0">
@@ -239,11 +244,6 @@ table.t tr:hover td{background:#F0F7FD}
     <div class="cb" style="padding:0;overflow-x:auto">
       <div id="tabla-comp-mensual"></div>
     </div>
-  </div>
-
-  <div class="card" style="margin-bottom:16px">
-    <div class="ch"><span class="ct">Comparativo anual de ventas brutas</span><span style="font-size:11px;color:var(--muted)" id="comp-anual-label"></span></div>
-    <div class="cb"><canvas id="c-comp-anual" height="200"></canvas></div>
   </div>
 
   <p class="sec">Gastos del periodo</p>
@@ -1142,55 +1142,76 @@ function renderCompMensual(productos, sel, repsIds, reportes){
 function renderCompAnual(){
   if(!_reportes.length) return;
   var mesesOrden=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-  var mesesCorto=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  var mesesNombre=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
-  // Detectar años disponibles
-  var anios={};
+  // Agrupar por año y mes
+  var datos={};
+  var aniosSet={};
   _reportes.forEach(function(r){
     var parts=(r.periodo||'').split(' ');
-    var mes=parts[0],anio=parts[1];
-    if(!anio||!mes)return;
-    if(!anios[anio])anios[anio]={};
-    anios[anio][mes]=Number(r.ventas_brutas||0);
+    var mes=parts[0], anio=parts[1];
+    if(!anio||!mes) return;
+    if(!datos[anio]) datos[anio]={};
+    datos[anio][mes]=Number(r.ventas_brutas||0);
+    aniosSet[anio]=1;
   });
 
-  var aniosList=Object.keys(anios).sort();
-  if(aniosList.length<1)return;
+  var anios=Object.keys(aniosSet).sort();
+  if(!anios.length) return;
 
-  // Colores por año
-  var colores=['#3A8FD1','#1B3A5C','#27AE60','#E67E22','#8E44AD'];
-  var datasets=aniosList.map(function(anio,i){
-    return {
-      label:anio,
-      data:mesesOrden.map(function(m){return anios[anio][m]||0;}),
-      backgroundColor:colores[i%colores.length],
-      borderRadius:4,
-      borderWidth:0
-    };
+  // Construir tabla
+  var t='<table style="width:100%;border-collapse:collapse;min-width:'+(120+anios.length*100+100)+'px">';
+
+  // Header
+  t+='<thead><tr style="background:var(--navy)">';
+  t+='<th style="text-align:left;padding:8px 14px;font-size:11px;color:#fff;white-space:nowrap">Mes</th>';
+  anios.forEach(function(a){
+    t+='<th style="text-align:right;padding:8px 10px;font-size:11px;color:rgba(255,255,255,.85)">'+a+'</th>';
   });
+  t+='<th style="text-align:right;padding:8px 10px;font-size:11px;color:rgba(255,255,255,.85)">Var. año ant.</th>';
+  t+='</tr></thead><tbody>';
 
-  // Label informativo
-  var label=document.getElementById('comp-anual-label');
-  if(label) label.textContent=aniosList.join(' vs ');
+  mesesOrden.forEach(function(mes, idx){
+    // Verificar si existe algún dato para este mes
+    var tieneData = anios.some(function(a){ return datos[a]&&datos[a][mes]>0; });
+    if(!tieneData) return;
 
-  dc('comp-anual');
-  charts['comp-anual']=new Chart(document.getElementById('c-comp-anual').getContext('2d'),{
-    type:'bar',
-    data:{labels:mesesCorto,datasets:datasets},
-    options:{
-      responsive:true,
-      plugins:{
-        legend:{position:'bottom',labels:{font:{size:11}}},
-        tooltip:{callbacks:{label:function(c){return ' '+c.dataset.label+': '+fmt(c.raw);}}}
-      },
-      scales:{
-        x:{grid:{display:false},ticks:{font:{size:10}}},
-        y:{grid:{color:'#EBF5FB'},ticks:{font:{size:10},callback:function(v){
-          return v>=1000000?'$'+(v/1000000).toFixed(1)+'M':'$'+(v/1000).toFixed(0)+'K';
-        }}}
+    var bg = idx%2===0?'var(--white)':'var(--bg)';
+    t+='<tr style="background:'+bg+';border-top:1px solid var(--bg)">';
+    t+='<td style="padding:7px 14px;font-size:12px;font-weight:500;color:var(--navy)">'+mesesNombre[idx]+'</td>';
+
+    var ultimoValor=null;
+    anios.forEach(function(a){
+      var v=(datos[a]&&datos[a][mes])||0;
+      t+='<td style="text-align:right;padding:7px 10px;font-size:12px;color:var(--text)">'+( v>0?fmt(v):'-')+'</td>';
+      if(v>0) ultimoValor={anio:a,val:v};
+    });
+
+    // Variacion vs año anterior
+    if(anios.length>=2 && ultimoValor){
+      var anioAct=ultimoValor.anio;
+      var idxAnio=anios.indexOf(anioAct);
+      var anioAnt=idxAnio>0?anios[idxAnio-1]:null;
+      var vAct=(datos[anioAct]&&datos[anioAct][mes])||0;
+      var vAnt=anioAnt?(datos[anioAnt]&&datos[anioAnt][mes])||0:0;
+      if(vAnt>0 && vAct>0){
+        var pct=((vAct-vAnt)/vAnt*100).toFixed(1);
+        var pos=Number(pct)>=0;
+        var flecha=pos?'<span style="color:#27AE60">&#9650;</span>':'<span style="color:#E74C3C">&#9660;</span>';
+        var color=pos?'color:#27AE60':'color:#E74C3C';
+        t+='<td style="text-align:right;padding:7px 10px;font-size:12px;'+color+';white-space:nowrap">'+flecha+' '+(pos?'+':'')+pct+'%</td>';
+      } else {
+        t+='<td style="text-align:right;padding:7px 10px;font-size:12px;color:var(--muted)">-</td>';
       }
+    } else {
+      t+='<td></td>';
     }
+    t+='</tr>';
   });
+
+  t+='</tbody></table>';
+  var container=document.getElementById('tabla-comp-anual');
+  if(container) container.innerHTML=t;
 }
 
 function iniciar(){
