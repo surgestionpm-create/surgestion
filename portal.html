@@ -412,13 +412,23 @@ function cargarRango(){
   document.getElementById('loading').style.display='flex';
   document.getElementById('dashboard').style.display='none';
 
-  // Cargar datos por reporte_id individual para evitar límite de 1000 filas
+  // Cargar datos paginando por reporte_id para evitar límite de 1000 filas
+  function fetchById(table, id){
+    var PAGE=1000;
+    var all=[];
+    function page(from){
+      return sb_client.from(table).select('*').eq('reporte_id',id).range(from,from+PAGE-1).then(function(r){
+        var rows=r.data||[];
+        all=all.concat(rows);
+        if(rows.length===PAGE) return page(from+PAGE);
+        return all;
+      });
+    }
+    return page(0);
+  }
   function fetchByIds(table, ids){
-    var promises = ids.map(function(id){
-      return sb_client.from(table).select('*').eq('reporte_id',id).then(function(r){return r.data||[];});
-    });
-    return Promise.all(promises).then(function(arrays){
-      return arrays.reduce(function(acc,arr){return acc.concat(arr);}, []);
+    return Promise.all(ids.map(function(id){return fetchById(table,id);})).then(function(arrays){
+      return arrays.reduce(function(acc,arr){return acc.concat(arr);},[]);
     });
   }
 
