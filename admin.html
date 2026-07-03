@@ -630,10 +630,13 @@ async function subirDatos(){
       return {reporte_id:repId,nombre:p.nombre,cantidad:p.cantidad,monto:p.monto,precio_base:p.precio_base||0,categoria:p.cat||'Sin categoria',forma_pago:p.fp||null,turno:p.turno||null,folio:p.folio||null};
     });
       // Insertar en lotes de 500 para evitar límite de Supabase
+      console.log('Insertando productos para',periodo,':',prodList.length,'filas');
       var BATCH=500;
       for(var b=0;b<prodList.length;b+=BATCH){
         var lote=prodList.slice(b,b+BATCH);
-        await sb.from('productos').insert(lote);
+        var resIns=await sb.from('productos').insert(lote);
+        if(resIns.error) console.error('Error lote',b,resIns.error);
+        else console.log('Lote',b,'insertado OK:',lote.length,'filas');
       }
     }
   }
