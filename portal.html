@@ -241,6 +241,11 @@ table.t tr:hover td{background:#F0F7FD}
     </div>
   </div>
 
+  <div class="card" style="margin-bottom:16px">
+    <div class="ch"><span class="ct">Comparativo anual de ventas brutas</span><span style="font-size:11px;color:var(--muted)" id="comp-anual-label"></span></div>
+    <div class="cb"><canvas id="c-comp-anual" height="200"></canvas></div>
+  </div>
+
   <p class="sec">Gastos del periodo</p>
   <div class="kpi4">
     <div class="kpi"><div class="kl">Gastos brutos</div><div class="kv" id="kv-gb2">--</div><span class="kb bo">Con IVA</span></div>
@@ -1134,6 +1139,60 @@ function renderCompMensual(productos, sel, repsIds, reportes){
 }
 
 
+function renderCompAnual(){
+  if(!_reportes.length) return;
+  var mesesOrden=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  var mesesCorto=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+  // Detectar años disponibles
+  var anios={};
+  _reportes.forEach(function(r){
+    var parts=(r.periodo||'').split(' ');
+    var mes=parts[0],anio=parts[1];
+    if(!anio||!mes)return;
+    if(!anios[anio])anios[anio]={};
+    anios[anio][mes]=Number(r.ventas_brutas||0);
+  });
+
+  var aniosList=Object.keys(anios).sort();
+  if(aniosList.length<1)return;
+
+  // Colores por año
+  var colores=['#3A8FD1','#1B3A5C','#27AE60','#E67E22','#8E44AD'];
+  var datasets=aniosList.map(function(anio,i){
+    return {
+      label:anio,
+      data:mesesOrden.map(function(m){return anios[anio][m]||0;}),
+      backgroundColor:colores[i%colores.length],
+      borderRadius:4,
+      borderWidth:0
+    };
+  });
+
+  // Label informativo
+  var label=document.getElementById('comp-anual-label');
+  if(label) label.textContent=aniosList.join(' vs ');
+
+  dc('comp-anual');
+  charts['comp-anual']=new Chart(document.getElementById('c-comp-anual').getContext('2d'),{
+    type:'bar',
+    data:{labels:mesesCorto,datasets:datasets},
+    options:{
+      responsive:true,
+      plugins:{
+        legend:{position:'bottom',labels:{font:{size:11}}},
+        tooltip:{callbacks:{label:function(c){return ' '+c.dataset.label+': '+fmt(c.raw);}}}
+      },
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:10}}},
+        y:{grid:{color:'#EBF5FB'},ticks:{font:{size:10},callback:function(v){
+          return v>=1000000?'$'+(v/1000000).toFixed(1)+'M':'$'+(v/1000).toFixed(0)+'K';
+        }}}
+      }
+    }
+  });
+}
+
 function iniciar(){
   sb_client.auth.getSession().then(function(res){
     var session = res.data && res.data.session;
@@ -1298,6 +1357,7 @@ function cargarDatos(userId){
       for(var oi=0;oi<selMH.options.length;oi++){if(selMH.options[oi].value===mesSelec){selMH.selectedIndex=oi;break;}}
       // Cargar rango inicial
       renderEvolucion();
+      renderCompAnual();
       setTimeout(function(){ cargarRango(); }, 50);
     });
   });
