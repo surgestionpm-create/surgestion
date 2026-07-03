@@ -343,7 +343,6 @@ function procesarGastos(input){
     const wb=XLSX.read(e.target.result,{type:'binary'});
     const ws=wb.Sheets[wb.SheetNames[0]];
     const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
-    console.log('SheetJS leyó',rows.length,'filas del Excel');
     if(!rows.length){alert('El archivo parece estar vacio.');return;}
     var keys=Object.keys(rows[0]);
     var anoKey=keys.find(function(k){var kn=k.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();return kn==='ano'||kn==='year';}) || keys.find(function(k){return /^a.o$/i.test(k);}) || keys[0];
@@ -462,7 +461,6 @@ function procesarVentas(input){
     const wb=XLSX.read(e.target.result,{type:'binary',cellDates:true});
     const ws=wb.Sheets[wb.SheetNames[0]];
     const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
-    console.log('SheetJS leyó',rows.length,'filas del Excel');
     if(!rows.length){alert('El archivo parece estar vacio.');return;}
     var keys=Object.keys(rows[0]);
     var formato=detectarFormatoVentas(keys);
@@ -538,7 +536,6 @@ function procesarVentas(input){
       var fpKey=keys.find(function(k){return /forma.*pago/i.test(k)||/pago/i.test(k);})||'Forma de Pago';
       var turnoKey=keys.find(function(k){return /turno/i.test(k);})||'Turno';
       var folioKey=keys.find(function(k){return /folio/i.test(k)||/orden/i.test(k)||/n.*orden/i.test(k);})||'N Orden Folio';
-      console.log('Procesando',rows.length,'filas para formato',formato);
       rows.forEach(function(r){
         var ano=String(r[anoKey]||'').trim();
         var mes=String(r[mesKey]||'').toLowerCase().trim();
@@ -636,13 +633,10 @@ async function subirDatos(){
       return {reporte_id:repId,nombre:p.nombre,cantidad:p.cantidad,monto:p.monto,precio_base:p.precio_base||0,categoria:p.cat||'Sin categoria',forma_pago:p.fp||null,turno:p.turno||null,folio:p.folio||null};
     });
       // Insertar en lotes de 500 para evitar límite de Supabase
-      console.log('Insertando productos para',periodo,':',prodList.length,'filas');
       var BATCH=500;
       for(var b=0;b<prodList.length;b+=BATCH){
         var lote=prodList.slice(b,b+BATCH);
         var resIns=await sb.from('productos').insert(lote);
-        if(resIns.error) console.error('Error lote',b,resIns.error);
-        else console.log('Lote',b,'insertado OK:',lote.length,'filas');
       }
     }
   }
