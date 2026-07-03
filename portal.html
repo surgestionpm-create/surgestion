@@ -1158,6 +1158,8 @@ function renderCompAnual(){
 
   var anios=Object.keys(aniosSet).sort();
   if(!anios.length) return;
+  // Solo últimos 3 años
+  anios=anios.slice(-3);
 
   // Construir tabla
   var t='<table style="width:100%;border-collapse:collapse;min-width:'+(120+anios.length*100+100)+'px">';
