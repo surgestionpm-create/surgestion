@@ -322,9 +322,11 @@ function dc(id){ if(charts[id]){try{charts[id].destroy();}catch(e){}} }
 
 // Calcula gasto neto: usa monto_neto si existe, sino divide monto/1.19
 function getMontoProducto(p){
-  // precio_base = monto total de la línea (ya incluye cantidad)
+  // monto = precio_base * cantidad
   var pb = Number(p.precio_base||0);
-  return pb > 0 ? pb : Number(p.monto||0);
+  var cant = Number(p.cantidad||0);
+  if(pb > 0 && cant > 0) return pb * cant;
+  return Number(p.monto||0);
 }
 
 function getNeto(c){
@@ -502,8 +504,8 @@ function cargarRango(){
       var pb=Number(p.precio_base||0);
       cats[cat].prods[nom].cantidad+=cant;
       cats[cat].prods[nom].monto+=Number(p.monto||0);
-      cats[cat].prods[nom].monto_pb+=pb>0?pb:Number(p.monto||0);
-      cats[cat].total+=pb>0?pb:Number(p.monto||0);
+      cats[cat].prods[nom].monto_pb+=pb>0&&cant>0?pb*cant:Number(p.monto||0);
+      cats[cat].total+=pb>0&&cant>0?pb*cant:Number(p.monto||0);
       cats[cat].cant+=Number(p.cantidad||0);
     });
     var rows='';
