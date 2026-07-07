@@ -1366,6 +1366,7 @@ function calcularPuntoEquilibrio(){
       }
 
       var margenContrib = 1-(cv/vn);
+      console.log('PE debug',r.periodo,'VN:',vn,'CF:',cf,'CV:',cv,'MC:',margenContrib.toFixed(3),'PE:',(margenContrib>0?Math.round(cf/margenContrib):'negativo'));
       if(margenContrib > 0) peVals.push(cf/margenContrib);
     });
 
