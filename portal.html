@@ -507,8 +507,8 @@ function cargarRango(){
     var resultado = vn-gnOp;
 
     var hasTipo = costos.some(function(c){return c.tipo_gasto&&c.tipo_gasto.trim()!=='';});
-    var cf = costos.filter(function(c){return (c.tipo_gasto||'').toLowerCase().includes('fijo');}).reduce(function(s,c){return s+getNeto(c);},0);
-    var cv = costos.filter(function(c){return (c.tipo_gasto||'').toLowerCase().includes('variable');}).reduce(function(s,c){return s+getNeto(c);},0);
+    var cf = costos.filter(function(c){return /fijo/i.test(c.tipo_gasto||'');}).reduce(function(s,c){return s+getNeto(c);},0);
+    var cv = costos.filter(function(c){return /variable/i.test(c.tipo_gasto||'');}).reduce(function(s,c){return s+getNeto(c);},0);
     if(!hasTipo){cf=gnOp;cv=0;}
 
     var mb = vn>0?((resultado/vn)*100).toFixed(1):0;
@@ -1358,8 +1358,8 @@ function calcularPuntoEquilibrio(){
       var hasTipo = costosOp.some(function(c){ return c.tipo_gasto&&c.tipo_gasto.trim()!==''; });
       var cf, cv;
       if(hasTipo){
-        cf = costosOp.filter(function(c){ return (c.tipo_gasto||'').toLowerCase().includes('fijo'); }).reduce(function(s,c){ return s+getNeto(c); },0);
-        cv = costosOp.filter(function(c){ return (c.tipo_gasto||'').toLowerCase().includes('variable'); }).reduce(function(s,c){ return s+getNeto(c); },0);
+        cf = costosOp.filter(function(c){ return /fijo/i.test(c.tipo_gasto||''); }).reduce(function(s,c){ return s+getNeto(c); },0);
+        cv = costosOp.filter(function(c){ return /variable/i.test(c.tipo_gasto||''); }).reduce(function(s,c){ return s+getNeto(c); },0);
       } else {
         var gnMes = costosOp.reduce(function(s,c){ return s+getNeto(c); },0);
         cf = gnMes*0.6; cv = gnMes*0.4;
@@ -1634,8 +1634,8 @@ function cargarPeriodo(periodo){
 
     // Fijos/variables - usar Gasto Neto
     var hasTipo = costos.some(function(c){ return c.tipo_gasto&&c.tipo_gasto.trim()!==''; });
-    var cf = costos.filter(function(c){ return (c.tipo_gasto||'').toLowerCase().includes('fijo'); }).reduce(function(s,c){ return s+getNeto(c); },0);
-    var cv = costos.filter(function(c){ return (c.tipo_gasto||'').toLowerCase().includes('variable'); }).reduce(function(s,c){ return s+getNeto(c); },0);
+    var cf = costos.filter(function(c){ return /fijo/i.test(c.tipo_gasto||''); }).reduce(function(s,c){ return s+getNeto(c); },0);
+    var cv = costos.filter(function(c){ return /variable/i.test(c.tipo_gasto||''); }).reduce(function(s,c){ return s+getNeto(c); },0);
     if(!hasTipo){ cf=gnOp; cv=0; } // Si no hay tipo, asumir todo fijo
 
     var mb = vn>0?((resultado/vn)*100).toFixed(1):0;
