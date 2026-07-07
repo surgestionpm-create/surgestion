@@ -84,28 +84,42 @@ table.t tr:hover td{background:#F0F7FD}
 /* ── MOBILE ────────────────────────── */
 /* ── SIDEBAR NAV ─────────────────────── */
 .sidebar{
-  position:fixed;left:0;top:64px;bottom:0;width:200px;
-  background:var(--white);border-right:1px solid var(--border);
-  padding:16px 0;z-index:90;overflow-y:auto;
-  transition:transform .2s;
+  position:fixed;left:0;top:64px;bottom:0;width:52px;
+  background:#1C3452;
+  padding:12px 0;z-index:90;overflow:hidden;
+  transition:width .22s cubic-bezier(.4,0,.2,1);
+  display:flex;flex-direction:column;gap:2px;
+  border-right:1px solid rgba(255,255,255,.06);
 }
+.sidebar:hover{width:196px;}
 .sidebar-item{
-  display:flex;align-items:center;gap:10px;
-  padding:10px 16px;cursor:pointer;
-  font-size:12px;color:var(--muted);
-  transition:all .15s;border-left:3px solid transparent;
-  text-decoration:none;
+  display:flex;align-items:center;gap:0;
+  margin:0 8px;border-radius:10px;
+  cursor:pointer;font-size:12px;color:rgba(255,255,255,.5);
+  transition:background .12s,color .12s;border:none;
+  text-decoration:none;white-space:nowrap;overflow:hidden;
+  min-height:36px;
 }
-.sidebar-item:hover{background:var(--blue-l);color:var(--navy);}
-.sidebar-item.active{background:var(--blue-l);color:var(--navy);border-left-color:var(--blue);font-weight:600;}
-.sidebar-icon{width:16px;height:16px;opacity:.7;flex-shrink:0;}
-.sidebar-item.active .sidebar-icon{opacity:1;}
-.sidebar-divider{height:1px;background:var(--border);margin:8px 16px;}
-.main{margin-left:200px;}
+.sidebar-item:hover{background:rgba(255,255,255,.08);color:rgba(255,255,255,.9);}
+.sidebar-item.active{background:rgba(52,100,150,.7);color:#fff;}
+.sidebar-icon{
+  width:36px;min-width:36px;height:36px;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;font-size:16px;
+}
+.sidebar-label{
+  font-size:12px;font-weight:500;
+  opacity:0;transition:opacity .12s;
+  padding-right:10px;
+}
+.sidebar:hover .sidebar-label{opacity:1;}
+.sidebar-divider{height:1px;background:rgba(255,255,255,.08);margin:6px 8px;}
+.main{margin-left:52px;}
 
 @media(max-width:600px){
-  .sidebar{transform:translateX(-100%);width:180px;}
-  .sidebar.open{transform:translateX(0);}
+  .sidebar{transform:translateX(-100%);width:52px;}
+  .sidebar.open{width:196px;transform:translateX(0);}
+  .sidebar.open .sidebar-label{opacity:1;}
   .main{margin-left:0;}
   .sidebar-toggle{display:flex!important;}
   .kpi5,.kpi4,.ind3{grid-template-columns:1fr 1fr}
@@ -171,6 +185,7 @@ table.t tr:hover td{background:#F0F7FD}
   gtag('js', new Date());
   gtag('config', 'G-N6KQH84GZQ');
 </script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 </head>
 <body>
 
@@ -189,33 +204,31 @@ table.t tr:hover td{background:#F0F7FD}
 
 <!-- Sidebar -->
 <nav class="sidebar" id="sidebar">
-  <div style="padding:8px 16px 12px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Navegación</div>
-
   <a class="sidebar-item active" href="#sec-ventas" onclick="setActive(this)">
-    <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
-    Ventas
+    <span class="sidebar-icon"><i class="ti ti-trending-up"></i></span>
+    <span class="sidebar-label">Ventas</span>
   </a>
   <a class="sidebar-item" href="#sec-comp-anual" onclick="setActive(this)">
-    <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="3"/></svg>
-    Comp. anual
+    <span class="sidebar-icon"><i class="ti ti-layout-grid"></i></span>
+    <span class="sidebar-label">Comp. anual</span>
   </a>
   <div class="sidebar-divider"></div>
   <a class="sidebar-item" href="#sec-gastos" onclick="setActive(this)">
-    <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-    Gastos
+    <span class="sidebar-icon"><i class="ti ti-coin"></i></span>
+    <span class="sidebar-label">Gastos</span>
   </a>
   <div class="sidebar-divider"></div>
   <a class="sidebar-item" href="#sec-indicadores" onclick="setActive(this)">
-    <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
-    Indicadores
+    <span class="sidebar-icon"><i class="ti ti-chart-bar"></i></span>
+    <span class="sidebar-label">Indicadores</span>
   </a>
   <a class="sidebar-item" href="#sec-eerr" onclick="setActive(this)">
-    <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-    EERR
+    <span class="sidebar-icon"><i class="ti ti-file-description"></i></span>
+    <span class="sidebar-label">EERR</span>
   </a>
   <a class="sidebar-item" href="#eerr-comp-body" onclick="setActive(this)">
-    <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-    EERR Comp.
+    <span class="sidebar-icon"><i class="ti ti-calendar-stats"></i></span>
+    <span class="sidebar-label">EERR Comp.</span>
   </a>
 </nav>
 
