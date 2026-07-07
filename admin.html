@@ -101,7 +101,7 @@
     <button class="tab active" onclick="showTab('clientes')">Clientes</button>
     <button class="tab" onclick="showTab('nuevo')">Nuevo cliente</button>
     <button class="tab" onclick="showTab('datos')">Subir datos</button>
-    
+    <button class="tab" onclick="showTab('vista')">Vista cliente</button>
   </div>
 
   <div id="tab-clientes">
@@ -188,6 +188,26 @@
   </div>
 
 
+  <!-- TAB VISTA CLIENTE -->
+  <div id="tab-vista" style="display:none">
+    <div class="card" style="margin-bottom:16px">
+      <div class="ch">
+        <span class="ct">Vista del portal del cliente</span>
+      </div>
+      <div class="cb" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <label style="font-size:13px;font-weight:500">Cliente:</label>
+        <select id="vista-cliente-sel" class="sel" style="min-width:200px">
+          <option value="">Selecciona un cliente...</option>
+        </select>
+        <button class="btn btn-p" onclick="abrirVistaCliente()">Ver portal</button>
+        <span id="vista-msg" style="font-size:12px;color:var(--muted)"></span>
+      </div>
+    </div>
+    <div id="vista-iframe-wrap" style="display:none;border:1px solid var(--border);border-radius:10px;overflow:hidden">
+      <iframe id="vista-iframe" style="width:100%;height:85vh;border:none"></iframe>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -200,14 +220,48 @@ let ventasData = [];
 function fmt(n){ return '$'+Number(n).toLocaleString('es-CL'); }
 
 function showTab(t){
-  ['clientes','nuevo','datos'].forEach(function(id){
-    document.getElementById('tab-'+id).style.display = id===t?'block':'none';
+  ['clientes','nuevo','datos','vista'].forEach(function(id){
+    var el=document.getElementById('tab-'+id);
+    if(el) el.style.display = id===t?'block':'none';
   });
   document.querySelectorAll('.tab').forEach(function(el,i){
-    el.classList.toggle('active',['clientes','nuevo','datos'][i]===t);
+    el.classList.toggle('active',['clientes','nuevo','datos','vista'][i]===t);
   });
   if(t==='clientes') cargarClientes();
   if(t==='datos'||t==='asesorias') llenarSelect(t);
+  if(t==='vista') cargarClientesVista();
+}
+
+function cargarClientesVista(){
+  var sel=document.getElementById('vista-cliente-sel');
+  if(sel.options.length>1) return;
+  sb.from('clientes').select('id,nombre_empresa,user_id').order('nombre_empresa').then(function(r){
+    (r.data||[]).forEach(function(c){
+      var opt=document.createElement('option');
+      opt.value=c.user_id;
+      opt.textContent=c.nombre_empresa;
+      sel.appendChild(opt);
+    });
+  });
+}
+
+function abrirVistaCliente(){
+  var sel=document.getElementById('vista-cliente-sel');
+  var userId=sel.value;
+  var nombre=sel.options[sel.selectedIndex].textContent;
+  var msg=document.getElementById('vista-msg');
+  if(!userId){msg.textContent='Selecciona un cliente primero.';return;}
+  msg.textContent='Cargando portal de '+nombre+'...';
+  var wrap=document.getElementById('vista-iframe-wrap');
+  var iframe=document.getElementById('vista-iframe');
+  wrap.style.display='block';
+  iframe.src='/portal.html';
+  iframe.onload=function(){
+    try{
+      iframe.contentWindow.postMessage({type:'admin_view',userId:userId},'*');
+    }catch(e){}
+    msg.textContent='Viendo: '+nombre;
+  };
 }
 
 function showMsg(id,type,text){

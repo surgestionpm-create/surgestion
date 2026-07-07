@@ -439,8 +439,8 @@ function cargarRango(){
     var gb = costos.reduce(function(s,c){return s+Number(c.monto||0);},0);
     var gn = costos.reduce(function(s,c){return s+getNeto(c);},0);
 
-    var impBruto = costos.filter(function(c){return /impuesto|iva/i.test(c.familia||c.categoria||'');}).reduce(function(s,c){return s+Number(c.monto||0);},0);
-    var impNeto  = costos.filter(function(c){return /impuesto|iva/i.test(c.familia||c.categoria||'');}).reduce(function(s,c){return s+getNeto(c);},0);
+    var impBruto = costos.filter(function(c){return /impuesto|iva|tribut/i.test(c.familia||c.categoria||'');}).reduce(function(s,c){return s+Number(c.monto||0);},0);
+    var impNeto  = costos.filter(function(c){return /impuesto|iva|tribut/i.test(c.familia||c.categoria||'');}).reduce(function(s,c){return s+getNeto(c);},0);
     var gbOp = gb-impBruto;
     var gnOp = gn-impNeto;
     var resultado = vn-gnOp;
@@ -572,7 +572,7 @@ function cargarRango(){
 
     // Gastos por familia
     var fams={};
-    costos.forEach(function(c){var fam=c.familia||c.categoria||'Sin familia';if(/impuesto|iva/i.test(fam))return;fams[fam]=(fams[fam]||0)+getNeto(c);});
+    costos.forEach(function(c){var fam=c.familia||c.categoria||'Sin familia';if(/impuesto|iva|tribut/i.test(fam))return;fams[fam]=(fams[fam]||0)+getNeto(c);});
     var famArr=Object.entries(fams).sort(function(a,b){return b[1]-a[1];});
     dc('gfam');
     charts['gfam']=new Chart(document.getElementById('c-gfam').getContext('2d'),{
@@ -594,7 +594,7 @@ function cargarRango(){
 
     // EERR
     var famGastos={},famCats={};
-    costos.forEach(function(c){var fam=c.familia||c.categoria||'Sin familia';var prov=c.proveedor||'Sin proveedor';if(/impuesto|iva/i.test(fam))return;var neto=getNeto(c);famGastos[fam]=(famGastos[fam]||0)+neto;if(!famCats[fam])famCats[fam]={};famCats[fam][prov]=(famCats[fam][prov]||0)+neto;});
+    costos.forEach(function(c){var fam=c.familia||c.categoria||'Sin familia';var prov=c.proveedor||'Sin proveedor';if(/impuesto|iva|tribut/i.test(fam))return;var neto=getNeto(c);famGastos[fam]=(famGastos[fam]||0)+neto;if(!famCats[fam])famCats[fam]={};famCats[fam][prov]=(famCats[fam][prov]||0)+neto;});
     var famList=Object.entries(famGastos).sort(function(a,b){return b[1]-a[1];});
     var notaRango=sel.length>1?'<span style="font-size:10px;color:rgba(255,255,255,.5);margin-left:8px">'+mesD.slice(0,3)+'. '+anioD+' - '+mesH.slice(0,3)+'. '+anioH+'</span>':'';
     var h='';
@@ -983,7 +983,7 @@ function exportarPDF(){
     });
     c6.forEach(function(c){
       var p=rm6[c.reporte_id];if(!p||!d6[p])return;
-      if(/impuesto|iva/i.test(c.familia||c.categoria||''))return;
+      if(/impuesto|iva|tribut/i.test(c.familia||c.categoria||''))return;
       var n=getNeto(c);d6[p].gn+=n;
       var f=c.familia||c.categoria||'Sin familia';
       if(!d6[p].fams[f])d6[p].fams[f]=0;d6[p].fams[f]+=n;
@@ -1499,8 +1499,8 @@ function cargarPeriodo(periodo){
     var gn = costos.reduce(function(s,c){ return s+getNeto(c); },0); // Gastos netos SIEMPRE calculados sin IVA
     
     // Separar impuestos (excluir de operacional)
-    var impBruto = costos.filter(function(c){ return /impuesto|iva/i.test(c.familia||c.categoria||''); }).reduce(function(s,c){ return s+Number(c.monto||0); },0);
-    var impNeto  = costos.filter(function(c){ return /impuesto|iva/i.test(c.familia||c.categoria||''); }).reduce(function(s,c){ return s+getNeto(c); },0);
+    var impBruto = costos.filter(function(c){ return /impuesto|iva|tribut/i.test(c.familia||c.categoria||''); }).reduce(function(s,c){ return s+Number(c.monto||0); },0);
+    var impNeto  = costos.filter(function(c){ return /impuesto|iva|tribut/i.test(c.familia||c.categoria||''); }).reduce(function(s,c){ return s+getNeto(c); },0);
 
     var gbOp = gb - impBruto;  // Gastos brutos operacionales
     var gnOp = gn - impNeto;   // Gastos netos operacionales
@@ -1519,7 +1519,7 @@ function cargarPeriodo(periodo){
     var vbAnt = repAnt?Number(repAnt.ventas_brutas||0):null;
     var vnAnt = repAnt?Number(repAnt.ventas_netas||0):null;
     var gnAnt = costosAnt.reduce(function(s,c){ return s+getNeto(c); },0);
-    var impAnt = costosAnt.filter(function(c){ return /impuesto|iva/i.test(c.familia||c.categoria||''); }).reduce(function(s,c){ return s+getNeto(c); },0);
+    var impAnt = costosAnt.filter(function(c){ return /impuesto|iva|tribut/i.test(c.familia||c.categoria||''); }).reduce(function(s,c){ return s+getNeto(c); },0);
     var gnOpAnt = gnAnt-impAnt;
     var resAnt = vnAnt!==null?vnAnt-gnOpAnt:null;
 
@@ -1588,7 +1588,7 @@ function cargarPeriodo(periodo){
     var fams={};
     costos.forEach(function(c){
       var fam=c.familia||c.categoria||'Sin familia';
-      if(/impuesto|iva/i.test(fam)) return;
+      if(/impuesto|iva|tribut/i.test(fam)) return;
       fams[fam]=(fams[fam]||0)+getNeto(c);
     });
 
@@ -1644,7 +1644,7 @@ function cargarPeriodo(periodo){
     costos.forEach(function(c){
       var fam=c.familia||c.categoria||'Sin familia';
       var cat=c.categoria||'Sin categoria';
-      if(/impuesto|iva/i.test(fam)) return;
+      if(/impuesto|iva|tribut/i.test(fam)) return;
       var neto=getNeto(c); // Monto Neto directo del Excel
       famGastos[fam]=(famGastos[fam]||0)+neto;
       if(!famCats[fam])famCats[fam]={};
@@ -1733,7 +1733,7 @@ function actualizarComp() {
     allC.forEach(function(c){
       var p = repMap[c.reporte_id];
       if(!p||!dat[p]) return;
-      if(/impuesto|iva/i.test(c.familia||c.categoria||'')) return;
+      if(/impuesto|iva|tribut/i.test(c.familia||c.categoria||'')) return;
       var bruto = Number(c.monto||0);
       var neto  = getNeto(c);
       var fam   = c.familia||c.categoria||'Sin familia';
@@ -1911,6 +1911,17 @@ function actualizarComp() {
     });
   });
 }
+
+// Escuchar mensaje de admin_view
+window.addEventListener('message', function(e){
+  if(e.data && e.data.type === 'admin_view' && e.data.userId){
+    cargarDatos(e.data.userId);
+    document.getElementById('btn-logout').style.display='none';
+    document.getElementById('nav-email').textContent='Vista administrador';
+    document.getElementById('loading').style.display='flex';
+    document.getElementById('dashboard').style.display='none';
+  }
+});
 
 iniciar();
 
