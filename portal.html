@@ -675,6 +675,9 @@ function cargarRango(){
     document.getElementById('loading').style.display='none';
     document.getElementById('dashboard').style.display='block';
 
+    // Punto de equilibrio (siempre últimos 3 meses)
+    calcularPuntoEquilibrio();
+
     // Tabla comparativa mensual
     renderCompMensual(productos, sel, repsIds, _reportes);
   });
@@ -1333,78 +1336,60 @@ function renderCompAnual(){
 function calcularPuntoEquilibrio(){
   if(!_periodos.length||!_reportes.length) return;
 
-  // Obtener el período "hasta" seleccionado actualmente
-  var anioH=document.getElementById('sel-anio-hasta')?document.getElementById('sel-anio-hasta').value:'';
-  var mesH=document.getElementById('sel-mes-hasta')?document.getElementById('sel-mes-hasta').value:'';
-  var periodoActual=mesH+' '+anioH;
-  var idxActual=_periodos.indexOf(periodoActual);
-  if(idxActual<0) idxActual=0;
+  // Siempre usar los últimos 3 períodos disponibles (independiente del filtro)
+  var ultimos3 = _periodos.slice(0, 3);
+  if(!ultimos3.length) return;
 
-  // Los 3 meses ANTERIORES al período seleccionado
-  var idxStart=idxActual+1;
-  var ultimos3=_periodos.slice(idxStart, idxStart+3);
-  if(!ultimos3.length){
-    document.getElementById('iv-pe').textContent='Sin datos';
-    return;
-  }
-
-  var reps3=_reportes.filter(function(r){return ultimos3.indexOf(r.periodo)>=0;});
-  var ids3=reps3.map(function(r){return r.id;});
+  var reps3 = _reportes.filter(function(r){ return ultimos3.indexOf(r.periodo)>=0; });
+  var ids3 = reps3.map(function(r){ return r.id; });
   if(!ids3.length) return;
 
-  fetchByIds('costos',ids3).then(function(costos3){
-    var peVals=[];
+  fetchByIds('costos', ids3).then(function(costos3){
+    var peVals = [];
 
     reps3.forEach(function(r){
-      var costosMes=costos3.filter(function(c){return c.reporte_id===r.id;});
-      var vn=_aplicaIva?Number(r.ventas_netas||0):Number(r.ventas_brutas||0);
+      var costosMes = costos3.filter(function(c){ return c.reporte_id===r.id; });
+      var vn = _aplicaIva ? Number(r.ventas_netas||0) : Number(r.ventas_brutas||0);
       if(!vn) return;
 
-      // Costos fijos y variables del mes
-      var hasTipo=costosMes.some(function(c){return c.tipo_gasto&&c.tipo_gasto.trim()!=='';});
+      // Excluir impuestos
+      var costosOp = costosMes.filter(function(c){ return !/impuesto|iva|tribut/i.test(c.familia||c.categoria||''); });
+
+      var hasTipo = costosOp.some(function(c){ return c.tipo_gasto&&c.tipo_gasto.trim()!==''; });
       var cf, cv;
       if(hasTipo){
-        cf=costosMes.filter(function(c){return (c.tipo_gasto||'').toLowerCase().includes('fijo')&&!/impuesto|iva|tribut/i.test(c.familia||c.categoria||'');}).reduce(function(s,c){return s+getNeto(c);},0);
-        cv=costosMes.filter(function(c){return (c.tipo_gasto||'').toLowerCase().includes('variable')&&!/impuesto|iva|tribut/i.test(c.familia||c.categoria||'');}).reduce(function(s,c){return s+getNeto(c);},0);
+        cf = costosOp.filter(function(c){ return (c.tipo_gasto||'').toLowerCase().includes('fijo'); }).reduce(function(s,c){ return s+getNeto(c); },0);
+        cv = costosOp.filter(function(c){ return (c.tipo_gasto||'').toLowerCase().includes('variable'); }).reduce(function(s,c){ return s+getNeto(c); },0);
       } else {
-        // Sin clasificación: estimar fijos como 60% del gasto
-        var gnMes=costosMes.filter(function(c){return !/impuesto|iva|tribut/i.test(c.familia||c.categoria||'');}).reduce(function(s,c){return s+getNeto(c);},0);
-        cf=gnMes*0.6; cv=gnMes*0.4;
+        var gnMes = costosOp.reduce(function(s,c){ return s+getNeto(c); },0);
+        cf = gnMes*0.6; cv = gnMes*0.4;
       }
 
-      // Fórmula: PE = CF / (1 - CV/VN)
-      var margenContrib=1-(cv/vn);
-      if(margenContrib>0){
-        peVals.push(cf/margenContrib);
-      }
+      var margenContrib = 1-(cv/vn);
+      if(margenContrib > 0) peVals.push(cf/margenContrib);
     });
 
-    var peEl=document.getElementById('iv-pe');
+    var peEl = document.getElementById('iv-pe');
     if(!peEl) return;
 
-    if(!peVals.length){
-      peEl.textContent='Sin datos';
-      return;
-    }
+    if(!peVals.length){ peEl.textContent='Sin datos'; return; }
 
-    // Promedio de los PE calculados
-    var pePromedio=peVals.reduce(function(s,v){return s+v;},0)/peVals.length;
-    peEl.textContent='$'+Math.round(pePromedio).toLocaleString('es-CL');
+    var pePromedio = peVals.reduce(function(s,v){ return s+v; },0)/peVals.length;
+    peEl.textContent = '$'+Math.round(pePromedio).toLocaleString('es-CL');
 
-    // Indicador visual: ¿las ventas actuales superan el PE?
-    // Comparar contra VENTA NETA actual
-    var vnActualTxt=document.getElementById('kv-vn').textContent.replace(/[^0-9]/g,'');
-    var vnActual=Number(vnActualTxt)||0;
-    var subtxt=document.querySelector('#iv-pe').closest('.ind').querySelector('.ih');
+    // Comparar contra venta neta del período actual
+    var vnActual = Number((document.getElementById('kv-vn').textContent||'').replace(/[^0-9]/g,''))||0;
+    var subtxt = peEl.closest('.ind').querySelector('.ih');
     if(subtxt){
       if(vnActual>0 && vnActual>=pePromedio){
-        subtxt.textContent='✓ Sobre el punto de equilibrio';
-        subtxt.style.color='#5DECA0';
+        subtxt.textContent = '✓ Venta neta sobre el PE';
+        subtxt.style.color = '#5DECA0';
       } else if(vnActual>0){
-        subtxt.textContent='⚠ Bajo el punto de equilibrio';
-        subtxt.style.color='#FF6B6B';
+        subtxt.textContent = '⚠ Venta neta bajo el PE';
+        subtxt.style.color = '#FF6B6B';
       } else {
-        subtxt.textContent='Prom. últ. 3 meses | CF / (1 - CV/VN)';
+        subtxt.textContent = 'Promedio últimos 3 meses';
+        subtxt.style.color = '';
       }
     }
   });
