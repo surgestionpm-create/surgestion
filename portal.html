@@ -1336,8 +1336,8 @@ function renderCompAnual(){
 function calcularPuntoEquilibrio(){
   if(!_periodos.length||!_reportes.length) return;
 
-  // Siempre usar los últimos 3 períodos disponibles (independiente del filtro)
-  var ultimos3 = _periodos.slice(0, 3);
+  // Últimos 3 meses ANTERIORES al más reciente (excluir el mes actual)
+  var ultimos3 = _periodos.slice(1, 4);
   if(!ultimos3.length) return;
 
   var reps3 = _reportes.filter(function(r){ return ultimos3.indexOf(r.periodo)>=0; });
@@ -1366,7 +1366,6 @@ function calcularPuntoEquilibrio(){
       }
 
       var margenContrib = 1-(cv/vn);
-      console.log('PE debug',r.periodo,'VN:',vn,'CF:',cf,'CV:',cv,'MC:',margenContrib.toFixed(3),'PE:',(margenContrib>0?Math.round(cf/margenContrib):'negativo'));
       if(margenContrib > 0) peVals.push(cf/margenContrib);
     });
 
