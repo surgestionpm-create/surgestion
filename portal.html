@@ -82,65 +82,7 @@ table.t tr:hover td{background:#F0F7FD}
 }
 
 /* ── MOBILE ────────────────────────── */
-/* ── SIDEBAR NAV ─────────────────────── */
-.sidebar{
-  position:fixed;
-  left:0;top:64px;
-  height:calc(100vh - 64px);
-  width:52px;
-  background:#1C3452;
-  z-index:200;
-  display:none;
-  flex-direction:column;
-  padding:8px 0;
-  overflow:hidden;
-  transition:width .2s ease;
-}
-.sidebar:hover{width:190px;}
-.sidebar-item{
-  display:flex;
-  align-items:center;
-  height:40px;
-  min-height:40px;
-  flex-shrink:0;
-  cursor:pointer;
-  color:rgba(255,255,255,.55);
-  text-decoration:none;
-  transition:background .15s,color .15s;
-  overflow:hidden;
-  white-space:nowrap;
-}
-.sidebar-item:hover{background:rgba(255,255,255,.1);color:#fff;}
-.sidebar-item.active{background:rgba(52,100,150,.8);color:#fff;}
-.sidebar-icon{
-  width:52px;
-  min-width:52px;
-  height:40px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:18px;
-  flex-shrink:0;
-}
-.sidebar-label{
-  font-size:12px;
-  font-weight:500;
-  white-space:nowrap;
-  overflow:hidden;
-}
-.sidebar-divider{
-  height:1px;
-  background:rgba(255,255,255,.1);
-  margin:4px 8px;
-  flex-shrink:0;
-}
-
 @media(max-width:600px){
-  .sidebar{transform:translateX(-100%);width:52px;}
-  .sidebar.open{width:196px;transform:translateX(0);}
-  .sidebar.open .sidebar-label{opacity:1;}
-  
-  .sidebar-toggle{display:flex!important;}
   .kpi5,.kpi4,.ind3{grid-template-columns:1fr 1fr}
   .kpi5 .kpi:nth-child(5){grid-column:1 / span 2;max-width:50%;margin:0 auto}
   .g2{grid-template-columns:1fr}
@@ -204,7 +146,6 @@ table.t tr:hover td{background:#F0F7FD}
   gtag('js', new Date());
   gtag('config', 'G-N6KQH84GZQ');
 </script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 </head>
 <body>
 
@@ -218,38 +159,7 @@ table.t tr:hover td{background:#F0F7FD}
     <button class="btn-lo" id="btn-logout" style="white-space:nowrap">Cerrar sesion</button>
   </div>
 </nav>
-<!-- Botón toggle mobile -->
-<button id="sidebar-toggle" onclick="toggleSidebar()" style="display:none;position:fixed;bottom:20px;right:20px;z-index:200;background:var(--navy);color:#fff;border:none;border-radius:50%;width:48px;height:48px;font-size:20px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.2)">☰</button>
 
-<!-- Sidebar -->
-<nav class="sidebar" id="sidebar" style="display:none">
-  <a class="sidebar-item active" href="#sec-ventas" onclick="setActive(this)">
-    <span class="sidebar-icon"><i class="ti ti-trending-up"></i></span>
-    <span class="sidebar-label">Ventas</span>
-  </a>
-  <a class="sidebar-item" href="#sec-comp-anual" onclick="setActive(this)">
-    <span class="sidebar-icon"><i class="ti ti-layout-grid"></i></span>
-    <span class="sidebar-label">Comp. anual</span>
-  </a>
-  <div class="sidebar-divider"></div>
-  <a class="sidebar-item" href="#sec-gastos" onclick="setActive(this)">
-    <span class="sidebar-icon"><i class="ti ti-coin"></i></span>
-    <span class="sidebar-label">Gastos</span>
-  </a>
-  <div class="sidebar-divider"></div>
-  <a class="sidebar-item" href="#sec-indicadores" onclick="setActive(this)">
-    <span class="sidebar-icon"><i class="ti ti-chart-bar"></i></span>
-    <span class="sidebar-label">Indicadores</span>
-  </a>
-  <a class="sidebar-item" href="#sec-eerr" onclick="setActive(this)">
-    <span class="sidebar-icon"><i class="ti ti-file-description"></i></span>
-    <span class="sidebar-label">EERR</span>
-  </a>
-  <a class="sidebar-item" href="#eerr-comp-body" onclick="setActive(this)">
-    <span class="sidebar-icon"><i class="ti ti-calendar-stats"></i></span>
-    <span class="sidebar-label">EERR Comp.</span>
-  </a>
-</nav>
 
 <div class="loading-wrap" id="loading"><div class="spinner"></div></div>
 <div class="main" id="dashboard" style="display:none">
@@ -706,8 +616,7 @@ function cargarRango(){
 
     document.getElementById('loading').style.display='none';
     document.getElementById('dashboard').style.display='block';
-    var sb=document.getElementById('sidebar');
-    if(sb) sb.style.display='flex';
+
 
     // Punto de equilibrio (siempre últimos 3 meses)
     calcularPuntoEquilibrio();
@@ -1835,7 +1744,7 @@ function cargarPeriodo(periodo){
 
     document.getElementById('loading').style.display='none';
     document.getElementById('dashboard').style.display='block';
-    document.getElementById('sidebar').style.display='flex';
+
     actualizarComp();
   });
 }
@@ -2083,36 +1992,6 @@ window.addEventListener('message', function(e){
     document.getElementById('dashboard').style.display='none';
   }
 });
-
-function setActive(el){
-  document.querySelectorAll('.sidebar-item').forEach(function(i){i.classList.remove('active');});
-  el.classList.add('active');
-}
-function toggleSidebar(){
-  document.getElementById('sidebar').classList.toggle('open');
-}
-// Detectar sección visible al hacer scroll
-window.addEventListener('scroll',function(){
-  var secs=[
-    {id:'sec-ventas',link:0},{id:'sec-comp-anual',link:1},
-    {id:'sec-gastos',link:3},{id:'sec-indicadores',link:5},
-    {id:'sec-eerr',link:6}
-  ];
-  var items=document.querySelectorAll('.sidebar-item');
-  var current=0;
-  secs.forEach(function(s){
-    var el=document.getElementById(s.id);
-    if(el&&el.getBoundingClientRect().top<=120) current=s.link;
-  });
-  items.forEach(function(i){i.classList.remove('active');});
-  if(items[current]) items[current].classList.add('active');
-},true);
-
-// Mostrar toggle en mobile
-if(window.innerWidth<=600){
-  var t=document.getElementById('sidebar-toggle');
-  if(t)t.style.display='flex';
-}
 
 iniciar();
 
