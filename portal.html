@@ -523,7 +523,7 @@ function cargarRango(){
 
     // Formas de pago
     var pagos={};
-    productos.forEach(function(p){var fp=p.forma_pago||'Sin datos';pagos[fp]=(pagos[fp]||0)+Number(p.monto||0);});
+    productos.forEach(function(p){var fp=p.forma_pago||'Sin datos';pagos[fp]=(pagos[fp]||0)+getMontoProducto(p);});
     var pagArr=Object.entries(pagos).sort(function(a,b){return b[1]-a[1];});
     var tbPag=document.getElementById('tb-pagos');
     if(tbPag) tbPag.innerHTML=pagArr.map(function(e){return '<tr><td style="padding:7px 10px;font-size:12px">'+e[0]+'</td><td class="num">'+fmt(e[1])+'</td><td class="pct">'+pct(e[1],vb)+'</td></tr>';}).join('');
@@ -536,7 +536,7 @@ function cargarRango(){
     productos.forEach(function(p){
       var t=p.turno&&p.turno.trim()!==''?p.turno.trim():'Sin turno';
       if(!turnos[t])turnos[t]={monto:0,folios:{}};
-      turnos[t].monto+=Number(p.monto||0);
+      turnos[t].monto+=getMontoProducto(p);
       // Contar folio único
       if(p.folio&&p.folio!==''){
         turnos[t].folios[p.folio]=1;
@@ -1634,7 +1634,7 @@ function cargarPeriodo(periodo){
 
     // Formas de pago
     var pagos={};
-    productos.forEach(function(p){ var fp=p.forma_pago||'Sin datos'; pagos[fp]=(pagos[fp]||0)+Number(p.monto||0); });
+    productos.forEach(function(p){ var fp=p.forma_pago||'Sin datos'; pagos[fp]=(pagos[fp]||0)+getMontoProducto(p); });
     var pagArr=Object.entries(pagos).sort(function(a,b){return b[1]-a[1];});
     document.getElementById('tb-pagos').innerHTML=pagArr.map(function(e){
       return '<tr><td style="padding:7px 10px;font-size:12px">'+e[0]+'</td><td class="num">'+fmt(e[1])+'</td><td class="pct">'+pct(e[1],vb)+'</td></tr>';
@@ -1642,7 +1642,7 @@ function cargarPeriodo(periodo){
 
     // Tabla ventas desplegable
     var cats={};
-    productos.forEach(function(p){ var cat=p.categoria||'Sin categoria'; if(!cats[cat])cats[cat]={items:[],total:0,cant:0}; cats[cat].items.push(p); cats[cat].total+=Number(p.monto||0); cats[cat].cant+=Number(p.cantidad||0); });
+    productos.forEach(function(p){ var cat=p.categoria||'Sin categoria'; if(!cats[cat])cats[cat]={items:[],total:0,cant:0}; cats[cat].items.push(p); cats[cat].total+=getMontoProducto(p); cats[cat].cant+=Number(p.cantidad||0); });
     var rows='';
     Object.entries(cats).sort(function(a,b){return b[1].total-a[1].total;}).forEach(function(e){
       rows+='<tr class="crow" onclick="toggleProd(this)"><td style="padding:8px 10px;font-size:13px">&#9658; '+e[0]+'</td><td class="num">'+e[1].cant+'</td><td class="num">'+fmt(e[1].total)+'</td><td class="pct">'+pct(e[1].total,vb)+'</td></tr>';
