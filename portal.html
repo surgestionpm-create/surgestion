@@ -707,7 +707,10 @@ function cargarRango(){
 
     document.getElementById('loading').style.display='none';
     document.getElementById('dashboard').style.display='block';
-    document.getElementById('sidebar').style.display='flex';
+    var sb=document.getElementById('sidebar');
+    console.log('sidebar element:',sb,'display antes:',sb?sb.style.display:'NO EXISTE');
+    if(sb) sb.style.display='flex';
+    console.log('sidebar display despues:',sb?sb.style.display:'NO EXISTE');
 
     // Punto de equilibrio (siempre últimos 3 meses)
     calcularPuntoEquilibrio();
