@@ -88,9 +88,10 @@ table.t tr:hover td{background:#F0F7FD}
   background:#1C3452;
   padding:12px 0;z-index:90;overflow:hidden;
   transition:width .22s cubic-bezier(.4,0,.2,1);
-  display:flex;flex-direction:column;gap:2px;
+  display:none;flex-direction:column;gap:2px;
   border-right:1px solid rgba(255,255,255,.06);
 }
+.sidebar.visible{display:flex;}
 .sidebar:hover{width:196px;}
 .sidebar-item{
   display:flex;align-items:center;gap:0;
@@ -687,6 +688,7 @@ function cargarRango(){
 
     document.getElementById('loading').style.display='none';
     document.getElementById('dashboard').style.display='block';
+    document.getElementById('sidebar').classList.add('visible');
 
     // Punto de equilibrio (siempre últimos 3 meses)
     calcularPuntoEquilibrio();
@@ -1814,6 +1816,7 @@ function cargarPeriodo(periodo){
 
     document.getElementById('loading').style.display='none';
     document.getElementById('dashboard').style.display='block';
+    document.getElementById('sidebar').classList.add('visible');
     actualizarComp();
   });
 }
