@@ -597,7 +597,7 @@ function procesarVentas(input){
         var periodo=mes+' '+ano;
         var nom=String(r[nomKey]||'').trim();
         if(!nom)return;
-        var can=parseInt(r[canKey]||0)||0;
+        var can=parseInt(String(r[canKey]||'').replace(/[^0-9.-]/g,''))||0;
         var mon=parseFloat(String(r[pagKey]||'0').replace(/[^0-9.-]/g,''))||0;
         var precioBase=parseFloat(String(r[precioBaseKey]||'0').replace(/[^0-9.-]/g,''))||0;
         var cat=String(r[catKey]||'Sin categoria').trim();
