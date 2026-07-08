@@ -1353,15 +1353,19 @@ function fetchById(table, id){
   return page(0);
 }
 function fetchByIds(table, ids){
-  var result=[];
-  function next(i){
-    if(i>=ids.length) return Promise.resolve(result);
-    return fetchById(table,ids[i]).then(function(rows){
-      result=result.concat(rows);
-      return next(i+1);
-    });
+  // Paralelo en grupos de 5 para no saturar Supabase
+  var CONCURRENT=5;
+  var allResults=[];
+  function runGroup(start){
+    if(start>=ids.length) return Promise.resolve(allResults);
+    var group=ids.slice(start,start+CONCURRENT);
+    return Promise.all(group.map(function(id){return fetchById(table,id);}))
+      .then(function(arrays){
+        arrays.forEach(function(rows){allResults=allResults.concat(rows);});
+        return runGroup(start+CONCURRENT);
+      });
   }
-  return next(0);
+  return runGroup(0);
 }
 
 function iniciar(){
