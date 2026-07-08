@@ -483,7 +483,7 @@ function cargarRango(){
 
     // Gráfico ventas por categoría
     var catV={};
-    productos.forEach(function(p){var cat=p.categoria||'Sin categoria';catV[cat]=(catV[cat]||0)+Number(p.monto||0);});
+    productos.forEach(function(p){var cat=p.categoria||'Sin categoria';catV[cat]=(catV[cat]||0)+getMontoProducto(p);});
     var catArr=Object.entries(catV).sort(function(a,b){return b[1]-a[1];});
     _catVData=catArr; _vdetVb=vb;
     dc('vcat');
@@ -1618,7 +1618,7 @@ function cargarPeriodo(periodo){
 
     // Chart ventas por categoria
     var catV={};
-    productos.forEach(function(p){ var cat=p.categoria||'Sin categoria'; catV[cat]=(catV[cat]||0)+Number(p.monto||0); });
+    productos.forEach(function(p){ var cat=p.categoria||'Sin categoria'; catV[cat]=(catV[cat]||0)+getMontoProducto(p); });
     var catArr=Object.entries(catV).sort(function(a,b){return b[1]-a[1];});
 
     dc('vcat');
