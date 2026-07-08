@@ -89,7 +89,6 @@ table.t tr:hover td{background:#F0F7FD}
   width:52px;
   background:#1C3452;
   z-index:200;
-  display:none;
   flex-direction:column;
   gap:4px;
   padding:12px 0;
@@ -97,7 +96,7 @@ table.t tr:hover td{background:#F0F7FD}
   overflow-y:auto;
   transition:width .2s ease;
 }
-.sidebar.visible{display:flex;}
+
 .sidebar:hover{width:200px;}
 .sidebar-item{
   display:flex;
@@ -224,7 +223,7 @@ table.t tr:hover td{background:#F0F7FD}
 <button id="sidebar-toggle" onclick="toggleSidebar()" style="display:none;position:fixed;bottom:20px;right:20px;z-index:200;background:var(--navy);color:#fff;border:none;border-radius:50%;width:48px;height:48px;font-size:20px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.2)">☰</button>
 
 <!-- Sidebar -->
-<nav class="sidebar" id="sidebar">
+<nav class="sidebar" id="sidebar" style="display:none">
   <a class="sidebar-item active" href="#sec-ventas" onclick="setActive(this)">
     <span class="sidebar-icon"><i class="ti ti-trending-up"></i></span>
     <span class="sidebar-label">Ventas</span>
@@ -708,7 +707,7 @@ function cargarRango(){
 
     document.getElementById('loading').style.display='none';
     document.getElementById('dashboard').style.display='block';
-    document.getElementById('sidebar').classList.add('visible');
+    document.getElementById('sidebar').style.display='flex';
 
     // Punto de equilibrio (siempre últimos 3 meses)
     calcularPuntoEquilibrio();
@@ -1836,7 +1835,7 @@ function cargarPeriodo(periodo){
 
     document.getElementById('loading').style.display='none';
     document.getElementById('dashboard').style.display='block';
-    document.getElementById('sidebar').classList.add('visible');
+    document.getElementById('sidebar').style.display='flex';
     actualizarComp();
   });
 }
