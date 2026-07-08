@@ -85,7 +85,8 @@ table.t tr:hover td{background:#F0F7FD}
 /* ── SIDEBAR NAV ─────────────────────── */
 .sidebar{
   position:fixed;
-  left:0;top:64px;bottom:0;
+  left:0;top:64px;
+  height:calc(100vh - 64px);
   width:52px;
   background:#1C3452;
   z-index:200;
@@ -708,9 +709,7 @@ function cargarRango(){
     document.getElementById('loading').style.display='none';
     document.getElementById('dashboard').style.display='block';
     var sb=document.getElementById('sidebar');
-    console.log('sidebar element:',sb,'display antes:',sb?sb.style.display:'NO EXISTE');
     if(sb) sb.style.display='flex';
-    console.log('sidebar display despues:',sb?sb.style.display:'NO EXISTE');
 
     // Punto de equilibrio (siempre últimos 3 meses)
     calcularPuntoEquilibrio();
