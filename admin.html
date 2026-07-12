@@ -696,9 +696,9 @@ async function subirDatos(){
           return {
             reporte_id:p.reporte_id,
             nombre:String(p.nombre||'').slice(0,200),
-            cantidad:Number(p.cantidad)||0,
-            monto:Number(p.monto)||0,
-            precio_base:Number(p.precio_base)||0,
+            cantidad:Math.round(Number(p.cantidad)||0),
+            monto:Math.round(Number(p.monto)||0),
+            precio_base:Math.round(Number(p.precio_base)||0),
             categoria:String(p.categoria||'').slice(0,100),
             forma_pago:String(p.forma_pago||'').slice(0,100),
             turno:String(p.turno||'').slice(0,50),
