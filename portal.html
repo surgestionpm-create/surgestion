@@ -481,6 +481,26 @@ function cargarRango(){
     document.getElementById('iv-mb').textContent = mb+'%';
     document.getElementById('iv-mn').textContent = mn+'%';
 
+    // ── IVA ESTIMADO F29 ──────────────────────────────────────────
+    // IVA Débito: ventas brutas × 0.19/1.19
+    var ivaDebito = Math.round(vb * 0.19 / 1.19);
+    // IVA Crédito: solo gastos con "Factura Electrónica" × 0.19/1.19
+    var ivaCredito = 0;
+    costos.forEach(function(c){
+      var td = (c.tipo_documento||'').toLowerCase();
+      if(/factura.*electr/i.test(td)){
+        var montoGasto = Number(c.monto||0);
+        ivaCredito += Math.round(montoGasto * 0.19 / 1.19);
+      }
+    });
+    var ivaPagar = ivaDebito - ivaCredito;
+    document.getElementById('iv-iva-debito').textContent = fmt(ivaDebito);
+    document.getElementById('iv-iva-credito').textContent = fmt(ivaCredito);
+    document.getElementById('iv-iva-pagar').textContent = (ivaPagar>=0?'':'-')+fmt(Math.abs(ivaPagar));
+    document.getElementById('iv-iva-pagar').style.color = ivaPagar>=0?'#FF6B6B':'#5DECA0';
+    document.getElementById('ind-iva-result').style.background = ivaPagar>=0?'#922B21':'#1a5276';
+    document.getElementById('ih-iva-pagar').textContent = ivaPagar>=0?'IVA A PAGAR':'REMANENTE A FAVOR';
+
     // Gráfico ventas por categoría
     var catV={};
     productos.forEach(function(p){var cat=p.categoria||'Sin categoria';catV[cat]=(catV[cat]||0)+getMontoProducto(p);});
