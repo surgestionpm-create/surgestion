@@ -285,6 +285,11 @@ table.t tr:hover td{background:#F0F7FD}
     <div class="ind"><div class="il">Margen neto</div><div class="iv" id="iv-mn">--</div><div class="ih">= Resultado / Vtas brutas x 100</div></div>
     <div class="ind" style="background:#2A4A6B"><div class="il">Punto de equilibrio</div><div class="iv" id="iv-pe">--</div><div class="ih">Prom. ultimos 3 meses | CF / (1 - CV/VN)</div></div>
   </div>
+  <div class="ind3" style="grid-template-columns:repeat(3,1fr);margin-top:12px;margin-bottom:16px">
+    <div class="ind" style="background:#1a5276"><div class="il">IVA Débito (ventas)</div><div class="iv" id="iv-iva-debito">--</div><div class="ih">Vtas brutas × 0.19 / 1.19</div></div>
+    <div class="ind" style="background:#1a5276"><div class="il">IVA Crédito (facturas)</div><div class="iv" id="iv-iva-credito">--</div><div class="ih">Gastos c/factura electrónica × 0.19 / 1.19</div></div>
+    <div class="ind" id="ind-iva-result" style="background:#1a5276"><div class="il">IVA estimado F29</div><div class="iv" id="iv-iva-pagar">--</div><div class="ih" id="ih-iva-pagar">Débito - Crédito</div></div>
+  </div>
 
   <p class="sec" id="sec-eerr">Estado de Resultados</p>
   <div class="card"><div class="cb" id="eerr-body"></div></div>
