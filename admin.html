@@ -530,7 +530,7 @@ function procesarVentas(input){
         var periodo=ma.mes+' '+ma.ano;
         var nom=String(r['Cliente']||'Venta mostrador').trim()||'Venta mostrador';
         var mon=parseFloat(String(r['Total']||'0').replace(/[^0-9.-]/g,''))||0;
-        if(!mon)return;
+        // permitir mon=0
         var fp=String(r['Medio de Pago']||r['Forma de Pago']||'').trim();
         if(!ventasData[periodo])ventasData[periodo]=[];
         ventasData[periodo].push({nombre:nom,cantidad:1,monto:mon,precio_base:0,cat:r['Tipo de Venta']||'Venta',fp:fp,turno:'',folio:''});
@@ -546,7 +546,7 @@ function procesarVentas(input){
         var periodo=ma.mes+' '+ma.ano;
         var can=parseInt(r['Cantidad']||0)||0;
         var mon=parseFloat(String(r['Precio a Pagar']||r['Precio Base']||'0').replace(/[^0-9.-]/g,''))||0;
-        if(!mon)return;
+        // permitir mon=0
         var cat=r['Categorías de Productos/Platos']||r['Categoria Productos']||r['CategorÃ­as de Productos/Platos']||'Sin categoria';
         cat=String(cat).replace(/Ã­/g,'i').replace(/Ã³/g,'o').replace(/Ã©/g,'e').replace(/Ã¡/g,'a').replace(/Ãº/g,'u').replace(/Ã±/g,'n');
         var fp=String(r['Forma de Pago']||r['Forma de pago']||'').trim();
@@ -568,7 +568,7 @@ function procesarVentas(input){
         var periodo=ma.mes+' '+ma.ano;
         var can=parseInt(r['Cantidad']||0)||0;
         var mon=parseFloat(String(r['Venta Total Bruta']||r['Precio Bruto Unitario']||'0').replace(/[^0-9.-]/g,''))||0;
-        if(!mon)return;
+        // permitir mon=0
         var cat=String(r['Tipo de Producto / Servicio']||'Sin categoria').trim();
         var fp=String(r['Forma de Pago']||r['Medio de Pago']||'').trim();
         var turno=String(r['Turno']||r['turno']||'').trim();
@@ -601,6 +601,7 @@ function procesarVentas(input){
         var mon=parseFloat(String(r[pagKey]||'0').replace(/[^0-9.-]/g,''))||0;
         var precioBase=parseFloat(String(r[precioBaseKey]||'0').replace(/[^0-9.-]/g,''))||0;
         var cat=String(r[catKey]||'Sin categoria').trim();
+        // No descartar filas con monto 0 si tienen precio_base
         var fp=String(r[fpKey]||'').trim();
         var turno=String(r[turnoKey]||'').trim();
         var folio=String(r[folioKey]||'').trim();
