@@ -615,7 +615,9 @@ function procesarVentas(input){
     }
 
     var periodos=Object.keys(ventasData);
+    var totalFilas=periodos.reduce(function(s,p){return s+(ventasData[p]||[]).length;},0);
     console.log('Periodos ventas:',periodos,'Formato:',formato);
+    console.log('Total filas en ventasData:',totalFilas);
     var box=document.getElementById('preview-ventas');
     var items=document.getElementById('preview-ventas-items');
     if(!periodos.length){
