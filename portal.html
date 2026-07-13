@@ -188,12 +188,14 @@ table.t tr:hover td{background:#F0F7FD}
   </div>
 
   <p class="sec" id="sec-ventas">Ventas del periodo</p>
-  <div class="kpi5">
+  <div class="kpi5" style="grid-template-columns:repeat(7,1fr)">
     <div class="kpi"><div class="kl">Ventas brutas</div><div class="kv" id="kv-vb">--</div><span class="kb bb">Con IVA</span></div>
     <div class="kpi"><div class="kl">Ventas netas</div><div class="kv" id="kv-vn">--</div><span class="kb bb">Sin IVA</span></div>
     <div class="kpi"><div class="kl">Gastos brutos</div><div class="kv" id="kv-gb">--</div><span class="kb bo">Con IVA</span></div>
     <div class="kpi"><div class="kl">Gastos netos</div><div class="kv" id="kv-gn">--</div><span class="kb bo">Sin IVA</span></div>
     <div class="kpi"><div class="kl">Resultado del mes</div><div class="kv" id="kv-res-mes">--</div><span class="kb bb">Vtas netas - Gtos netos</span></div>
+    <div class="kpi" style="border-left:2px solid var(--blue)"><div class="kl">Proyección mensual</div><div class="kv" id="kv-proyeccion">--</div><span class="kb bb" id="kb-proyeccion">Run Rate</span></div>
+    <div class="kpi" style="border-left:2px solid var(--blue)"><div class="kl">Variación interanual</div><div class="kv" id="kv-yoy">--</div><span class="kb" id="kb-yoy" style="font-size:9px">Estadística basada en ritmo diario</span></div>
 
   </div>
 
@@ -389,6 +391,97 @@ function arr(v, prev, invertido){
   return '<span class="arr-eq">&#9654;</span>';
 }
 
+function calcularRunRateYoY(sel, vb){
+  // ── Detectar si el periodo seleccionado es un solo mes ────────
+  if(!sel || sel.length !== 1){ 
+    var elP=document.getElementById('kv-proyeccion');
+    var elY=document.getElementById('kv-yoy');
+    if(elP) elP.textContent='--';
+    if(elY) elY.textContent='--';
+    return;
+  }
+
+  var periodoActivo = sel[0]; // ej: "julio 2026"
+  var partes = periodoActivo.split(' ');
+  var mesStr = partes[0].toLowerCase();
+  var anioStr = partes[1];
+
+  var MESES = ['enero','febrero','marzo','abril','mayo','junio',
+               'julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  var mesIdx = MESES.indexOf(mesStr); // 0-based
+  var anio   = parseInt(anioStr);
+
+  // ── Calcular total días del mes ────────────────────────────────
+  var diasDelMes = new Date(anio, mesIdx + 1, 0).getDate();
+
+  // ── ¿Es el mes actual o ya cerró? ─────────────────────────────
+  var hoy = new Date();
+  var mesHoy  = hoy.getMonth();  // 0-based
+  var anioHoy = hoy.getFullYear();
+
+  var proyeccion;
+  var diasTranscurridos;
+  var esActual = (mesIdx === mesHoy && anio === anioHoy);
+
+  if(esActual){
+    diasTranscurridos = hoy.getDate(); // día de hoy
+    if(diasTranscurridos <= 0) diasTranscurridos = 1;
+    proyeccion = Math.round((vb / diasTranscurridos) * diasDelMes);
+  } else {
+    // Mes histórico cerrado → proyección = 100% venta real
+    proyeccion = Math.round(vb);
+    diasTranscurridos = diasDelMes;
+  }
+
+  // ── Buscar venta del mismo mes año anterior ────────────────────
+  var mesAnterior = mesStr + ' ' + (anio - 1);
+  var repAnterior = _reportes.find(function(r){ return r.periodo === mesAnterior; });
+  var vbAnterior  = repAnterior ? Number(repAnterior.ventas_brutas||0) : 0;
+
+  // ── Calcular YoY ──────────────────────────────────────────────
+  var yoyPct, yoyStr, yoyColor, yoyIcon;
+  if(vbAnterior === 0){
+    yoyStr   = proyeccion > 0 ? 'N/A (sin dato anterior)' : 'N/A';
+    yoyColor = '#5E7A94';
+    yoyIcon  = '';
+  } else {
+    yoyPct   = ((proyeccion - vbAnterior) / vbAnterior) * 100;
+    var signo = yoyPct >= 0 ? '+' : '';
+    yoyStr   = signo + yoyPct.toFixed(1) + '%';
+    yoyColor = yoyPct >= 0 ? 'var(--green)' : 'var(--red)';
+    yoyIcon  = yoyPct >= 0 ? '▲ ' : '▼ ';
+  }
+
+  // ── Renderizar ─────────────────────────────────────────────────
+  var elP   = document.getElementById('kv-proyeccion');
+  var elY   = document.getElementById('kv-yoy');
+  var kbP   = document.getElementById('kb-proyeccion');
+  var kbY   = document.getElementById('kb-yoy');
+
+  if(elP){
+    elP.textContent = fmt(proyeccion);
+    elP.style.color = '';
+  }
+  if(kbP){
+    kbP.textContent = esActual
+      ? 'Día '+diasTranscurridos+' de '+diasDelMes+' | Run Rate'
+      : 'Mes cerrado | Venta real';
+    kbP.className = 'kb bb';
+  }
+  if(elY){
+    elY.textContent = yoyIcon + yoyStr;
+    elY.style.color = yoyColor;
+    elY.style.fontSize = '18px';
+    elY.style.fontWeight = '700';
+  }
+  if(kbY){
+    kbY.textContent = 'Ritmo diario vs ' + (anio-1);
+    kbY.className = 'kb ' + (vbAnterior > 0 && yoyPct >= 0 ? 'bg' : vbAnterior > 0 ? 'br' : 'bb');
+  }
+}
+
+
+
 document.getElementById('btn-logout').onclick = function(){
   sb_client.auth.signOut().then(function(){ window.location.href='https://surgestionpm.cl/login.html'; });
 };
@@ -514,6 +607,9 @@ function cargarRango(){
       resMes.textContent = (resultado>=0?'+':'')+fmt(Math.abs(resultado));
       resMes.style.color = resultado>=0?'var(--green)':'var(--red)';
     }
+
+    // Proyección Run Rate + YoY
+    calcularRunRateYoY(sel, vb);
 
     // Indicadores
     document.getElementById('iv-res').textContent = (resultado>=0?'+':'')+fmt(Math.abs(resultado));
@@ -1662,6 +1758,9 @@ function cargarPeriodo(periodo){
       resMes.textContent = (resultado>=0?'+':'')+fmt(Math.abs(resultado));
       resMes.style.color = resultado>=0?'var(--green)':'var(--red)';
     }
+
+    // Proyección Run Rate + YoY
+    calcularRunRateYoY(sel, vb);
 
     // KPIs gastos
     document.getElementById('kv-gb2').textContent = fmt(gbOp);
