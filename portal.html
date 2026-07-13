@@ -197,6 +197,14 @@ table.t tr:hover td{background:#F0F7FD}
 
   </div>
 
+  <div style="display:flex;justify-content:center;margin-bottom:16px">
+    <div style="display:grid;grid-template-columns:repeat(3,220px);gap:12px">
+      <div class="ind" style="background:#1a5276"><div class="il">IVA Débito (ventas)</div><div class="iv" id="iv-iva-debito">--</div><div class="ih">Vtas brutas × 0.19 / 1.19</div></div>
+      <div class="ind" style="background:#1a5276"><div class="il">IVA Crédito (facturas)</div><div class="iv" id="iv-iva-credito">--</div><div class="ih">(Facturas Neto * 0.19) - (NC Neto * 0.19)</div></div>
+      <div class="ind" id="ind-iva-result" style="background:#1a5276"><div class="il">IVA estimado F29</div><div class="iv" id="iv-iva-pagar">--</div><div class="ih" id="ih-iva-pagar">Débito - Crédito</div></div>
+    </div>
+  </div>
+
   <div class="card" id="sec-comp-anual" style="margin-bottom:16px">
     <div class="ch"><span class="ct">Comparativo anual de ventas brutas</span></div>
     <div class="cb" style="padding:0;overflow-x:auto"><div id="tabla-comp-anual"></div></div>
@@ -285,11 +293,7 @@ table.t tr:hover td{background:#F0F7FD}
     <div class="ind"><div class="il">Margen neto</div><div class="iv" id="iv-mn">--</div><div class="ih">= Resultado / Vtas brutas x 100</div></div>
     <div class="ind" style="background:#2A4A6B"><div class="il">Punto de equilibrio</div><div class="iv" id="iv-pe">--</div><div class="ih">Prom. ultimos 3 meses | CF / (1 - CV/VN)</div></div>
   </div>
-  <div class="ind3" style="grid-template-columns:repeat(3,1fr);margin-top:12px;margin-bottom:16px">
-    <div class="ind" style="background:#1a5276"><div class="il">IVA Débito (ventas)</div><div class="iv" id="iv-iva-debito">--</div><div class="ih">Vtas brutas × 0.19 / 1.19</div></div>
-    <div class="ind" style="background:#1a5276"><div class="il">IVA Crédito (facturas)</div><div class="iv" id="iv-iva-credito">--</div><div class="ih">Gastos c/factura electrónica × 0.19 / 1.19</div></div>
-    <div class="ind" id="ind-iva-result" style="background:#1a5276"><div class="il">IVA estimado F29</div><div class="iv" id="iv-iva-pagar">--</div><div class="ih" id="ih-iva-pagar">Débito - Crédito</div></div>
-  </div>
+
 
   <p class="sec" id="sec-eerr">Estado de Resultados</p>
   <div class="card"><div class="cb" id="eerr-body"></div></div>
@@ -324,7 +328,7 @@ var _eerrHasta = null;
 var _eerrBloqueado = false;
 var COLS = ['#3A8FD1','#1B3A5C','#27AE60','#E67E22','#8E44AD','#E74C3C','#16A085','#F39C12','#5BAEE8','#2ECC71','#C0392B','#9B59B6'];
 
-function fmt(n){ if(n==null||isNaN(n)) return '--'; return '$'+Number(n).toLocaleString('es-CL'); }
+function fmt(n){ if(n==null||isNaN(n)) return '--'; return '$'+Math.round(Number(n)).toLocaleString('es-CL'); }
 function pct(v,t){ return t>0?((v/t)*100).toFixed(1)+'%':'0.0%'; }
 function dc(id){ if(charts[id]){try{charts[id].destroy();}catch(e){}} }
 
@@ -342,6 +346,37 @@ function getNeto(c){
   // Si no existe monto_neto, usar monto_bruto como fallback
   var mn = Number(c.monto_neto||0);
   return mn > 0 ? mn : Number(c.monto||0);
+}
+
+function getNetoDoc(c){
+  // Motor SII: clasifica por tipo_documento
+  var td = (c.tipo_documento||'').toLowerCase();
+  var monto = Number(c.monto||0);
+  var montoNeto = Number(c.monto_neto||0);
+  if(/factura electr/i.test(td) && !/no afecta|exenta/i.test(td)){
+    return montoNeto !== 0 ? montoNeto : monto;
+  } else if(/nota.*cr|nc.*electr/i.test(td)){
+    return montoNeto !== 0 ? montoNeto : monto;
+  } else if(/no afecta|exenta/i.test(td)){
+    return montoNeto > 0 ? montoNeto : monto;
+  } else {
+    // Comprobante de pago, boleta, liquidación → 100% bruto
+    return monto;
+  }
+}
+
+function getIvaCredito(c){
+  // IVA Crédito: Facturas afectas (+) y Notas de Crédito (-)
+  var td = (c.tipo_documento||'').toLowerCase();
+  var monto = Number(c.monto||0);
+  var montoNeto = Number(c.monto_neto||0);
+  var base = montoNeto !== 0 ? montoNeto : monto;
+  if(/factura electr/i.test(td) && !/no afecta|exenta/i.test(td)){
+    return Math.round(base * 0.19);
+  } else if(/nota.*cr|nc.*electr/i.test(td)){
+    return Math.round(base * 0.19); // negativo si NC
+  }
+  return 0;
 }
 
 // Flecha de tendencia
@@ -445,17 +480,17 @@ function cargarRango(){
 
     // Gastos acumulados
     var gb = costos.reduce(function(s,c){return s+Number(c.monto||0);},0);
-    var gn = costos.reduce(function(s,c){return s+getNeto(c);},0);
+    var gn = costos.reduce(function(s,c){return s+getNetoDoc(c);},0);
 
     var impBruto = costos.filter(function(c){return /impuesto|iva|tribut/i.test(c.familia||c.categoria||'');}).reduce(function(s,c){return s+Number(c.monto||0);},0);
-    var impNeto  = costos.filter(function(c){return /impuesto|iva|tribut/i.test(c.familia||c.categoria||'');}).reduce(function(s,c){return s+getNeto(c);},0);
+    var impNeto  = costos.filter(function(c){return /impuesto|iva|tribut/i.test(c.familia||c.categoria||'');}).reduce(function(s,c){return s+getNetoDoc(c);},0);
     var gbOp = gb-impBruto;
     var gnOp = gn-impNeto;
     var resultado = vn-gnOp;
 
     var hasTipo = costos.some(function(c){return c.tipo_gasto&&c.tipo_gasto.trim()!=='';});
-    var cf = costos.filter(function(c){return /fijo/i.test(c.tipo_gasto||'');}).reduce(function(s,c){return s+getNeto(c);},0);
-    var cv = costos.filter(function(c){return /variable/i.test(c.tipo_gasto||'');}).reduce(function(s,c){return s+getNeto(c);},0);
+    var cf = costos.filter(function(c){return /fijo/i.test(c.tipo_gasto||'');}).reduce(function(s,c){return s+getNetoDoc(c);},0);
+    var cv = costos.filter(function(c){return /variable/i.test(c.tipo_gasto||'');}).reduce(function(s,c){return s+getNetoDoc(c);},0);
     if(!hasTipo){cf=gnOp;cv=0;}
 
     var mb = vn>0?((resultado/vn)*100).toFixed(1):0;
@@ -486,25 +521,20 @@ function cargarRango(){
     document.getElementById('iv-mb').textContent = mb+'%';
     document.getElementById('iv-mn').textContent = mn+'%';
 
-    // ── IVA ESTIMADO F29 ──────────────────────────────────────────
-    // IVA Débito: ventas brutas × 0.19/1.19
+    // ── IVA ESTIMADO F29 — Motor SII Estricto ────────────────────
     var ivaDebito = Math.round(vb * 0.19 / 1.19);
-    // IVA Crédito: solo gastos con "Factura Electrónica" × 0.19/1.19
-    var ivaCredito = 0;
-    costos.forEach(function(c){
-      var td = (c.tipo_documento||'').toLowerCase();
-      if(/factura.*electr/i.test(td)){
-        var montoGasto = Number(c.monto||0);
-        ivaCredito += Math.round(montoGasto * 0.19 / 1.19);
-      }
-    });
+    var ivaCredito = costos.reduce(function(s,c){ return s + getIvaCredito(c); }, 0);
     var ivaPagar = ivaDebito - ivaCredito;
-    document.getElementById('iv-iva-debito').textContent = fmt(ivaDebito);
-    document.getElementById('iv-iva-credito').textContent = fmt(ivaCredito);
-    document.getElementById('iv-iva-pagar').textContent = (ivaPagar>=0?'':'-')+fmt(Math.abs(ivaPagar));
-    document.getElementById('iv-iva-pagar').style.color = ivaPagar>=0?'#FF6B6B':'#5DECA0';
-    document.getElementById('ind-iva-result').style.background = ivaPagar>=0?'#922B21':'#1a5276';
-    document.getElementById('ih-iva-pagar').textContent = ivaPagar>=0?'IVA A PAGAR':'REMANENTE A FAVOR';
+    var elDeb = document.getElementById('iv-iva-debito');
+    var elCred = document.getElementById('iv-iva-credito');
+    var elPagar = document.getElementById('iv-iva-pagar');
+    var elRes = document.getElementById('ind-iva-result');
+    var elHint = document.getElementById('ih-iva-pagar');
+    if(elDeb) elDeb.textContent = fmt(ivaDebito);
+    if(elCred) elCred.textContent = fmt(ivaCredito);
+    if(elPagar){ elPagar.textContent = (ivaPagar>=0?'':'-')+fmt(Math.abs(ivaPagar)); elPagar.style.color = ivaPagar>=0?'#FF6B6B':'#5DECA0'; }
+    if(elRes) elRes.style.background = ivaPagar>=0?'#922B21':'#1a5276';
+    if(elHint) elHint.textContent = ivaPagar>=0?'IVA A PAGAR (APROXIMADO)':'REMANENTE A FAVOR';
 
     // Gráfico ventas por categoría
     var catV={};
@@ -541,7 +571,7 @@ function cargarRango(){
       rows+='<tr class="crow" onclick="toggleProd(this)"><td style="padding:8px 10px;font-size:13px">&#9658; '+e[0]+'</td><td class="num">'+e[1].cant+'</td><td class="num">'+fmt(e[1].total)+'</td><td class="pct">'+pct(e[1].total,vb)+'</td></tr>';
       Object.values(e[1].prods).sort(function(a,b){return b.monto_pb-a.monto_pb;}).forEach(function(p){
         var mp=p.monto_pb;
-        rows+='<tr class="prow"><td style="padding:6px 10px 6px 26px;font-size:12px">'+p.nombre+'</td><td class="num">'+(p.cantidad||0)+'</td><td class="num">'+fmt(mp)+'</td><td class="pct">'+pct(mp,vb)+'</td></tr>';
+        rows+='<tr class="prow"><td style="padding:6px 10px 6px 26px;font-size:12px">'+p.nombre+'</td><td class="num">'+parseFloat((p.cantidad||0)).toFixed(3).replace(/\.?0+$/,'')+'</td><td class="num">'+fmt(mp)+'</td><td class="pct">'+pct(mp,vb)+'</td></tr>';
       });
     });
     document.getElementById('tb-vdet').innerHTML=rows;
@@ -600,7 +630,7 @@ function cargarRango(){
 
     // Gastos por familia
     var fams={};
-    costos.forEach(function(c){var fam=c.familia||c.categoria||'Sin familia';if(/impuesto|iva|tribut/i.test(fam))return;fams[fam]=(fams[fam]||0)+getNeto(c);});
+    costos.forEach(function(c){var fam=c.familia||c.categoria||'Sin familia';if(/impuesto|iva|tribut/i.test(fam))return;fams[fam]=(fams[fam]||0)+getNetoDoc(c);});
     var famArr=Object.entries(fams).sort(function(a,b){return b[1]-a[1];});
     dc('gfam');
     charts['gfam']=new Chart(document.getElementById('c-gfam').getContext('2d'),{
@@ -615,14 +645,14 @@ function cargarRango(){
 
     // Tipo documento
     var tiposDocs={};var totalTipoDoc=0;
-    costos.forEach(function(c){var td=c.tipo_documento||'Sin documento';var esNeto=/factura.*elec|nota.*cr/i.test(td)||/nc.*elec/i.test(td);var val=esNeto?getNeto(c):Number(c.monto||0);tiposDocs[td]=(tiposDocs[td]||0)+val;totalTipoDoc+=val;});
+    costos.forEach(function(c){var td=c.tipo_documento||'Sin documento';tiposDocs[td]=(tiposDocs[td]||0)+getNetoDoc(c);totalTipoDoc+=getNetoDoc(c);});
     var tdArr=Object.entries(tiposDocs).sort(function(a,b){return b[1]-a[1];});
     var tbTD=document.getElementById('tb-tipo-doc');
     if(tbTD){if(tdArr.length&&tdArr[0][0]!=='Sin documento'){tbTD.innerHTML=tdArr.map(function(e){var esNeto=/factura.*elec|nota.*cr/i.test(e[0])||/nc.*elec/i.test(e[0]);var badge=esNeto?'<span style="font-size:9px;background:#EBF5FB;color:#3A8FD1;border-radius:4px;padding:1px 5px;margin-left:4px">Neto</span>':'<span style="font-size:9px;background:#F8F3EC;color:#E67E22;border-radius:4px;padding:1px 5px;margin-left:4px">Bruto</span>';return '<tr><td style="padding:7px 10px;font-size:12px">'+e[0]+badge+'</td><td class="num">'+fmt(e[1])+'</td><td class="pct">'+pct(e[1],totalTipoDoc)+'</td></tr>';}).join('');}else{tbTD.innerHTML='<tr><td colspan="3" style="padding:12px;text-align:center;color:var(--muted);font-size:12px">Vuelve a subir el Excel de gastos para ver tipo de documento.</td></tr>';}}
 
     // EERR
     var famGastos={},famCats={};
-    costos.forEach(function(c){var fam=c.familia||c.categoria||'Sin familia';var prov=c.proveedor||'Sin proveedor';if(/impuesto|iva|tribut/i.test(fam))return;var neto=getNeto(c);famGastos[fam]=(famGastos[fam]||0)+neto;if(!famCats[fam])famCats[fam]={};famCats[fam][prov]=(famCats[fam][prov]||0)+neto;});
+    costos.forEach(function(c){var fam=c.familia||c.categoria||'Sin familia';var prov=c.proveedor||'Sin proveedor';if(/impuesto|iva|tribut/i.test(fam))return;var neto=getNetoDoc(c);famGastos[fam]=(famGastos[fam]||0)+neto;if(!famCats[fam])famCats[fam]={};famCats[fam][prov]=(famCats[fam][prov]||0)+neto;});
     var famList=Object.entries(famGastos).sort(function(a,b){return b[1]-a[1];});
     var notaRango=sel.length>1?'<span style="font-size:10px;color:rgba(255,255,255,.5);margin-left:8px">'+mesD.slice(0,3)+'. '+anioD+' - '+mesH.slice(0,3)+'. '+anioH+'</span>':'';
     var h='';
@@ -727,7 +757,7 @@ function exportarExcel(){
           repMap[p.reporte_id]||'',
           p.nombre||'',
           p.categoria||'',
-          p.cantidad||0,
+          parseFloat(p.cantidad||0),
           p.precio_base||0,
           p.monto||0,
           p.forma_pago||'',
@@ -1016,7 +1046,7 @@ function exportarPDF(){
     c6.forEach(function(c){
       var p=rm6[c.reporte_id];if(!p||!d6[p])return;
       if(/impuesto|iva|tribut/i.test(c.familia||c.categoria||''))return;
-      var n=getNeto(c);d6[p].gn+=n;
+      var n=getNetoDoc(c);d6[p].gn+=n;
       var f=c.familia||c.categoria||'Sin familia';
       if(!d6[p].fams[f])d6[p].fams[f]=0;d6[p].fams[f]+=n;
     });
@@ -1326,10 +1356,10 @@ function calcularPuntoEquilibrio(){
       var hasTipo = costosOp.some(function(c){ return c.tipo_gasto&&c.tipo_gasto.trim()!==''; });
       var cf, cv;
       if(hasTipo){
-        cf = costosOp.filter(function(c){ return /fijo/i.test(c.tipo_gasto||''); }).reduce(function(s,c){ return s+getNeto(c); },0);
-        cv = costosOp.filter(function(c){ return /variable/i.test(c.tipo_gasto||''); }).reduce(function(s,c){ return s+getNeto(c); },0);
+        cf = costosOp.filter(function(c){ return /fijo/i.test(c.tipo_gasto||''); }).reduce(function(s,c){ return s+getNetoDoc(c); },0);
+        cv = costosOp.filter(function(c){ return /variable/i.test(c.tipo_gasto||''); }).reduce(function(s,c){ return s+getNetoDoc(c); },0);
       } else {
-        var gnMes = costosOp.reduce(function(s,c){ return s+getNeto(c); },0);
+        var gnMes = costosOp.reduce(function(s,c){ return s+getNetoDoc(c); },0);
         cf = gnMes*0.6; cv = gnMes*0.4;
       }
 
@@ -1594,11 +1624,11 @@ function cargarPeriodo(periodo){
     // Gastos brutos = suma de monto (columna Monto Bruto del Excel)
     var gb = costos.reduce(function(s,c){ return s+Number(c.monto||0); },0);
     // Gastos netos = si no aplica IVA usar mismo valor bruto, sino calcular neto
-    var gn = costos.reduce(function(s,c){ return s+getNeto(c); },0); // Gastos netos SIEMPRE calculados sin IVA
+    var gn = costos.reduce(function(s,c){ return s+getNetoDoc(c); },0); // Gastos netos SIEMPRE calculados sin IVA
     
     // Separar impuestos (excluir de operacional)
     var impBruto = costos.filter(function(c){ return /impuesto|iva|tribut/i.test(c.familia||c.categoria||''); }).reduce(function(s,c){ return s+Number(c.monto||0); },0);
-    var impNeto  = costos.filter(function(c){ return /impuesto|iva|tribut/i.test(c.familia||c.categoria||''); }).reduce(function(s,c){ return s+getNeto(c); },0);
+    var impNeto  = costos.filter(function(c){ return /impuesto|iva|tribut/i.test(c.familia||c.categoria||''); }).reduce(function(s,c){ return s+getNetoDoc(c); },0);
 
     var gbOp = gb - impBruto;  // Gastos brutos operacionales
     var gnOp = gn - impNeto;   // Gastos netos operacionales
@@ -1606,8 +1636,8 @@ function cargarPeriodo(periodo){
 
     // Fijos/variables - usar Gasto Neto
     var hasTipo = costos.some(function(c){ return c.tipo_gasto&&c.tipo_gasto.trim()!==''; });
-    var cf = costos.filter(function(c){ return /fijo/i.test(c.tipo_gasto||''); }).reduce(function(s,c){ return s+getNeto(c); },0);
-    var cv = costos.filter(function(c){ return /variable/i.test(c.tipo_gasto||''); }).reduce(function(s,c){ return s+getNeto(c); },0);
+    var cf = costos.filter(function(c){ return /fijo/i.test(c.tipo_gasto||''); }).reduce(function(s,c){ return s+getNetoDoc(c); },0);
+    var cv = costos.filter(function(c){ return /variable/i.test(c.tipo_gasto||''); }).reduce(function(s,c){ return s+getNetoDoc(c); },0);
     if(!hasTipo){ cf=gnOp; cv=0; } // Si no hay tipo, asumir todo fijo
 
     var mb = vn>0?((resultado/vn)*100).toFixed(1):0;
@@ -1616,8 +1646,8 @@ function cargarPeriodo(periodo){
     // Anterior
     var vbAnt = repAnt?Number(repAnt.ventas_brutas||0):null;
     var vnAnt = repAnt?Number(repAnt.ventas_netas||0):null;
-    var gnAnt = costosAnt.reduce(function(s,c){ return s+getNeto(c); },0);
-    var impAnt = costosAnt.filter(function(c){ return /impuesto|iva|tribut/i.test(c.familia||c.categoria||''); }).reduce(function(s,c){ return s+getNeto(c); },0);
+    var gnAnt = costosAnt.reduce(function(s,c){ return s+getNetoDoc(c); },0);
+    var impAnt = costosAnt.filter(function(c){ return /impuesto|iva|tribut/i.test(c.familia||c.categoria||''); }).reduce(function(s,c){ return s+getNetoDoc(c); },0);
     var gnOpAnt = gnAnt-impAnt;
     var resAnt = vnAnt!==null?vnAnt-gnOpAnt:null;
 
@@ -1645,21 +1675,20 @@ function cargarPeriodo(periodo){
     document.getElementById('iv-mb').textContent = mb+'%';
     document.getElementById('iv-mn').textContent = mn+'%';
 
-    // ── IVA ESTIMADO F29 ──────────────────────────────────────────
-    var ivaDebito2 = Math.round(vb * 0.19 / 1.19);
-    var ivaCredito2 = 0;
-    costos.forEach(function(c){
-      if(/factura.*electr/i.test(c.tipo_documento||'')){
-        ivaCredito2 += Math.round(Number(c.monto||0) * 0.19 / 1.19);
-      }
-    });
-    var ivaPagar2 = ivaDebito2 - ivaCredito2;
-    document.getElementById('iv-iva-debito').textContent = fmt(ivaDebito2);
-    document.getElementById('iv-iva-credito').textContent = fmt(ivaCredito2);
-    document.getElementById('iv-iva-pagar').textContent = (ivaPagar2>=0?'':'-')+fmt(Math.abs(ivaPagar2));
-    document.getElementById('iv-iva-pagar').style.color = ivaPagar2>=0?'#FF6B6B':'#5DECA0';
-    document.getElementById('ind-iva-result').style.background = ivaPagar2>=0?'#922B21':'#1a5276';
-    document.getElementById('ih-iva-pagar').textContent = ivaPagar2>=0?'IVA A PAGAR':'REMANENTE A FAVOR';
+    // ── IVA ESTIMADO F29 — Motor SII Estricto ────────────────────
+    var ivaDebito = Math.round(vb * 0.19 / 1.19);
+    var ivaCredito = costos.reduce(function(s,c){ return s + getIvaCredito(c); }, 0);
+    var ivaPagar = ivaDebito - ivaCredito;
+    var elDeb = document.getElementById('iv-iva-debito');
+    var elCred = document.getElementById('iv-iva-credito');
+    var elPagar = document.getElementById('iv-iva-pagar');
+    var elRes = document.getElementById('ind-iva-result');
+    var elHint = document.getElementById('ih-iva-pagar');
+    if(elDeb) elDeb.textContent = fmt(ivaDebito);
+    if(elCred) elCred.textContent = fmt(ivaCredito);
+    if(elPagar){ elPagar.textContent = (ivaPagar>=0?'':'-')+fmt(Math.abs(ivaPagar)); elPagar.style.color = ivaPagar>=0?'#FF6B6B':'#5DECA0'; }
+    if(elRes) elRes.style.background = ivaPagar>=0?'#922B21':'#1a5276';
+    if(elHint) elHint.textContent = ivaPagar>=0?'IVA A PAGAR (APROXIMADO)':'REMANENTE A FAVOR';
 
     // Chart ventas por categoria
     var catV={};
@@ -1693,7 +1722,7 @@ function cargarPeriodo(periodo){
       rows+='<tr class="crow" onclick="toggleProd(this)"><td style="padding:8px 10px;font-size:13px">&#9658; '+e[0]+'</td><td class="num">'+e[1].cant+'</td><td class="num">'+fmt(e[1].total)+'</td><td class="pct">'+pct(e[1].total,vb)+'</td></tr>';
       Object.values(e[1].prods).sort(function(a,b){return b.monto_pb-a.monto_pb;}).forEach(function(p){
         var mp=p.monto_pb;
-        rows+='<tr class="prow"><td style="padding:6px 10px 6px 26px;font-size:12px">'+p.nombre+'</td><td class="num">'+(p.cantidad||0)+'</td><td class="num">'+fmt(mp)+'</td><td class="pct">'+pct(mp,vb)+'</td></tr>';
+        rows+='<tr class="prow"><td style="padding:6px 10px 6px 26px;font-size:12px">'+p.nombre+'</td><td class="num">'+parseFloat((p.cantidad||0)).toFixed(3).replace(/\.?0+$/,'')+'</td><td class="num">'+fmt(mp)+'</td><td class="pct">'+pct(mp,vb)+'</td></tr>';
       });
     });
     document.getElementById('tb-vdet').innerHTML=rows;
@@ -1703,7 +1732,7 @@ function cargarPeriodo(periodo){
     costos.forEach(function(c){
       var fam=c.familia||c.categoria||'Sin familia';
       if(/impuesto|iva|tribut/i.test(fam)) return;
-      fams[fam]=(fams[fam]||0)+getNeto(c);
+      fams[fam]=(fams[fam]||0)+getNetoDoc(c);
     });
 
     // Gastos por tipo de documento
@@ -1713,7 +1742,7 @@ function cargarPeriodo(periodo){
     costos.forEach(function(c){
       var td=c.tipo_documento||'Sin documento';
       var esNeto=/factura.*elec|nota.*cr/i.test(td)||/nc.*elec/i.test(td);
-      var val=esNeto?getNeto(c):Number(c.monto||0);
+      var val=esNeto?getNetoDoc(c):Number(c.monto||0);
       tiposDocs[td]=(tiposDocs[td]||0)+val;
       totalTipoDoc+=val;
     });
@@ -1759,7 +1788,7 @@ function cargarPeriodo(periodo){
       var fam=c.familia||c.categoria||'Sin familia';
       var cat=c.categoria||'Sin categoria';
       if(/impuesto|iva|tribut/i.test(fam)) return;
-      var neto=getNeto(c); // Monto Neto directo del Excel
+      var neto=getNetoDoc(c); // Monto Neto directo del Excel
       famGastos[fam]=(famGastos[fam]||0)+neto;
       if(!famCats[fam])famCats[fam]={};
       famCats[fam][cat]=(famCats[fam][cat]||0)+neto;
@@ -1850,7 +1879,7 @@ function actualizarComp() {
       if(!p||!dat[p]) return;
       if(/impuesto|iva|tribut/i.test(c.familia||c.categoria||'')) return;
       var bruto = Number(c.monto||0);
-      var neto  = getNeto(c);
+      var neto  = getNetoDoc(c);
       var fam   = c.familia||c.categoria||'Sin familia';
       var prov  = c.proveedor||'Sin proveedor';
       dat[p].gb += bruto;
