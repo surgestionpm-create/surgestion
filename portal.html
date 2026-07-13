@@ -930,23 +930,12 @@ function exportarPDF(estilo){
   var hoy      = new Date().toLocaleDateString('es-CL',{day:'2-digit',month:'long',year:'numeric'});
 
   // ── Variables vivas del dashboard ──
-  var vb    = document.getElementById('kv-vb')   ? document.getElementById('kv-vb').textContent   : '--';
-  var vn    = document.getElementById('kv-vn')   ? document.getElementById('kv-vn').textContent   : '--';
-  var gb    = document.getElementById('kv-gb2')  ? document.getElementById('kv-gb2').textContent  : '--';
-  var gn    = document.getElementById('kv-gn2')  ? document.getElementById('kv-gn2').textContent  : '--';
-  var cf    = document.getElementById('kv-cf')   ? document.getElementById('kv-cf').textContent   : '--';
-  var cv    = document.getElementById('kv-cv')   ? document.getElementById('kv-cv').textContent   : '--';
-  var res   = document.getElementById('iv-res')  ? document.getElementById('iv-res').textContent  : '--';
-  var mb    = document.getElementById('iv-mb')   ? document.getElementById('iv-mb').textContent   : '--';
-  var mn    = document.getElementById('iv-mn')   ? document.getElementById('iv-mn').textContent   : '--';
-  var pe    = document.getElementById('iv-pe')   ? document.getElementById('iv-pe').textContent   : '--';
-  var proy  = document.getElementById('kv-proyeccion') ? document.getElementById('kv-proyeccion').textContent : '--';
-  var yoy   = document.getElementById('kv-yoy')  ? document.getElementById('kv-yoy').textContent  : '--';
-  var ivaD  = document.getElementById('iv-iva-debito')  ? document.getElementById('iv-iva-debito').textContent  : '--';
-  var ivaC  = document.getElementById('iv-iva-credito') ? document.getElementById('iv-iva-credito').textContent : '--';
-  var ivaP  = document.getElementById('iv-iva-pagar')   ? document.getElementById('iv-iva-pagar').textContent   : '--';
-  var resNeg = res.indexOf('-') >= 0;
-  var yoyNeg = yoy.indexOf('-') >= 0 || yoy.indexOf('▼') >= 0;
+  function gEl(id){ var e=document.getElementById(id); return e?e.textContent:'--'; }
+  var vb=gEl('kv-vb'), vn=gEl('kv-vn'), gb=gEl('kv-gb2'), gn=gEl('kv-gn2');
+  var cf=gEl('kv-cf'), cv=gEl('kv-cv'), res=gEl('iv-res'), mb=gEl('iv-mb'), mn=gEl('iv-mn');
+  var pe=gEl('iv-pe'), proy=gEl('kv-proyeccion'), yoy=gEl('kv-yoy');
+  var ivaD=gEl('iv-iva-debito'), ivaC=gEl('iv-iva-credito'), ivaP=gEl('iv-iva-pagar');
+  var resNeg=res.indexOf('-')>=0, yoyNeg=yoy.indexOf('-')>=0||yoy.indexOf('▼')>=0;
 
   // ── Tablas DOM ──
   function domRows(sel){
@@ -957,1338 +946,497 @@ function exportarPDF(estilo){
     });
     return rows;
   }
-  var catRows  = domRows('#tb-catv');
-  var pagRows  = domRows('#tb-pagos');
-  var famRows  = domRows('#tb-gfam');
-  var tdRows   = domRows('#tb-tipo-doc').map(function(r){r[0]=r[0].replace(/Neto|Bruto/g,'').trim();return r;});
+  var catRows=domRows('#tb-catv');
+  var pagRows=domRows('#tb-pagos');
+  var famRows=domRows('#tb-gfam');
+  var tdRows =domRows('#tb-tipo-doc').map(function(r){r[0]=r[0].replace(/Neto|Bruto/g,'').trim();return r;});
 
-  // ── Helpers HTML ──
-  function kpiBlock(label, value, color){
-    return '<div style="background:'+color+';border-radius:8px;padding:14px 10px;text-align:center;flex:1">'
-      +'<div style="font-size:8pt;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">'+label+'</div>'
-      +'<div style="font-size:18pt;font-weight:800;color:#0f172a">'+value+'</div>'
-      +'</div>';
-  }
-  function tableHtml(head, rows, rightCols, style){
-    var s = style||'';
-    var th = head.map(function(h){return '<th style="padding:6px 8px;text-align:left;white-space:nowrap">'+h+'</th>';}).join('');
-    var trs = rows.map(function(r,i){
-      var tds = r.map(function(c,ci){
-        var align = rightCols && rightCols.indexOf(ci)>=0 ? 'right':'left';
-        return '<td style="padding:5px 8px;text-align:'+align+';border-bottom:1px solid #f1f5f9">'+c+'</td>';
-      }).join('');
-      var bg = i%2===0?'#ffffff':'#f8fafc';
-      return '<tr style="background:'+bg+'">'+tds+'</tr>';
-    }).join('');
-    return '<table style="width:100%;border-collapse:collapse;font-size:8pt;'+s+'"><thead><tr style="__THEAD__">'+th+'</tr></thead><tbody>'+trs+'</tbody></table>';
-  }
+  // ── Helpers HTML compartidos ──
   function sgLogo(){
-    return '<div style="display:flex;align-items:center;gap:5px;font-family:\'Helvetica Neue\',sans-serif;">'
+    return '<div style="display:flex;align-items:center;gap:5px;font-family:\'Helvetica Neue\',sans-serif">'
       +'<span style="background:#1e293b;color:#fff;font-weight:800;padding:2px 6px;border-radius:4px;font-size:9pt;letter-spacing:.5px">SG</span>'
       +'<span style="font-weight:700;font-size:10pt;color:#1e293b;letter-spacing:-.3px">SurGestion</span>'
       +'</div>';
   }
-
-  // ══════════════════════════════════════════════
-  // PLANTILLA 1: ONE-PAGE (Resumen de Directorio)
-  // ══════════════════════════════════════════════
-  if(estilo === 'one-page'){
-    var catTable  = tableHtml(['Categoría','Monto','%'],catRows,[1,2],'').replace('__THEAD__','background:#0f172a;color:#fff;font-weight:700');
-    var tdTable   = tableHtml(['Tipo Documento','Monto','%'],tdRows,[1,2],'').replace('__THEAD__','background:#0f172a;color:#fff;font-weight:700');
-    var eerrRows  = [
-      ['Ventas brutas',vb],['Ventas netas (sin IVA)',vn],
-      ['Gastos netos operacionales',gn],
-      ['Costos fijos',cf],['Costos variables',cv],
-      ['RESULTADO OPERACIONAL',res]
-    ];
-    var eerrTable = '<table style="width:100%;border-collapse:collapse;font-size:8pt"><tbody>'
-      +eerrRows.map(function(r,i){
-        var last=i===eerrRows.length-1;
-        var bg=last?(resNeg?'#fee2e2':'#dcfce7'):(i%2===0?'#fff':'#f8fafc');
-        var fw=last?'800':'400';
-        var color=last?(resNeg?'#991b1b':'#166534'):'#1e293b';
-        return '<tr style="background:'+bg+'">'
-          +'<td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;font-weight:'+fw+';color:'+color+'">'+r[0]+'</td>'
-          +'<td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:right;font-weight:'+fw+';color:'+color+'">'+r[1]+'</td>'
-          +'</tr>';
-      }).join('')+'</tbody></table>';
-
-    var html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
-      *{box-sizing:border-box;margin:0;padding:0}
-      body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:9pt;color:#1e293b;background:#fff}
-      @page{size:A4 portrait;margin:14mm 14mm 18mm 14mm}
-      .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;padding-bottom:10px;border-bottom:2px solid #0f172a}
-      .kpi-row{display:flex;gap:10px;margin-bottom:18px}
-      .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px}
-      .section-title{font-size:8pt;font-weight:700;color:#0f172a;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #e2e8f0}
-      .footer{position:fixed;bottom:0;left:0;right:0;padding:6px 14mm;display:flex;justify-content:space-between;align-items:center;border-top:1px solid #e2e8f0;font-size:7pt;color:#94a3b8}
-    </style></head><body>
-    <div class="header">
-      <div>
-        <div style="font-size:18pt;font-weight:800;color:#0f172a;line-height:1">${empresa}</div>
-        <div style="font-size:9pt;color:#64748b;margin-top:3px">${periodo.charAt(0).toUpperCase()+periodo.slice(1)}</div>
-      </div>
-      <div style="text-align:right;font-size:7.5pt;color:#94a3b8">
-        <div>Fecha de emisión: ${hoy}</div>
-        <div style="margin-top:4px">Reporte Financiero Ejecutivo</div>
-      </div>
-    </div>
-    <div class="kpi-row">
-      ${kpiBlock('Ventas Netas',vn,'#f1f5f9')}
-      ${kpiBlock('Gastos Netos',gn,'#f1f5f9')}
-      ${kpiBlock('Resultado',res,resNeg?'#fee2e2':'#dcfce7')}
-    </div>
-    <div style="display:flex;gap:10px;margin-bottom:18px">
-      <div style="flex:1;background:#f8fafc;border-radius:6px;padding:10px;text-align:center"><div style="font-size:7pt;color:#64748b;margin-bottom:3px">Margen bruto</div><div style="font-size:13pt;font-weight:700;color:#0f172a">${mb}</div></div>
-      <div style="flex:1;background:#f8fafc;border-radius:6px;padding:10px;text-align:center"><div style="font-size:7pt;color:#64748b;margin-bottom:3px">Margen neto</div><div style="font-size:13pt;font-weight:700;color:#0f172a">${mn}</div></div>
-      <div style="flex:1;background:#f8fafc;border-radius:6px;padding:10px;text-align:center"><div style="font-size:7pt;color:#64748b;margin-bottom:3px">Punto equilibrio</div><div style="font-size:13pt;font-weight:700;color:#0f172a">${pe}</div></div>
-      <div style="flex:1;background:#f8fafc;border-radius:6px;padding:10px;text-align:center"><div style="font-size:7pt;color:#64748b;margin-bottom:3px">Proyección Run Rate</div><div style="font-size:13pt;font-weight:700;color:#0f172a">${proy}</div></div>
-      <div style="flex:1;background:${yoyNeg?'#fee2e2':'#dcfce7'};border-radius:6px;padding:10px;text-align:center"><div style="font-size:7pt;color:#64748b;margin-bottom:3px">Var. interanual (YoY)</div><div style="font-size:13pt;font-weight:700;color:${yoyNeg?'#991b1b':'#166534'}">${yoy}</div></div>
-    </div>
-    <div class="two-col">
-      <div><div class="section-title">Ventas por categoría</div>${catTable}</div>
-      <div><div class="section-title">Gastos por tipo de documento</div>${tdTable}</div>
-    </div>
-    <div><div class="section-title">Estado de resultados condensado</div>${eerrTable}</div>
-    <div class="footer">
-      ${sgLogo()}
-      <span>surgestionpm.cl · Informe generado el ${hoy}</span>
-      <span>Período: ${periodo}</span>
-    </div>
-    </body></html>`;
-
-    var opt={margin:[14,14,18,14],filename:empresa+' - '+periodo+' (Ejecutivo).pdf',image:{type:'jpeg',quality:.98},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}};
-    html2pdf().set(opt).from(html).save();
-    return;
+  function badge(val,isNeg){
+    var bg=isNeg?'#fee2e2':'#dcfce7', color=isNeg?'#991b1b':'#166534', icon=isNeg?'▼':'▲';
+    return '<span style="background:'+bg+';color:'+color+';padding:2px 8px;border-radius:20px;font-size:8pt;font-weight:700">'+icon+' '+val+'</span>';
   }
-
-  // ══════════════════════════════════════════════
-  // PLANTILLA 2: WALL-STREET (Corporate Deep-Dive)
-  // ══════════════════════════════════════════════
-  if(estilo === 'wall-street'){
-    var catTableWS = tableHtml(['Categoría','Monto CLP','% Total'],catRows,[1,2],'').replace('__THEAD__','background:#1e3a8a;color:#fff;font-weight:700');
-    var famTableWS = tableHtml(['Familia de Gasto','Gasto Neto','% Gasto','% Vta Neta'],famRows,[1,2,3],'').replace('__THEAD__','background:#1e3a8a;color:#fff;font-weight:700');
-    var tdTableWS  = tableHtml(['Tipo Documento','Monto Neto','% Total'],tdRows,[1,2],'').replace('__THEAD__','background:#1e3a8a;color:#fff;font-weight:700');
-    var pagTableWS = tableHtml(['Forma de Pago','Monto','% Total'],pagRows,[1,2],'').replace('__THEAD__','background:#1e3a8a;color:#fff;font-weight:700');
-
-    var bsRows = [
-      {label:'Ingresos operacionales',val:vb,sub:true},
-      {label:'  Ventas netas (sin IVA)',val:vn,sub:false},
-      {label:'Costos y Gastos Operacionales',val:gn,sub:true},
-      {label:'  Costos fijos',val:cf,sub:false},
-      {label:'  Costos variables',val:cv,sub:false},
-      {label:'RESULTADO OPERACIONAL DEL PERÍODO',val:res,total:true}
-    ];
-    var bsTable = '<table style="width:100%;border-collapse:collapse;font-size:8.5pt">'
-      +'<thead><tr style="background:#1e3a8a;color:#fff"><th style="padding:7px 10px;text-align:left">Partida</th><th style="padding:7px 10px;text-align:right">Importe (CLP)</th></tr></thead><tbody>'
-      +bsRows.map(function(r,i){
-        if(r.total) return '<tr style="border-top:3px double #1e293b;border-bottom:3px double #1e293b;background:'+(resNeg?'#fee2e2':'#dcfce7')+'">'
-          +'<td style="padding:7px 10px;font-weight:800;color:'+(resNeg?'#991b1b':'#166534')+'">'+r.label+'</td>'
-          +'<td style="padding:7px 10px;text-align:right;font-weight:800;color:'+(resNeg?'#991b1b':'#166534')+'">'+r.val+'</td></tr>';
-        var bg = r.sub?'#f1f5f9':(i%2===0?'#fff':'#f8fafc');
-        var fw = r.sub?'700':'400';
-        return '<tr style="background:'+bg+'"><td style="padding:6px 10px;font-weight:'+fw+';color:#334155">'+r.label+'</td>'
-          +'<td style="padding:6px 10px;text-align:right;font-weight:'+fw+';color:#334155">'+r.val+'</td></tr>';
-      }).join('')+'</tbody></table>';
-
-    var footnote = '<div style="font-size:7pt;color:#94a3b8;margin-top:auto;padding-top:10px;border-top:1px solid #e2e8f0">'
+  function footnote(){
+    return '<div style="font-size:7pt;color:#94a3b8;margin-top:12px;padding-top:8px;border-top:1px solid #e2e8f0">'
       +'*Cifras expresadas en Pesos Chilenos (CLP). Reporte certificado por SurGestion. Gastos calculados en base neta según criterios de validación fiscal del SII. '
-      +'Los valores de ventas incluyen IVA. Los gastos operacionales excluyen impuestos. Run Rate calculado en base al ritmo diario del período.*</div>';
-
-    function wsSection(title){
-      return '<div style="background:#1e3a8a;color:#fff;font-weight:700;font-size:9pt;padding:6px 10px;margin-bottom:10px;margin-top:18px;letter-spacing:.3px">'+title+'</div>';
-    }
-
-    var html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
-      *{box-sizing:border-box;margin:0;padding:0}
-      body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:9pt;color:#334155;background:#fff}
-      @page{size:A4 portrait;margin:15mm}
-      .page-break{page-break-before:always}
-      .cover{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
-    </style></head><body>
-
-    <!-- PORTADA -->
-    <div class="cover">
-      <div style="margin-bottom:30px">${sgLogo()}</div>
-      <div style="width:80px;height:3px;background:#1e3a8a;margin:0 auto 30px"></div>
-      <div style="font-size:18pt;font-weight:800;color:#1e293b;line-height:1.2;max-width:400px;margin:0 auto 20px">REPORTE DE DESEMPEÑO FINANCIERO Y CONTROL DE GESTIÓN</div>
-      <div style="font-size:14pt;font-weight:700;color:#1e3a8a;margin-bottom:8px">${empresa}</div>
-      <div style="font-size:10pt;color:#64748b;margin-bottom:30px">${periodo.charAt(0).toUpperCase()+periodo.slice(1)}</div>
-      <div style="width:80px;height:1px;background:#cbd5e1;margin:0 auto 30px"></div>
-      <div style="font-size:8pt;color:#94a3b8;line-height:2">
-        <div>Fecha de emisión: ${hoy}</div>
-        <div>Preparado por: Dirección de Finanzas</div>
-        <div>Aprobado por: Directorio / Socios</div>
-      </div>
-      <div style="margin-top:40px;font-size:7pt;color:#cbd5e1">CONFIDENCIAL — Para uso exclusivo de la dirección</div>
-    </div>
-
-    <!-- PÁG 2: RESUMEN EJECUTIVO -->
-    <div class="page-break">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid #1e3a8a">
-        <div style="font-size:11pt;font-weight:800;color:#1e3a8a">RESUMEN EJECUTIVO</div>
-        <div style="font-size:7pt;color:#94a3b8">${empresa} · ${periodo} · ${hoy}</div>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px">
-        <div style="background:#0f172a;color:#fff;border-radius:6px;padding:12px;text-align:center"><div style="font-size:7pt;opacity:.7;margin-bottom:4px">VENTAS BRUTAS</div><div style="font-size:14pt;font-weight:800">${vb}</div></div>
-        <div style="background:#1e3a8a;color:#fff;border-radius:6px;padding:12px;text-align:center"><div style="font-size:7pt;opacity:.7;margin-bottom:4px">VENTAS NETAS</div><div style="font-size:14pt;font-weight:800">${vn}</div></div>
-        <div style="background:#f1f5f9;color:#1e293b;border-radius:6px;padding:12px;text-align:center"><div style="font-size:7pt;color:#64748b;margin-bottom:4px">GASTOS NETOS</div><div style="font-size:14pt;font-weight:800">${gn}</div></div>
-        <div style="background:${resNeg?'#991b1b':'#166534'};color:#fff;border-radius:6px;padding:12px;text-align:center"><div style="font-size:7pt;opacity:.7;margin-bottom:4px">RESULTADO</div><div style="font-size:14pt;font-weight:800">${res}</div></div>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:16px">
-        <div style="border:1px solid #e2e8f0;border-radius:4px;padding:8px;text-align:center"><div style="font-size:7pt;color:#64748b">Margen Bruto</div><div style="font-weight:700;color:#1e3a8a">${mb}</div></div>
-        <div style="border:1px solid #e2e8f0;border-radius:4px;padding:8px;text-align:center"><div style="font-size:7pt;color:#64748b">Margen Neto</div><div style="font-weight:700;color:#1e3a8a">${mn}</div></div>
-        <div style="border:1px solid #e2e8f0;border-radius:4px;padding:8px;text-align:center"><div style="font-size:7pt;color:#64748b">Costos Fijos</div><div style="font-weight:700;color:#1e3a8a">${cf}</div></div>
-        <div style="border:1px solid #e2e8f0;border-radius:4px;padding:8px;text-align:center"><div style="font-size:7pt;color:#64748b">Proyección</div><div style="font-weight:700;color:#1e3a8a">${proy}</div></div>
-        <div style="border:1px solid #e2e8f0;border-radius:4px;padding:8px;text-align:center"><div style="font-size:7pt;color:#64748b">YoY</div><div style="font-weight:700;color:${yoyNeg?'#991b1b':'#166534'}">${yoy}</div></div>
-      </div>
-      ${wsSection('ESTADO DE RESULTADOS')}
-      ${bsTable}
-      ${footnote}
-    </div>
-
-    <!-- PÁG 3: ANÁLISIS DE VENTAS -->
-    <div class="page-break">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid #1e3a8a">
-        <div style="font-size:11pt;font-weight:800;color:#1e3a8a">ANÁLISIS DE VENTAS</div>
-        <div style="font-size:7pt;color:#94a3b8">${empresa} · ${periodo}</div>
-      </div>
-      ${wsSection('VENTAS POR CATEGORÍA DE PRODUCTO')}
-      ${catTableWS}
-      ${wsSection('FORMAS DE PAGO')}
-      ${pagTableWS}
-      ${footnote}
-    </div>
-
-    <!-- PÁG 4: ANÁLISIS DE GASTOS -->
-    <div class="page-break">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid #1e3a8a">
-        <div style="font-size:11pt;font-weight:800;color:#1e3a8a">ANÁLISIS DE GASTOS OPERACIONALES</div>
-        <div style="font-size:7pt;color:#94a3b8">${empresa} · ${periodo}</div>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">
-        <div style="border:1px solid #e2e8f0;border-radius:4px;padding:10px;text-align:center"><div style="font-size:7pt;color:#64748b">Gastos Brutos</div><div style="font-size:11pt;font-weight:800;color:#1e293b">${gb}</div></div>
-        <div style="border:1px solid #e2e8f0;border-radius:4px;padding:10px;text-align:center"><div style="font-size:7pt;color:#64748b">Gastos Netos</div><div style="font-size:11pt;font-weight:800;color:#1e293b">${gn}</div></div>
-        <div style="border:1px solid #e2e8f0;border-radius:4px;padding:10px;text-align:center"><div style="font-size:7pt;color:#64748b">Costos Fijos</div><div style="font-size:11pt;font-weight:800;color:#1e3a8a">${cf}</div></div>
-        <div style="border:1px solid #e2e8f0;border-radius:4px;padding:10px;text-align:center"><div style="font-size:7pt;color:#64748b">Costos Variables</div><div style="font-size:11pt;font-weight:800;color:#1e3a8a">${cv}</div></div>
-      </div>
-      ${wsSection('DESGLOSE POR FAMILIA DE GASTO')}
-      ${famTableWS}
-      ${wsSection('CLASIFICACIÓN POR TIPO DE DOCUMENTO SII')}
-      ${tdTableWS}
-      ${footnote}
-    </div>
-    </body></html>`;
-
-    var opt={margin:15,filename:empresa+' - '+periodo+' (Corporate).pdf',image:{type:'jpeg',quality:.98},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}};
-    html2pdf().set(opt).from(html).save();
-    return;
+      +'Ventas brutas incluyen IVA. Run Rate calculado en base al ritmo diario del período.*'
+      +'</div>';
   }
 
-  // ══════════════════════════════════════════════
-  // PLANTILLA 3: MODERN-BI (Dashboard Slides)
-  // ══════════════════════════════════════════════
-  if(estilo === 'modern-bi'){
-    function badge(val, isNeg){
-      var bg   = isNeg ? '#fee2e2' : '#dcfce7';
-      var color= isNeg ? '#991b1b' : '#166534';
-      var icon = isNeg ? '▼' : '▲';
-      return '<span style="background:'+bg+';color:'+color+';padding:2px 8px;border-radius:20px;font-size:8pt;font-weight:700">'+icon+' '+val+'</span>';
-    }
-    function biCard(content, extraStyle){
-      return '<div style="background:#fff;border-radius:8px;box-shadow:0 4px 6px -1px rgba(0,0,0,.05);padding:14px;'+(extraStyle||'')+'">'+content+'</div>';
-    }
-    function biKpi(label, value, color, sub){
-      return '<div style="text-align:center">'
-        +'<div style="font-size:7.5pt;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">'+label+'</div>'
-        +'<div style="font-size:'+(sub?'14':'18')+'pt;font-weight:800;color:'+(color||'#0f172a')+'">'+value+'</div>'
-        +'</div>';
-    }
-    function biHeader(slideNum, slideTitle){
-      return '<div style="background:#0f172a;color:#fff;border-radius:8px;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
-        +'<div style="display:flex;align-items:center;gap:16px">'
-        +'<span style="background:#fff;color:#0f172a;font-weight:800;padding:2px 6px;border-radius:4px;font-size:9pt">SG</span>'
-        +'<span style="font-size:9pt;font-weight:500">${empresa} · '+slideTitle+'</span>'
-        +'</div>'
-        +'<div style="display:flex;align-items:center;gap:12px">'
-        +'<span style="font-size:7.5pt;opacity:.6">${periodo} · ${hoy}</span>'
-        +'<span style="background:#1e40af;border-radius:20px;padding:2px 10px;font-size:7.5pt;font-weight:700">Slide '+slideNum+'</span>'
-        +'</div>'
-        +'</div>';
-    }
+  // ── Construcción EERR histórico 6 meses (async via fetchByIds) ──
+  function buildEerrData(callback){
+    var u6 = _periodos.slice(0,6).slice().reverse();
+    if(!u6.length){ callback(null,null,null); return; }
+    var r6 = _reportes.filter(function(r){return u6.indexOf(r.periodo)>=0;});
+    var ids6 = r6.map(function(r){return r.id;});
+    var rm6={};r6.forEach(function(r){rm6[r.id]=r.periodo;});
 
-    var biCatTable = '<table style="width:100%;border-collapse:collapse;font-size:7.5pt">'
-      +'<thead><tr style="border-bottom:2px solid #e2e8f0"><th style="padding:5px 6px;text-align:left;color:#64748b;font-weight:600">CATEGORÍA</th><th style="padding:5px 6px;text-align:right;color:#64748b;font-weight:600">MONTO</th><th style="padding:5px 6px;text-align:right;color:#64748b;font-weight:600">%</th></tr></thead><tbody>'
-      +catRows.map(function(r,i){return '<tr style="background:'+(i%2?'#f8fafc':'#fff')+';border-bottom:1px solid #f1f5f9"><td style="padding:5px 6px">'+r[0]+'</td><td style="padding:5px 6px;text-align:right;font-weight:600">'+r[1]+'</td><td style="padding:5px 6px;text-align:right;color:#64748b">'+r[2]+'</td></tr>';}).join('')
-      +'</tbody></table>';
-    var biFamTable = '<table style="width:100%;border-collapse:collapse;font-size:7.5pt">'
-      +'<thead><tr style="border-bottom:2px solid #e2e8f0"><th style="padding:5px 6px;text-align:left;color:#64748b;font-weight:600">FAMILIA</th><th style="padding:5px 6px;text-align:right;color:#64748b;font-weight:600">GASTO NETO</th><th style="padding:5px 6px;text-align:right;color:#64748b;font-weight:600">% G</th><th style="padding:5px 6px;text-align:right;color:#64748b;font-weight:600">% VN</th></tr></thead><tbody>'
-      +famRows.map(function(r,i){return '<tr style="background:'+(i%2?'#f8fafc':'#fff')+';border-bottom:1px solid #f1f5f9"><td style="padding:5px 6px">'+r[0]+'</td><td style="padding:5px 6px;text-align:right;font-weight:600">'+r[1]+'</td><td style="padding:5px 6px;text-align:right;color:#64748b">'+r[2]+'</td><td style="padding:5px 6px;text-align:right;color:#64748b">'+r[3]+'</td></tr>';}).join('')
-      +'</tbody></table>';
-
-    var html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
-      *{box-sizing:border-box;margin:0;padding:0}
-      body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:9pt;color:#1e293b;background:#f1f5f9;padding:10mm}
-      @page{size:A4 landscape;margin:10mm}
-      .slide{min-height:190mm;margin-bottom:0;page-break-after:always}
-      .slide:last-child{page-break-after:auto}
-      .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-      .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
-      .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-      .grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
-      .section-label{font-size:7.5pt;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;margin-top:12px}
-    </style></head><body>
-
-    <!-- SLIDE 1: Dashboard Financiero de Proyecciones -->
-    <div class="slide">
-      ${biHeader(1,'Dashboard Financiero de Proyecciones')}
-      <div class="grid5" style="margin-bottom:12px">
-        ${biCard(biKpi('Ventas Brutas',vb),'text-align:center')}
-        ${biCard(biKpi('Ventas Netas',vn),'text-align:center')}
-        ${biCard(biKpi('Gastos Netos',gn),'text-align:center')}
-        ${biCard(biKpi('Costos Fijos',cf,'#1e40af'),'text-align:center')}
-        ${biCard('<div style="text-align:center"><div style="font-size:7.5pt;color:#64748b;margin-bottom:4px">RESULTADO</div><div style="font-size:18pt;font-weight:800;color:'+(resNeg?'#991b1b':'#166534')+'">'+res+'</div></div>','')}
-      </div>
-      <div class="grid3" style="margin-bottom:12px">
-        ${biCard('<div class="section-label">Proyección Run Rate</div><div style="font-size:22pt;font-weight:800;color:#1e40af;margin-bottom:6px">'+proy+'</div><div style="font-size:7.5pt;color:#64748b">Estimación basada en ritmo diario del período</div>','')}
-        ${biCard('<div class="section-label">Variación Interanual (YoY)</div><div style="font-size:22pt;font-weight:800;color:'+(yoyNeg?'#991b1b':'#166534')+';margin-bottom:6px">'+yoy+'</div><div style="font-size:7.5pt;color:#64748b">Vs mismo mes año anterior</div>','')}
-        ${biCard('<div class="section-label">Indicadores de eficiencia</div><div style="display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between"><span style="color:#64748b">Margen bruto</span><span style="font-weight:700">'+mb+'</span></div><div style="display:flex;justify-content:space-between"><span style="color:#64748b">Margen neto</span><span style="font-weight:700">'+mn+'</span></div><div style="display:flex;justify-content:space-between"><span style="color:#64748b">Punto equilibrio</span><span style="font-weight:700">'+pe+'</span></div><div style="display:flex;justify-content:space-between"><span style="color:#64748b">IVA estimado F29</span><span style="font-weight:700">'+ivaP+'</span></div></div>','')}
-      </div>
-      <div class="grid3">
-        ${biCard('<div class="section-label">IVA Débito</div><div style="font-size:14pt;font-weight:800;color:#1e293b">'+ivaD+'</div><div style="font-size:7pt;color:#94a3b8;margin-top:4px">Ventas brutas × 0.19/1.19</div>','')}
-        ${biCard('<div class="section-label">IVA Crédito</div><div style="font-size:14pt;font-weight:800;color:#1e293b">'+ivaC+'</div><div style="font-size:7pt;color:#94a3b8;margin-top:4px">(Facturas neto × 0.19) - (NC neto × 0.19)</div>','')}
-        ${biCard('<div class="section-label">IVA Estimado F29</div><div style="font-size:14pt;font-weight:800;color:'+(resNeg?'#991b1b':'#166534')+'">'+ivaP+'</div><div style="font-size:7pt;color:#94a3b8;margin-top:4px">Débito - Crédito (Aproximado)</div>','')}
-      </div>
-    </div>
-
-    <!-- SLIDE 2: Análisis de Costos y Punto de Equilibrio -->
-    <div class="slide">
-      ${biHeader(2,'Análisis de Costos y Punto de Equilibrio')}
-      <div class="grid4" style="margin-bottom:12px">
-        ${biCard(biKpi('Gastos Brutos',gb),'text-align:center')}
-        ${biCard(biKpi('Gastos Netos',gn),'text-align:center')}
-        ${biCard(biKpi('Costos Fijos',cf,'#1e40af'),'text-align:center')}
-        ${biCard(biKpi('Costos Variables',cv,'#7c3aed'),'text-align:center')}
-      </div>
-      <div class="grid2">
-        ${biCard('<div class="section-label">Desglose por tipo de documento (SII)</div>'+
-          '<table style="width:100%;border-collapse:collapse;font-size:7.5pt"><thead><tr style="border-bottom:2px solid #e2e8f0"><th style="padding:5px;text-align:left;color:#64748b;font-weight:600">DOCUMENTO</th><th style="padding:5px;text-align:right;color:#64748b;font-weight:600">MONTO</th><th style="padding:5px;text-align:right;color:#64748b;font-weight:600">%</th></tr></thead><tbody>'
-          +tdRows.map(function(r,i){return '<tr style="background:'+(i%2?'#f8fafc':'#fff')+';border-bottom:1px solid #f1f5f9"><td style="padding:5px">'+r[0]+'</td><td style="padding:5px;text-align:right;font-weight:600">'+r[1]+'</td><td style="padding:5px;text-align:right;color:#64748b">'+r[2]+'</td></tr>';}).join('')
-          +'</tbody></table>','')}
-        ${biCard('<div class="section-label">Estructura de costos fijos vs variables</div>'
-          +'<div style="display:flex;gap:8px;margin-bottom:10px">'
-          +'<div style="flex:1;background:#eff6ff;border-radius:6px;padding:10px;text-align:center"><div style="font-size:7.5pt;color:#1e40af;margin-bottom:4px">FIJOS</div><div style="font-size:16pt;font-weight:800;color:#1e40af">'+cf+'</div></div>'
-          +'<div style="flex:1;background:#f5f3ff;border-radius:6px;padding:10px;text-align:center"><div style="font-size:7.5pt;color:#7c3aed;margin-bottom:4px">VARIABLES</div><div style="font-size:16pt;font-weight:800;color:#7c3aed">'+cv+'</div></div>'
-          +'</div>'
-          +'<div style="background:#f1f5f9;border-radius:6px;padding:12px;text-align:center;margin-top:8px">'
-          +'<div style="font-size:7.5pt;color:#64748b;margin-bottom:4px">PUNTO DE EQUILIBRIO ESTIMADO</div>'
-          +'<div style="font-size:20pt;font-weight:800;color:#0f172a">'+pe+'</div>'
-          +'<div style="font-size:7pt;color:#94a3b8;margin-top:4px">CF / (1 − CV/VN) · Prom. últimos 3 meses</div>'
-          +'</div>','')}
-      </div>
-    </div>
-
-    <!-- SLIDE 3: Desglose de Ventas por Familia -->
-    <div class="slide">
-      ${biHeader(3,'Desglose de Ventas y Gastos por Familia')}
-      <div class="grid2">
-        ${biCard('<div class="section-label">Ventas por categoría</div>'+biCatTable,'')}
-        ${biCard('<div class="section-label">Gastos por familia</div>'+biFamTable,'')}
-      </div>
-      <div style="margin-top:12px">
-        ${biCard('<div style="display:flex;justify-content:space-between;align-items:center"><div><div class="section-label">Formas de pago</div>'
-          +'<div style="display:flex;flex-wrap:wrap;gap:6px">'
-          +pagRows.map(function(r){return '<div style="background:#f1f5f9;border-radius:4px;padding:4px 8px;font-size:7.5pt"><span style="color:#64748b">'+r[0]+':</span> <span style="font-weight:700">'+r[1]+'</span> <span style="color:#94a3b8">'+r[2]+'</span></div>';}).join('')
-          +'</div></div>'
-          +'<div style="text-align:right">'
-          +sgLogo()
-          +'<div style="font-size:7pt;color:#94a3b8;margin-top:4px">surgestionpm.cl</div>'
-          +'</div></div>','')}
-      </div>
-    </div>
-    </body></html>`;
-
-    // Reemplazar placeholders de template literals con valores reales
-    html = html.replace(/\$\{empresa\}/g, empresa)
-               .replace(/\$\{periodo\}/g, periodo)
-               .replace(/\$\{hoy\}/g, hoy);
-
-    var opt={margin:10,filename:empresa+' - '+periodo+' (Modern BI).pdf',image:{type:'jpeg',quality:.98},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'a4',orientation:'landscape'}};
-    html2pdf().set(opt).from(html).save();
-    return;
-  }
-}
-
-
-function renderCompMensual(productos, sel, repsIds, reportes){
-  var repMap={};
-  reportes.filter(function(r){return sel.indexOf(r.periodo)>=0;}).forEach(function(r){repMap[r.id]=r.periodo;});
-
-  
-
-  var data={};
-  var totalPorPeriodo={};
-
-  productos.forEach(function(p){
-    var cat=p.categoria||'Sin categoria';
-    var nom=p.nombre||'Sin nombre';
-    var per=repMap[p.reporte_id];
-    if(!per) return;
-    if(!data[cat]) data[cat]={};
-    if(!data[cat][nom]) data[cat][nom]={};
-    if(!data[cat][nom][per]) data[cat][nom][per]={monto:0,cant:0};
-    var mp=getMontoProducto(p);
-    data[cat][nom][per].monto += mp;
-    data[cat][nom][per].cant  += Number(p.cantidad||0);
-    totalPorPeriodo[per]=(totalPorPeriodo[per]||0)+mp;
-  });
-
-  var periodos = sel.slice().reverse();
-  var nPer = periodos.length;
-  var FS = nPer<=3?11:nPer<=6?10:9;
-  var CW = nPer<=3?90:nPer<=6?75:60;
-
-  function label(p){
-    var parts=p.split(' ');
-    var mes=parts[0],anio=parts[1]||'';
-    if(nPer<=4) return mes.charAt(0).toUpperCase()+mes.slice(1)+' '+anio;
-    return mes.slice(0,3).charAt(0).toUpperCase()+mes.slice(1,3)+'.'+anio.slice(2);
+    fetchByIds('costos',ids6).then(function(c6){
+      var dat={};
+      u6.forEach(function(p){dat[p]={vb:0,vn:0,gn:0,gb:0,fams:{}};});
+      r6.forEach(function(r){
+        dat[r.periodo].vb=Number(r.ventas_brutas||0);
+        dat[r.periodo].vn=_aplicaIva?Number(r.ventas_netas||0):Number(r.ventas_brutas||0);
+      });
+      c6.forEach(function(c){
+        var p=rm6[c.reporte_id]; if(!p||!dat[p]) return;
+        if(/impuesto|iva|tribut/i.test(c.familia||c.categoria||'')) return;
+        var neto=getNetoDoc(c);
+        dat[p].gn+=neto; dat[p].gb+=Number(c.monto||0);
+        var fam=c.familia||c.categoria||'Sin familia';
+        if(!dat[p].fams[fam]) dat[p].fams[fam]=0;
+        dat[p].fams[fam]+=neto;
+      });
+      u6.forEach(function(p){dat[p].res=dat[p].vn-dat[p].gn;});
+      var todasFams=[];
+      u6.forEach(function(p){Object.keys(dat[p].fams).forEach(function(f){if(todasFams.indexOf(f)<0)todasFams.push(f);});});
+      todasFams.sort(function(a,b){return u6.reduce(function(s,p){return s+(dat[p].fams[b]||0);},0)-u6.reduce(function(s,p){return s+(dat[p].fams[a]||0);},0);});
+      callback(u6,dat,todasFams);
+    });
   }
 
-  // Flecha de rendimiento comparando con mes anterior (columna izquierda)
-  function flecha(v, prev){
-    if(prev===null||prev===undefined||prev===0) return '';
-    var diff = ((v - prev) / prev) * 100;
-    if(diff > 5)  return '<span style="color:#27AE60;font-size:11px;margin-left:2px">&#9650;</span>';
-    if(diff < -5) return '<span style="color:#E74C3C;font-size:11px;margin-left:2px">&#9660;</span>';
-    return '<span style="color:#E67E22;font-size:11px;margin-left:2px">&#9654;</span>';
-  }
-
-  function label(p){
-    var parts=p.split(' ');
-    var mes=parts[0],anio=parts[1]||'';
-    if(nPer<=4) return mes.charAt(0).toUpperCase()+mes.slice(1)+' '+anio;
-    return mes.slice(0,3).charAt(0).toUpperCase()+mes.slice(1,3)+'.'+anio.slice(2);
-  }
-
-  var t='<table style="width:100%;border-collapse:collapse;min-width:'+(200+nPer*CW)+'px">';
-
-  // Header
-  t+='<thead><tr style="background:var(--navy)">';
-  t+='<th style="text-align:left;padding:8px 14px;font-size:'+FS+'px;color:#fff;position:sticky;left:0;background:var(--navy)">Categoria / Producto</th>';
-  periodos.forEach(function(p){
-    t+='<th style="text-align:right;padding:6px 8px;font-size:'+(FS-1)+'px;color:rgba(255,255,255,.85);white-space:nowrap;min-width:'+CW+'px">'+label(p)+'</th>';
-  });
-  t+='<th style="text-align:right;padding:6px 8px;font-size:'+(FS-1)+'px;color:rgba(255,255,255,.85)">Total</th>';
-  t+='</tr></thead><tbody>';
-
-  var cats=Object.keys(data).sort(function(a,b){
-    var ta=Object.keys(data[a]).reduce(function(s,p){return s+periodos.reduce(function(s2,per){return s2+((data[a][p][per]&&data[a][p][per].monto)||0);},0);},0);
-    var tb=Object.keys(data[b]).reduce(function(s,p){return s+periodos.reduce(function(s2,per){return s2+((data[b][p][per]&&data[b][p][per].monto)||0);},0);},0);
-    return tb-ta;
-  });
-
-  var catIdx=0;
-  cats.forEach(function(cat){
-    var catId='cmp'+catIdx++;
-    var catPerTot={};
-    var catTot=0;
-    periodos.forEach(function(per){
-      var s=Object.keys(data[cat]).reduce(function(acc,p){return acc+((data[cat][p][per]&&data[cat][p][per].monto)||0);},0);
-      catPerTot[per]=s;
-      catTot+=s;
-    });
-
-    // Fila categoria con flechas
-    t+='<tr id="'+catId+'" class="cmp-cat-row" style="background:var(--blue-l);cursor:pointer;border-top:1px solid var(--border)">';
-    t+='<td style="padding:8px 14px;font-size:'+FS+'px;font-weight:600;color:var(--navy);position:sticky;left:0;background:var(--blue-l)"><span id="'+catId+'a">&#9658;</span> '+cat+'</td>';
-    periodos.forEach(function(per,i){
-      var v=catPerTot[per]||0;
-      var prev=i>0?catPerTot[periodos[i-1]]||0:null;
-      t+='<td style="text-align:right;padding:7px 8px;font-size:'+FS+'px;font-weight:600">'+fmt(v)+flecha(v,prev)+'</td>';
-    });
-    t+='<td style="text-align:right;padding:7px 8px;font-size:'+FS+'px;font-weight:700;color:var(--navy)">'+fmt(catTot)+'</td>';
-    t+='</tr>';
-
-    // Productos con flechas
-    var prods=Object.keys(data[cat]).sort(function(a,b){
-      var ta=periodos.reduce(function(s,per){return s+((data[cat][a][per]&&data[cat][a][per].monto)||0);},0);
-      var tb=periodos.reduce(function(s,per){return s+((data[cat][b][per]&&data[cat][b][per].monto)||0);},0);
-      return tb-ta;
-    });
-
-    prods.forEach(function(prod){
-      var prodTot=0;
-      t+='<tr class="'+catId+'-prod" style="display:none;background:var(--white);border-top:1px solid var(--bg)">';
-      t+='<td style="padding:6px 14px 6px 28px;font-size:'+(FS-1)+'px;color:var(--text);position:sticky;left:0;background:var(--white)">'+prod+'</td>';
-      periodos.forEach(function(per,i){
-        var v=(data[cat][prod][per]&&data[cat][prod][per].monto)||0;
-        var prev=i>0?(data[cat][prod][periodos[i-1]]&&data[cat][prod][periodos[i-1]].monto)||0:null;
-        prodTot+=v;
-        t+='<td style="text-align:right;padding:5px 8px;font-size:'+(FS-1)+'px;color:var(--muted)">'+fmt(v)+flecha(v,prev)+'</td>';
-      });
-      t+='<td style="text-align:right;padding:5px 8px;font-size:'+(FS-1)+'px;color:var(--muted)">'+fmt(prodTot)+'</td>';
-      t+='</tr>';
-    });
-  });
-
-  // Fila total con flechas
-  t+='<tr style="background:var(--navy);border-top:2px solid var(--border)">';
-  t+='<td style="padding:8px 14px;font-size:'+FS+'px;font-weight:700;color:#fff;position:sticky;left:0;background:var(--navy)">TOTAL VENTAS</td>';
-  var granTotal=0;
-  periodos.forEach(function(per,i){
-    var v=totalPorPeriodo[per]||0;
-    var prev=i>0?totalPorPeriodo[periodos[i-1]]||0:null;
-    granTotal+=v;
-    t+='<td style="text-align:right;padding:7px 8px;font-size:'+FS+'px;font-weight:700;color:#fff">'+fmt(v)+flecha(v,prev)+'</td>';
-  });
-  t+='<td style="text-align:right;padding:7px 8px;font-size:'+FS+'px;font-weight:700;color:#fff">'+fmt(granTotal)+'</td>';
-  t+='</tr>';
-
-  t+='</tbody></table>';
-
-  var container=document.getElementById('tabla-comp-mensual');
-  if(container){
-    container.innerHTML=t;
-    cats.forEach(function(cat,i){
-      var catId='cmp'+i;
-      var row=document.getElementById(catId);
-      if(!row)return;
-      row.addEventListener('click',function(){
-        var prods=document.querySelectorAll('.'+catId+'-prod');
-        var isOpen=prods.length&&prods[0].style.display!=='none';
-        prods.forEach(function(r){r.style.display=isOpen?'none':'';});
-        var arr=document.getElementById(catId+'a');
-        if(arr)arr.innerHTML=isOpen?'&#9658;':'&#9660;';
-      });
-    });
-  }
-}
-
-
-function renderCompAnual(){
-  if(!_reportes.length) return;
-  var mesesOrden=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-  var mesesNombre=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-
-  // Agrupar por año y mes
-  var datos={};
-  var aniosSet={};
-  _reportes.forEach(function(r){
-    var parts=(r.periodo||'').split(' ');
-    var mes=parts[0], anio=parts[1];
-    if(!anio||!mes) return;
-    if(!datos[anio]) datos[anio]={};
-    datos[anio][mes]=Number(r.ventas_brutas||0);
-    aniosSet[anio]=1;
-  });
-
-  var anios=Object.keys(aniosSet).sort();
-  if(!anios.length) return;
-  // Solo últimos 3 años
-  anios=anios.slice(-3);
-
-  // Construir tabla
-  var t='<table style="width:100%;border-collapse:collapse;min-width:'+(120+anios.length*100+100)+'px">';
-
-  // Header
-  t+='<thead><tr style="background:var(--navy)">';
-  t+='<th style="text-align:left;padding:8px 14px;font-size:11px;color:#fff;white-space:nowrap">Mes</th>';
-  anios.forEach(function(a){
-    t+='<th style="text-align:right;padding:8px 10px;font-size:11px;color:rgba(255,255,255,.85)">'+a+'</th>';
-  });
-  t+='<th style="text-align:right;padding:8px 10px;font-size:11px;color:rgba(255,255,255,.85)">Var. año ant.</th>';
-  t+='</tr></thead><tbody>';
-
-  mesesOrden.forEach(function(mes, idx){
-    // Verificar si existe algún dato para este mes
-    var tieneData = anios.some(function(a){ return datos[a]&&datos[a][mes]>0; });
-    if(!tieneData) return;
-
-    var bg = idx%2===0?'var(--white)':'var(--bg)';
-    t+='<tr style="background:'+bg+';border-top:1px solid var(--bg)">';
-    t+='<td style="padding:7px 14px;font-size:12px;font-weight:500;color:var(--navy)">'+mesesNombre[idx]+'</td>';
-
-    var ultimoValor=null;
-    anios.forEach(function(a){
-      var v=(datos[a]&&datos[a][mes])||0;
-      t+='<td style="text-align:right;padding:7px 10px;font-size:12px;color:var(--text)">'+( v>0?fmt(v):'-')+'</td>';
-      if(v>0) ultimoValor={anio:a,val:v};
-    });
-
-    // Variacion vs año anterior
-    if(anios.length>=2 && ultimoValor){
-      var anioAct=ultimoValor.anio;
-      var idxAnio=anios.indexOf(anioAct);
-      var anioAnt=idxAnio>0?anios[idxAnio-1]:null;
-      var vAct=(datos[anioAct]&&datos[anioAct][mes])||0;
-      var vAnt=anioAnt?(datos[anioAnt]&&datos[anioAnt][mes])||0:0;
-      if(vAnt>0 && vAct>0){
-        var pct=((vAct-vAnt)/vAnt*100).toFixed(1);
-        var pos=Number(pct)>=0;
-        var flecha=pos?'<span style="color:#27AE60">&#9650;</span>':'<span style="color:#E74C3C">&#9660;</span>';
-        var color=pos?'color:#27AE60':'color:#E74C3C';
-        t+='<td style="text-align:right;padding:7px 10px;font-size:12px;'+color+';white-space:nowrap">'+flecha+' '+(pos?'+':'')+pct+'%</td>';
-      } else {
-        t+='<td style="text-align:right;padding:7px 10px;font-size:12px;color:var(--muted)">-</td>';
-      }
-    } else {
-      t+='<td></td>';
-    }
-    t+='</tr>';
-  });
-
-  t+='</tbody></table>';
-  var container=document.getElementById('tabla-comp-anual');
-  if(container) container.innerHTML=t;
-}
-
-function calcularPuntoEquilibrio(){
-  if(!_periodos.length||!_reportes.length) return;
-
-  // Últimos 3 meses ANTERIORES al más reciente (excluir el mes actual)
-  var ultimos3 = _periodos.slice(1, 4);
-  if(!ultimos3.length) return;
-
-  var reps3 = _reportes.filter(function(r){ return ultimos3.indexOf(r.periodo)>=0; });
-  var ids3 = reps3.map(function(r){ return r.id; });
-  if(!ids3.length) return;
-
-  fetchByIds('costos', ids3).then(function(costos3){
-    var peVals = [];
-
-    reps3.forEach(function(r){
-      var costosMes = costos3.filter(function(c){ return c.reporte_id===r.id; });
-      var vn = _aplicaIva ? Number(r.ventas_netas||0) : Number(r.ventas_brutas||0);
-      if(!vn) return;
-
-      // Excluir impuestos
-      var costosOp = costosMes.filter(function(c){ return !/impuesto|iva|tribut/i.test(c.familia||c.categoria||''); });
-
-      var hasTipo = costosOp.some(function(c){ return c.tipo_gasto&&c.tipo_gasto.trim()!==''; });
-      var cf, cv;
-      if(hasTipo){
-        cf = costosOp.filter(function(c){ return /fijo/i.test(c.tipo_gasto||''); }).reduce(function(s,c){ return s+getNetoDoc(c); },0);
-        cv = costosOp.filter(function(c){ return /variable/i.test(c.tipo_gasto||''); }).reduce(function(s,c){ return s+getNetoDoc(c); },0);
-      } else {
-        var gnMes = costosOp.reduce(function(s,c){ return s+getNetoDoc(c); },0);
-        cf = gnMes*0.6; cv = gnMes*0.4;
-      }
-
-      var margenContrib = 1-(cv/vn);
-      if(margenContrib > 0) peVals.push(cf/margenContrib);
-    });
-
-    var peEl = document.getElementById('iv-pe');
-    if(!peEl) return;
-
-    if(!peVals.length){ peEl.textContent='Sin datos'; return; }
-
-    var pePromedio = peVals.reduce(function(s,v){ return s+v; },0)/peVals.length;
-    peEl.textContent = '$'+Math.round(pePromedio).toLocaleString('es-CL');
-
-    // Comparar contra venta neta del período actual
-    var vnActual = Number((document.getElementById('kv-vn').textContent||'').replace(/[^0-9]/g,''))||0;
-    var subtxt = peEl.closest('.ind').querySelector('.ih');
-    if(subtxt){
-      if(vnActual>0 && vnActual>=pePromedio){
-        subtxt.textContent = '✓ Venta neta sobre el PE';
-        subtxt.style.color = '#5DECA0';
-      } else if(vnActual>0){
-        subtxt.textContent = '⚠ Venta neta bajo el PE';
-        subtxt.style.color = '#FF6B6B';
-      } else {
-        subtxt.textContent = 'Promedio últimos 3 meses';
-        subtxt.style.color = '';
-      }
-    }
-  });
-}
-
-// Cargar datos paginando por reporte_id
-function fetchById(table, id){
-  var PAGE=1000;
-  var all=[];
-  function page(offset){
-    return sb_client.from(table).select('*').eq('reporte_id',id).order('id',{ascending:true}).range(offset,offset+PAGE-1).then(function(r){
-      var rows=r.data||[];
-      all=all.concat(rows);
-      if(rows.length===PAGE) return page(offset+PAGE);
-      return all;
-    });
-  }
-  return page(0);
-}
-function fetchByIds(table, ids){
-  // Paralelo en grupos de 5 para no saturar Supabase
-  var CONCURRENT=5;
-  var allResults=[];
-  function runGroup(start){
-    if(start>=ids.length) return Promise.resolve(allResults);
-    var group=ids.slice(start,start+CONCURRENT);
-    return Promise.all(group.map(function(id){return fetchById(table,id);}))
-      .then(function(arrays){
-        arrays.forEach(function(rows){allResults=allResults.concat(rows);});
-        return runGroup(start+CONCURRENT);
-      });
-  }
-  return runGroup(0);
-}
-
-function iniciar(){
-  sb_client.auth.getSession().then(function(res){
-    var session = res.data && res.data.session;
-    if(!session){ window.location.href='https://surgestionpm.cl/login.html'; return; }
-    document.getElementById('nav-email').textContent = session.user.email;
-    cargarDatos(session.user.id);
-  });
-}
-
-function cargarDatos(userId){
-  sb_client.from('clientes').select('*').eq('user_id',userId).single().then(function(res){
-    var cliente = res.data;
-    if(!cliente){
-      document.getElementById('loading').innerHTML='<p style="color:var(--muted);padding:60px">Sin datos. +56 9 5049 1158</p>';
-      return;
-    }
-    _clienteId = cliente.id;
-    _aplicaIva = cliente.aplica_iva !== false;
-    _eerrDesde = cliente.eerr_desde || null;
-    _eerrHasta = cliente.eerr_hasta || null;
-    _eerrBloqueado = cliente.eerr_bloqueado === true;
-    document.getElementById('nav-empresa').textContent = cliente.nombre_empresa;
-    document.getElementById('empresa-nombre').textContent = cliente.nombre_empresa;
-    if(cliente.logo_url) document.getElementById('nav-logo').src = cliente.logo_url;
-
-    sb_client.from('reportes').select('id,periodo,ventas_brutas,ventas_netas,created_at,updated_at').eq('cliente_id',cliente.id).order('created_at',{ascending:false}).then(function(r2){
-      _reportes = r2.data||[];
-      _periodos = _reportes.map(function(r){ return r.periodo; });
-      // Ordenar periodos cronológicamente (más reciente primero)
-      var ordenMeses=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-      _periodos.sort(function(a,b){
-        var pa=a.split(' '), pb=b.split(' ');
-        var ya=Number(pa[1]||0), yb=Number(pb[1]||0);
-        if(ya!==yb) return yb-ya;
-        return ordenMeses.indexOf(pb[0])-ordenMeses.indexOf(pa[0]);
-      });
-      // Reordenar _reportes para que coincidan con _periodos
-      _reportes.sort(function(a,b){
-        return _periodos.indexOf(a.periodo)-_periodos.indexOf(b.periodo);
-      });
-      if(!_periodos.length){
-        document.getElementById('loading').style.display='none';
-        document.getElementById('dashboard').style.display='block';
-        return;
-      }
-
-      // Extraer anos y meses
-      var anios = [];
-      _periodos.forEach(function(p){
-        var parts = p.split(' ');
-        var mes=parts[0], anio=parts[1];
-        if(!anio) return;
-        if(anios.indexOf(anio)<0) anios.push(anio);
-        if(!_mesesPorAnio[anio]) _mesesPorAnio[anio]=[];
-        if(_mesesPorAnio[anio].indexOf(mes)<0) _mesesPorAnio[anio].push(mes);
-      });
-      anios.sort(function(a,b){ return Number(b)-Number(a); });
-
-      var optsAnios = anios.map(function(a){ return '<option value="'+a+'">'+a+'</option>'; }).join('');
-      document.getElementById('sel-anio-desde').innerHTML = optsAnios;
-      document.getElementById('sel-anio-hasta').innerHTML = optsAnios;
-      poblarMesesRango();
-
-      // Selectores comparativo
-      // Poblar selectores comparativo con año/mes separados
-      var aniosComp = [];
-      _periodos.forEach(function(p){
-        var a = p.split(' ')[1];
-        if(a && aniosComp.indexOf(a)<0) aniosComp.push(a);
-      });
-      aniosComp.sort(function(a,b){return Number(a)-Number(b);});
-      var optsAnios = aniosComp.map(function(a){return '<option value="'+a+'">'+a+'</option>';}).join('');
-      var optsAniosRev = aniosComp.slice().reverse().map(function(a){return '<option value="'+a+'">'+a+'</option>';}).join('');
-      document.getElementById('comp-anio-desde').innerHTML = optsAnios;
-      document.getElementById('comp-anio-hasta').innerHTML = optsAniosRev;
-      // Default: desde enero 2026 hasta mes actual (o config especial del cliente)
-      var hoyComp = new Date();
-      var mesesES2=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-      var anioDefDesde, mesDefDesde, anioDefHasta, mesDefHasta;
-
-      if(_eerrBloqueado && _eerrDesde && _eerrHasta){
-        // Cliente con EERR bloqueado: usar fechas predefinidas
-        var partsD = _eerrDesde.split(' ');
-        var partsH = _eerrHasta.split(' ');
-        mesDefDesde = partsD[0]; anioDefDesde = partsD[1];
-        mesDefHasta = partsH[0]; anioDefHasta = partsH[1];
-      } else {
-        // Default general
-        anioDefDesde = '2026'; mesDefDesde = 'enero';
-        anioDefHasta = hoyComp.getFullYear().toString();
-        mesDefHasta = mesesES2[hoyComp.getMonth()];
-      }
-
-      var selAD = document.getElementById('comp-anio-desde');
-      var selAH = document.getElementById('comp-anio-hasta');
-      for(var oi=0;oi<selAD.options.length;oi++){if(selAD.options[oi].value===anioDefDesde){selAD.selectedIndex=oi;break;}}
-      for(var oi=0;oi<selAH.options.length;oi++){if(selAH.options[oi].value===anioDefHasta){selAH.selectedIndex=oi;break;}}
-      actualizarMesesComp();
-      var selMD=document.getElementById('comp-mes-desde');
-      var selMH=document.getElementById('comp-mes-hasta');
-      for(var oi=0;oi<selMD.options.length;oi++){if(selMD.options[oi].value===mesDefDesde){selMD.selectedIndex=oi;break;}}
-      for(var oi=0;oi<selMH.options.length;oi++){if(selMH.options[oi].value===mesDefHasta){selMH.selectedIndex=oi;break;}}
-
-      // Bloquear selectores si el cliente tiene EERR fijo
-      var compSelectors = ['comp-anio-desde','comp-mes-desde','comp-anio-hasta','comp-mes-hasta'];
-      compSelectors.forEach(function(id){
-        var el = document.getElementById(id);
-        if(el){
-          el.disabled = _eerrBloqueado;
-          el.style.opacity = _eerrBloqueado ? '0.6' : '1';
-          el.style.cursor = _eerrBloqueado ? 'not-allowed' : 'pointer';
-        }
-      });
-      if(_eerrBloqueado){
-        var badge = document.createElement('span');
-        badge.style.cssText = 'font-size:11px;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:3px 10px;margin-left:4px';
-        badge.textContent = 'Periodo fijo: '+_eerrDesde+' - '+_eerrHasta;
-        var compCh = document.querySelector('#eerr-comp-body').closest('.card').querySelector('.ch');
-        if(compCh && !compCh.querySelector('.badge-fijo')){
-          badge.className = 'badge-fijo';
-          compCh.appendChild(badge);
-        }
-      }
-
-      // Ultima actualizacion
-      var mas = _reportes[0];
-      var fechaRef = mas && (mas.updated_at||mas.created_at);
-      if(fechaRef){
-        var fecha = new Date(fechaRef);
-        document.getElementById('fecha-act').textContent = fecha.toLocaleDateString('es-CL',{day:'2-digit',month:'long',year:'numeric'});
-        document.getElementById('ult-act').style.display='inline-flex';
-      }
-
-      // Default: mes actual, si no existe usar el anterior
-      var mesesES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-      var hoy=new Date();
-      var mesActual=mesesES[hoy.getMonth()];
-      var anioActual=hoy.getFullYear().toString();
-
-      // Buscar periodo: mes actual, si no el anterior, si no el más reciente
-      var periodoActivo=mesActual+' '+anioActual;
-      if(_periodos.indexOf(periodoActivo)<0){
-        var idxMes=hoy.getMonth()-1;
-        var anioAnterior=anioActual;
-        if(idxMes<0){idxMes=11;anioAnterior=(hoy.getFullYear()-1).toString();}
-        periodoActivo=mesesES[idxMes]+' '+anioAnterior;
-        if(_periodos.indexOf(periodoActivo)<0) periodoActivo=_periodos[0];
-      }
-
-      // Seleccionar año y mes en los 4 selectores
-      var partesPer=periodoActivo.split(' ');
-      var mesSelec=partesPer[0];
-      var anioSelec=partesPer[1];
-      var selAD=document.getElementById('sel-anio-desde');
-      var selAH=document.getElementById('sel-anio-hasta');
-      for(var oi=0;oi<selAD.options.length;oi++){if(selAD.options[oi].value===anioSelec){selAD.selectedIndex=oi;break;}}
-      for(var oi=0;oi<selAH.options.length;oi++){if(selAH.options[oi].value===anioSelec){selAH.selectedIndex=oi;break;}}
-      poblarMesesRango();
-      var selMD=document.getElementById('sel-mes-desde');
-      var selMH=document.getElementById('sel-mes-hasta');
-      for(var oi=0;oi<selMD.options.length;oi++){if(selMD.options[oi].value===mesSelec){selMD.selectedIndex=oi;break;}}
-      for(var oi=0;oi<selMH.options.length;oi++){if(selMH.options[oi].value===mesSelec){selMH.selectedIndex=oi;break;}}
-      // Cargar rango inicial
-      renderEvolucion();
-      renderCompAnual();
-      setTimeout(function(){ cargarRango(); }, 50);
-    });
-  });
-}
-
-function cargarPeriodo(periodo){
-  if(_periodos.indexOf(periodo)<0) return;
-  document.getElementById('loading').style.display='flex';
-  document.getElementById('dashboard').style.display='none';
-
-  var rep = _reportes.find(function(r){ return r.periodo===periodo; });
-  if(!rep){ document.getElementById('loading').style.display='none'; document.getElementById('dashboard').style.display='block'; return; }
-
-  document.getElementById('periodo-pill').textContent = periodo.charAt(0).toUpperCase()+periodo.slice(1);
-
-  // Periodo anterior para flechas
-  var idxPer = _periodos.indexOf(periodo);
-  var repAnt = idxPer < _periodos.length-1 ? _reportes[idxPer+1] : null;
-
-  var queries = [
-    sb_client.from('costos').select('*').eq('reporte_id',rep.id).order('monto',{ascending:false}),
-    sb_client.from('productos').select('*').eq('reporte_id',rep.id).order('monto',{ascending:false})
-  ];
-  if(repAnt) queries.push(sb_client.from('costos').select('*').eq('reporte_id',repAnt.id));
-
-  Promise.all(queries).then(function(results){
-    var costos   = results[0].data||[];
-    var productos = results[1].data||[];
-    var costosAnt = repAnt ? (results[2].data||[]) : [];
-
-    var vb = Number(rep.ventas_brutas||0);
-    var vn = _aplicaIva ? Number(rep.ventas_netas||0) : vb;
-    
-    // Gastos brutos = suma de monto (columna Monto Bruto del Excel)
-    var gb = costos.reduce(function(s,c){ return s+Number(c.monto||0); },0);
-    // Gastos netos = si no aplica IVA usar mismo valor bruto, sino calcular neto
-    var gn = costos.reduce(function(s,c){ return s+getNetoDoc(c); },0); // Gastos netos SIEMPRE calculados sin IVA
-    
-    // Separar impuestos (excluir de operacional)
-    var impBruto = costos.filter(function(c){ return /impuesto|iva|tribut/i.test(c.familia||c.categoria||''); }).reduce(function(s,c){ return s+Number(c.monto||0); },0);
-    var impNeto  = costos.filter(function(c){ return /impuesto|iva|tribut/i.test(c.familia||c.categoria||''); }).reduce(function(s,c){ return s+getNetoDoc(c); },0);
-
-    var gbOp = gb - impBruto;  // Gastos brutos operacionales
-    var gnOp = gn - impNeto;   // Gastos netos operacionales
-    var resultado = vn - gnOp; // Resultado = Venta Neta - Gasto Neto
-
-    // Fijos/variables - usar Gasto Neto
-    var hasTipo = costos.some(function(c){ return c.tipo_gasto&&c.tipo_gasto.trim()!==''; });
-    var cf = costos.filter(function(c){ return /fijo/i.test(c.tipo_gasto||''); }).reduce(function(s,c){ return s+getNetoDoc(c); },0);
-    var cv = costos.filter(function(c){ return /variable/i.test(c.tipo_gasto||''); }).reduce(function(s,c){ return s+getNetoDoc(c); },0);
-    if(!hasTipo){ cf=gnOp; cv=0; } // Si no hay tipo, asumir todo fijo
-
-    var mb = vn>0?((resultado/vn)*100).toFixed(1):0;
-    var mn = vb>0?((resultado/vb)*100).toFixed(1):0;
-
-    // Anterior
-    var vbAnt = repAnt?Number(repAnt.ventas_brutas||0):null;
-    var vnAnt = repAnt?Number(repAnt.ventas_netas||0):null;
-    var gnAnt = costosAnt.reduce(function(s,c){ return s+getNetoDoc(c); },0);
-    var impAnt = costosAnt.filter(function(c){ return /impuesto|iva|tribut/i.test(c.familia||c.categoria||''); }).reduce(function(s,c){ return s+getNetoDoc(c); },0);
-    var gnOpAnt = gnAnt-impAnt;
-    var resAnt = vnAnt!==null?vnAnt-gnOpAnt:null;
-
-    // KPIs top
-    document.getElementById('kv-vb').textContent = fmt(vb);
-    document.getElementById('kv-vn').textContent = fmt(vn);
-    document.getElementById('kv-gb').textContent = fmt(gb);
-    document.getElementById('kv-gn').textContent = fmt(gn);
-
-    var resMes = document.getElementById('kv-res-mes');
-    if(resMes){
-      resMes.textContent = (resultado>=0?'+':'')+fmt(Math.abs(resultado));
-      resMes.style.color = resultado>=0?'var(--green)':'var(--red)';
-    }
-
-    // Proyección Run Rate + YoY
-    calcularRunRateYoY(sel, vb);
-
-    // KPIs gastos
-    document.getElementById('kv-gb2').textContent = fmt(gbOp);
-    document.getElementById('kv-gn2').textContent = fmt(gnOp);
-    document.getElementById('kv-cf').textContent = fmt(cf);
-    document.getElementById('kv-cv').textContent = fmt(cv);
-
-    // Indicadores
-    document.getElementById('iv-res').textContent = (resultado>=0?'+':'')+fmt(Math.abs(resultado));
-    document.getElementById('iv-res').style.color = resultado>=0?'#5DECA0':'#FF6B6B';
-    document.getElementById('iv-mb').textContent = mb+'%';
-    document.getElementById('iv-mn').textContent = mn+'%';
-
-    // ── IVA ESTIMADO F29 — Motor SII Estricto ────────────────────
-    var ivaDebito = Math.round(vb * 0.19 / 1.19);
-    var ivaCredito = costos.reduce(function(s,c){ return s + getIvaCredito(c); }, 0);
-    var ivaPagar = ivaDebito - ivaCredito;
-    var elDeb = document.getElementById('iv-iva-debito');
-    var elCred = document.getElementById('iv-iva-credito');
-    var elPagar = document.getElementById('iv-iva-pagar');
-    var elRes = document.getElementById('ind-iva-result');
-    var elHint = document.getElementById('ih-iva-pagar');
-    if(elDeb) elDeb.textContent = fmt(ivaDebito);
-    if(elCred) elCred.textContent = fmt(ivaCredito);
-    if(elPagar){ elPagar.textContent = (ivaPagar>=0?'':'-')+fmt(Math.abs(ivaPagar)); elPagar.style.color = ivaPagar>=0?'#FF6B6B':'#5DECA0'; }
-    if(elRes) elRes.style.background = ivaPagar>=0?'#922B21':'#1a5276';
-    if(elHint) elHint.textContent = ivaPagar>=0?'IVA A PAGAR (APROXIMADO)':'REMANENTE A FAVOR';
-
-    // Chart ventas por categoria
-    var catV={};
-    productos.forEach(function(p){ var cat=p.categoria||'Sin categoria'; catV[cat]=(catV[cat]||0)+getMontoProducto(p); });
-    var catArr=Object.entries(catV).sort(function(a,b){return b[1]-a[1];});
-
-    dc('vcat');
-    charts['vcat']=new Chart(document.getElementById('c-vcat').getContext('2d'),{
-      type:'bar',data:{labels:catArr.map(function(e){return e[0];}),datasets:[{data:catArr.map(function(e){return e[1];}),backgroundColor:['#3A8FD1','#1B3A5C','#27AE60','#E67E22','#8E44AD','#E74C3C','#16A085','#F39C12','#5BAEE8','#2ECC71','#C0392B','#9B59B6'],borderRadius:5,borderWidth:0}]},
-      options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#EBF5FB'},ticks:{font:{size:10},callback:function(v){return v>=1000000?'$'+(v/1000000).toFixed(1)+'M':'$'+(v/1000).toFixed(0)+'K';}}},y:{grid:{display:false},ticks:{font:{size:10}}}}}
-    });
-
-    // Tabla % catV
-    document.getElementById('tb-catv').innerHTML=catArr.map(function(e){
-      return '<tr><td style="padding:7px 10px;font-size:12px">'+e[0]+'</td><td class="num">'+fmt(e[1])+'</td><td class="pct">'+pct(e[1],vb)+'</td></tr>';
-    }).join('');
-
-    // Formas de pago
-    var pagos={};
-    productos.forEach(function(p){ var fp=p.forma_pago||'Sin datos'; pagos[fp]=(pagos[fp]||0)+getMontoProducto(p); });
-    var pagArr=Object.entries(pagos).sort(function(a,b){return b[1]-a[1];});
-    document.getElementById('tb-pagos').innerHTML=pagArr.map(function(e){
-      return '<tr><td style="padding:7px 10px;font-size:12px">'+e[0]+'</td><td class="num">'+fmt(e[1])+'</td><td class="pct">'+pct(e[1],vb)+'</td></tr>';
-    }).join('');
-
-    // Tabla ventas desplegable
-    var cats={};
-    productos.forEach(function(p){ var cat=p.categoria||'Sin categoria'; if(!cats[cat])cats[cat]={items:[],total:0,cant:0}; cats[cat].items.push(p); cats[cat].total+=getMontoProducto(p); cats[cat].cant+=Number(p.cantidad||0); });
-    var rows='';
-    Object.entries(cats).sort(function(a,b){return b[1].total-a[1].total;}).forEach(function(e){
-      rows+='<tr class="crow" onclick="toggleProd(this)"><td style="padding:8px 10px;font-size:13px">&#9658; '+e[0]+'</td><td class="num">'+e[1].cant+'</td><td class="num">'+fmt(e[1].total)+'</td><td class="pct">'+pct(e[1].total,vb)+'</td></tr>';
-      Object.values(e[1].prods).sort(function(a,b){return b.monto_pb-a.monto_pb;}).forEach(function(p){
-        var mp=p.monto_pb;
-        rows+='<tr class="prow"><td style="padding:6px 10px 6px 26px;font-size:12px">'+p.nombre+'</td><td class="num">'+parseFloat((p.cantidad||0)).toFixed(3).replace(/\.?0+$/,'')+'</td><td class="num">'+fmt(mp)+'</td><td class="pct">'+pct(mp,vb)+'</td></tr>';
-      });
-    });
-    document.getElementById('tb-vdet').innerHTML=rows;
-
-    // Gastos por familia - Gasto Neto = Monto Neto del Excel
-    var fams={};
-    costos.forEach(function(c){
-      var fam=c.familia||c.categoria||'Sin familia';
-      if(/impuesto|iva|tribut/i.test(fam)) return;
-      fams[fam]=(fams[fam]||0)+getNetoDoc(c);
-    });
-
-    // Gastos por tipo de documento
-    // Facturas electronicas y Notas de credito = valor neto, resto = valor bruto
-    var tiposDocs={};
-    var totalTipoDoc=0;
-    costos.forEach(function(c){
-      var td=c.tipo_documento||'Sin documento';
-      var esNeto=/factura.*elec|nota.*cr/i.test(td)||/nc.*elec/i.test(td);
-      var val=esNeto?getNetoDoc(c):Number(c.monto||0);
-      tiposDocs[td]=(tiposDocs[td]||0)+val;
-      totalTipoDoc+=val;
-    });
-    var tdArr=Object.entries(tiposDocs).sort(function(a,b){return b[1]-a[1];});
-    var tbTD=document.getElementById('tb-tipo-doc');
-    if(tbTD){
-      if(tdArr.length && tdArr[0][0]!=='Sin documento'){
-        tbTD.innerHTML=tdArr.map(function(e){
-          var esNeto=/factura.*elec|nota.*cred/i.test(e[0]);
-          var badge=esNeto?'<span style="font-size:9px;background:#EBF5FB;color:#3A8FD1;border-radius:4px;padding:1px 5px;margin-left:4px">Neto</span>':'<span style="font-size:9px;background:#F8F3EC;color:#E67E22;border-radius:4px;padding:1px 5px;margin-left:4px">Bruto</span>';
-          return '<tr><td style="padding:7px 10px;font-size:12px">'+e[0]+badge+'</td><td class="num">'+fmt(e[1])+'</td><td class="pct">'+pct(e[1],totalTipoDoc)+'</td></tr>';
-        }).join('');
-      } else {
-        tbTD.innerHTML='<tr><td colspan="3" style="padding:12px;text-align:center;color:var(--muted);font-size:12px">Sin datos de tipo de documento. Vuelve a subir el Excel de gastos.</td></tr>';
-      }
-    }
-    var famArr=Object.entries(fams).sort(function(a,b){return b[1]-a[1];});
-
-    dc('gfam');
-    charts['gfam']=new Chart(document.getElementById('c-gfam').getContext('2d'),{
-      type:'bar',data:{labels:famArr.map(function(e){return e[0];}),datasets:[{data:famArr.map(function(e){return e[1];}),backgroundColor:['#3A8FD1','#1B3A5C','#27AE60','#E67E22','#8E44AD','#E74C3C','#16A085','#F39C12','#5BAEE8','#2ECC71','#C0392B','#9B59B6'],borderRadius:5,borderWidth:0}]},
-      options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return ' '+fmt(c.raw)+' ('+pct(c.raw,gnOp)+')';} }}},scales:{x:{grid:{color:'#EBF5FB'},ticks:{font:{size:10},callback:function(v){return v>=1000000?'$'+(v/1000000).toFixed(1)+'M':'$'+(v/1000).toFixed(0)+'K';}}},y:{grid:{display:false},ticks:{font:{size:10}}}}}
-    });
-
-    // Tabla: % sobre Gasto Neto total y sobre Venta Neta
-    document.getElementById('tb-gfam').innerHTML=famArr.map(function(e){
-      return '<tr><td style="padding:7px 10px;font-size:12px">'+e[0]+'</td><td class="num">'+fmt(e[1])+'</td><td class="pct">'+pct(e[1],gnOp)+'</td><td class="pct">'+pct(e[1],vn)+'</td></tr>';
-    }).join('');
-
-    // Fijos vs Variables
-    dc('fv');
-    if(cf>0||cv>0){
-      charts['fv']=new Chart(document.getElementById('c-fv').getContext('2d'),{
-        type:'doughnut',data:{labels:['Fijos','Variables'],datasets:[{data:[cf,cv],backgroundColor:['#1B3A5C','#3A8FD1'],borderWidth:2,borderColor:'#fff'}]},
-        options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:11}}}}}
-      });
-    }
-
-    // EERR con flechas
-    // EERR: Gastos por familia y categoría usando Gasto Neto (Monto Neto)
-    var famGastos={},famCats={};
-    costos.forEach(function(c){
-      var fam=c.familia||c.categoria||'Sin familia';
-      var cat=c.categoria||'Sin categoria';
-      if(/impuesto|iva|tribut/i.test(fam)) return;
-      var neto=getNetoDoc(c); // Monto Neto directo del Excel
-      famGastos[fam]=(famGastos[fam]||0)+neto;
-      if(!famCats[fam])famCats[fam]={};
-      famCats[fam][cat]=(famCats[fam][cat]||0)+neto;
-    });
-    var famList=Object.entries(famGastos).sort(function(a,b){return b[1]-a[1];});
-    var notaAnt=repAnt?'<span style="font-size:10px;color:rgba(255,255,255,.5);margin-left:8px">vs '+repAnt.periodo.charAt(0).toUpperCase()+repAnt.periodo.slice(1)+'</span>':'';
-
-    var h='';
-    h+='<div class="eg"><div class="egh" onclick="toggleEERR(this)"><span>INGRESOS'+notaAnt+'</span><span>'+fmt(vb)+arr(vb,vbAnt,false)+'</span></div><div class="egb open">';
-    h+='<div class="ech"><span>Ventas brutas</span><span>'+fmt(vb)+arr(vb,vbAnt,false)+'</span></div>';
-    h+='<div class="ech"><span>Ventas netas (sin IVA)</span><span>'+fmt(vn)+arr(vn,vnAnt,false)+'</span></div>';
-    h+='</div></div>';
-    h+='<div class="eg"><div class="egh" onclick="toggleEERR(this)"><span>GASTOS OPERACIONALES</span><span>'+fmt(gnOp)+arr(gnOp,gnOpAnt,true)+'</span></div><div class="egb open">';
-    famList.forEach(function(fe){
-      h+='<div class="ech" onclick="toggleEERRCat(this)"><span>'+fe[0]+'</span><span>'+fmt(fe[1])+'</span></div><div class="ecb">';
-      Object.entries(famCats[fe[0]]||{}).sort(function(a,b){return b[1]-a[1];}).forEach(function(ce){
-        h+='<div class="erow"><span>'+ce[0]+'</span><span>'+fmt(ce[1])+'</span></div>';
-      });
-      h+='</div>';
-    });
-    h+='</div></div>';
-    if(impNeto>0) h+='<div class="etax"><span>Impuestos / IVA (no incluido en resultado)</span><span>'+fmt(impNeto)+'</span></div>';
-    var resStyle=resultado>=0?'background:var(--gl);color:var(--green)':'background:var(--rl);color:var(--red)';
-    h+='<div class="eres" style="'+resStyle+'"><span>RESULTADO OPERACIONAL</span><span>'+(resultado>=0?'+':'')+fmt(Math.abs(resultado))+arr(resultado,resAnt,false)+'</span></div>';
-    h+='<div class="ekpis"><div class="ekpi"><div class="ekl">Margen bruto</div><div class="ekv">'+mb+'%</div></div><div class="ekpi"><div class="ekl">Margen neto</div><div class="ekv">'+mn+'%</div></div></div>';
-    document.getElementById('eerr-body').innerHTML=h;
-
-    document.getElementById('loading').style.display='none';
-    document.getElementById('dashboard').style.display='block';
-
-    actualizarComp();
-  });
-}
-
-function renderEvolucion(){
-  if(!_reportes.length) return;
-  // Solo periodo del ano en curso
-  var anioActual = new Date().getFullYear().toString();
-  var reps = _reportes.slice().reverse().filter(function(r){
-    return r.periodo && r.periodo.split(' ')[1] === anioActual;
-  });
-  // Si no hay datos del ano actual, usar últimos 12
-  if(!reps.length) reps = _reportes.slice().reverse().slice(-12);
-  dc('evo');
-  charts['evo']=new Chart(document.getElementById('c-evo').getContext('2d'),{
-    type:'line',data:{
-      labels:reps.map(function(r){return r.periodo.slice(0,3)+'.';}),
-      datasets:[
-        {label:'Ventas brutas',data:reps.map(function(r){return Number(r.ventas_brutas||0);}),borderColor:'#3A8FD1',backgroundColor:'rgba(58,143,209,.1)',tension:.3,fill:true,pointRadius:3},
-        {label:'Ventas netas',data:reps.map(function(r){return Number(r.ventas_netas||0);}),borderColor:'#27AE60',backgroundColor:'rgba(39,174,96,.05)',tension:.3,fill:false,pointRadius:3}
-      ]
-    },
-    options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},scales:{x:{grid:{display:false},ticks:{font:{size:9}}},y:{grid:{color:'#EBF5FB'},ticks:{font:{size:9},callback:function(v){return v>=1000000?'$'+(v/1000000).toFixed(1)+'M':'$'+(v/1000).toFixed(0)+'K';}}}}}
-  });
-}
-
-function actualizarComp() {
-  var desde = document.getElementById('comp-anio-desde') ? document.getElementById('comp-anio-desde').value : '';
-  var mesD  = document.getElementById('comp-mes-desde')  ? document.getElementById('comp-mes-desde').value  : '';
-  var anioH = document.getElementById('comp-anio-hasta') ? document.getElementById('comp-anio-hasta').value : '';
-  var mesH  = document.getElementById('comp-mes-hasta')  ? document.getElementById('comp-mes-hasta').value  : '';
-  if(!desde||!mesD||!anioH||!mesH||!_reportes.length) return;
-  var periodoD = mesD+' '+desde;
-  var periodoH = mesH+' '+anioH;
-  var idxD = _periodos.indexOf(periodoD);
-  var idxH = _periodos.indexOf(periodoH);
-  if(idxD<0||idxH<0) return;
-  var start = Math.min(idxD,idxH);
-  var end2  = Math.max(idxD,idxH);
-  var sel   = _periodos.slice(start,end2+1).slice().reverse();
-  var repsIds = _reportes.filter(function(r){return sel.indexOf(r.periodo)>=0;}).map(function(r){return r.id;});
-
-  if(!repsIds.length) return;
-
-  sb_client.from('costos').select('reporte_id,monto,monto_neto,familia,categoria,proveedor').in('reporte_id',repsIds).then(function(res){
-    var allC = res.data||[];
-    var repMap = {};
-    _reportes.forEach(function(r){repMap[r.id]=r.periodo;});
-
-    var dat = {};
-    sel.forEach(function(p){dat[p]={vb:0,vn:0,gb:0,gn:0,fams:{},cats:{}};});
-    _reportes.filter(function(r){return sel.indexOf(r.periodo)>=0;}).forEach(function(r){
-      dat[r.periodo].vb = Number(r.ventas_brutas||0);
-      dat[r.periodo].vn = _aplicaIva ? Number(r.ventas_netas||0) : Number(r.ventas_brutas||0);
-    });
-    allC.forEach(function(c){
-      var p = repMap[c.reporte_id];
-      if(!p||!dat[p]) return;
-      if(/impuesto|iva|tribut/i.test(c.familia||c.categoria||'')) return;
-      var bruto = Number(c.monto||0);
-      var neto  = getNetoDoc(c);
-      var fam   = c.familia||c.categoria||'Sin familia';
-      var prov  = c.proveedor||'Sin proveedor';
-      dat[p].gb += bruto;
-      dat[p].gn += neto;
-      if(!dat[p].fams[fam]) dat[p].fams[fam]=0;
-      dat[p].fams[fam] += neto;
-      if(!dat[p].cats[fam]) dat[p].cats[fam]={};
-      if(!dat[p].cats[fam][prov]) dat[p].cats[fam][prov]=0;
-      dat[p].cats[fam][prov] += neto;
-    });
-    sel.forEach(function(p){dat[p].res=dat[p].vn-dat[p].gn;});
-
-    var totalVnRango = sel.reduce(function(s,p){return s+dat[p].vn;},0);
-    var gnVals = sel.map(function(p){
-      return Object.keys(dat[p].fams).reduce(function(s,f){return s+(dat[p].fams[f]||0);},0);
-    });
-    var gnTot = gnVals.reduce(function(s,v){return s+v;},0);
-
-    var todasFams=[];
-    sel.forEach(function(p){Object.keys(dat[p].fams).forEach(function(f){if(todasFams.indexOf(f)<0)todasFams.push(f);});});
-    todasFams.sort(function(a,b){
-      return sel.reduce(function(s,p){return s+(dat[p].fams[b]||0);},0)-
-             sel.reduce(function(s,p){return s+(dat[p].fams[a]||0);},0);
-    });
-
-    // Ancho de columna dinámico
-    var nPer = sel.length;
-    var FS   = nPer<=3?11:nPer<=6?10:nPer<=9?9:8;
-
-    // Etiqueta de mes según cantidad
+  // ── EERR HTML para PDF (sin interactividad DOM) ──
+  function buildEerrHtml(u6,dat,todasFams,headBg,headColor,altBg,totalBg){
+    headBg=headBg||'#0f172a'; headColor=headColor||'#fff'; altBg=altBg||'#f8fafc';
     function label(p){
-      var parts = p.split(' ');
-      var mes = parts[0]; var anio = parts[1]||'';
-      if(nPer<=6) return mes.charAt(0).toUpperCase()+mes.slice(1)+' '+anio;
-      if(nPer<=12) return mes.slice(0,3).charAt(0).toUpperCase()+mes.slice(1,3)+'.'+anio.slice(2);
-      return mes.slice(0,3).charAt(0).toUpperCase()+mes.slice(1,3);
+      var parts=p.split(' ');
+      var mes=parts[0].charAt(0).toUpperCase()+parts[0].slice(1,3);
+      return mes+" '"+((parts[1]||'').slice(2));
+    }
+    function fmtV(v){ return v===0?'-':Math.round(v)>=1000000?'$'+(Math.round(v)/1000000).toFixed(1)+'M':Math.round(v)>=1000?'$'+(Math.round(v)/1000).toFixed(0)+'K':'$'+Math.round(v).toLocaleString('es-CL'); }
+
+    var tvn=u6.reduce(function(s,p){return s+dat[p].vn;},0);
+    var th='<table style="width:100%;border-collapse:collapse;font-size:7.5pt">'
+      +'<thead><tr style="background:'+headBg+';color:'+headColor+'">'
+      +'<th style="padding:6px 8px;text-align:left;width:28%">Concepto</th>'
+      +u6.map(function(p){return '<th style="padding:6px 6px;text-align:right;white-space:nowrap">'+label(p)+'</th>';}).join('')
+      +'<th style="padding:6px 8px;text-align:right;font-weight:800">Total</th>'
+      +'</tr></thead><tbody>';
+
+    function secRow(txt){
+      return '<tr style="background:'+headBg+'22"><td colspan="'+(u6.length+2)+'" style="padding:4px 8px;font-size:7pt;font-weight:700;color:'+headBg+';text-transform:uppercase;letter-spacing:.6px">'+txt+'</td></tr>';
+    }
+    function dataRow(txt,vals,bold,bg,color){
+      var tot=vals.reduce(function(s,v){return s+v;},0);
+      var fw=bold?'font-weight:700;':'';
+      var bgs=bg?'background:'+bg+';':'';
+      var cl=color?'color:'+color+';':'';
+      return '<tr style="'+bgs+'border-bottom:1px solid #f1f5f9">'
+        +'<td style="padding:5px 8px;'+fw+cl+'">'+txt+'</td>'
+        +vals.map(function(v){return '<td style="padding:5px 6px;text-align:right;'+fw+cl+'">'+fmtV(v)+'</td>';}).join('')
+        +'<td style="padding:5px 8px;text-align:right;'+fw+cl+'">'+fmtV(tot)+'</td>'
+        +'</tr>';
     }
 
-    // Construir tabla HTML - columnas siempre alineadas
-    var colW = 'style="text-align:right;padding:6px 8px;font-size:'+FS+'px;white-space:nowrap"';
-    var colH = 'style="text-align:right;padding:6px 8px;font-size:'+(FS-1)+'px;color:rgba(255,255,255,.8);white-space:nowrap"';
+    th += secRow('Ingresos');
+    th += dataRow('Ventas brutas',u6.map(function(p){return dat[p].vb;}),false,altBg,'');
+    th += dataRow('Ventas netas',u6.map(function(p){return dat[p].vn;}),true,'','');
 
-    var t = '<table style="width:100%;border-collapse:collapse">';
-
-    // THEAD
-    t += '<thead><tr style="background:var(--navy)">';
-    t += '<th style="text-align:left;padding:8px 14px;font-size:'+(FS)+'px;color:#fff;width:30%">Concepto</th>';
-    sel.forEach(function(p){ t += '<th '+colH+'>'+label(p)+'</th>'; });
-    t += '<th style="text-align:right;padding:6px 8px;font-size:'+(FS-1)+'px;color:rgba(255,255,255,.8)">Total</th>';
-    t += '<th style="text-align:right;padding:6px 8px;font-size:'+(FS-1)+'px;color:rgba(255,255,255,.8)">% V.Neta</th>';
-    t += '</tr></thead><tbody>';
-
-    function secRow(label2){
-      return '<tr style="background:var(--blue-l)"><td colspan="'+(sel.length+3)+'" style="padding:5px 14px;font-size:10px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.8px">'+label2+'</td></tr>';
-    }
-
-    function dataRow(label3, vals, bold, bg, color, indent){
-      var tot = vals.reduce(function(s,v){return s+v;},0);
-      var bs  = bold?'font-weight:700;':'';
-      var bgs = bg?'background:'+bg+';':'';
-      var cl  = color?'color:'+color+';':'';
-      var pd  = indent?'padding-left:'+(14+indent*12)+'px':'padding-left:14px';
-      var pctVn = totalVnRango>0?((tot/totalVnRango)*100).toFixed(1)+'%':'--';
-      var row = '<tr style="'+bgs+'border-top:1px solid var(--bg)">';
-      row += '<td style="'+pd+';padding-top:6px;padding-bottom:6px;font-size:'+FS+'px;'+bs+cl+'">'+label3+'</td>';
-      vals.forEach(function(v){
-        row += '<td '+colW+' style="text-align:right;padding:6px 8px;font-size:'+FS+'px;white-space:nowrap;'+bs+cl+'">'+fmt(v)+'</td>';
-      });
-      row += '<td style="text-align:right;padding:6px 8px;font-size:'+FS+'px;'+bs+cl+'">'+fmt(tot)+'</td>';
-      row += '<td style="text-align:right;padding:6px 8px;font-size:'+(FS-1)+'px;color:var(--muted)">'+pctVn+'</td>';
-      row += '</tr>';
-      return row;
-    }
-
-    // INGRESOS
-    t += secRow('Ingresos');
-    t += dataRow('Ventas brutas', sel.map(function(p){return dat[p].vb;}), false, '', '');
-    t += dataRow('Ventas netas', sel.map(function(p){return dat[p].vn;}), true, '#F8FBFD', '');
-
-    // GASTOS
-    t += secRow('Gastos Operacionales');
-
-    // Fila total gastos - toggle
-    var pctGnTot = totalVnRango>0?((gnTot/totalVnRango)*100).toFixed(1)+'%':'--';
-    t += '<tr id="comp-gh" style="background:#EBF5FB;border-top:1px solid var(--bg);cursor:pointer">';
-    t += '<td style="padding:6px 14px;font-size:'+FS+'px;font-weight:700;color:var(--navy)"><span id="comp-gh-arr">&#9660;</span> Total gastos netos</td>';
-    gnVals.forEach(function(v){ t += '<td style="text-align:right;padding:6px 8px;font-size:'+FS+'px;font-weight:700">'+fmt(v)+'</td>'; });
-    t += '<td style="text-align:right;padding:6px 8px;font-size:'+FS+'px;font-weight:700">'+fmt(gnTot)+'</td>';
-    t += '<td style="text-align:right;padding:6px 8px;font-size:'+(FS-1)+'px;color:var(--muted)">'+pctGnTot+'</td>';
-    t += '</tr>';
-
-    // Familias
-    todasFams.forEach(function(fam,fi){
-      var famVals = sel.map(function(p){return dat[p].fams[fam]||0;});
-      var famTot  = famVals.reduce(function(s,v){return s+v;},0);
-      if(!famTot) return;
-      var famId = 'cf'+fi;
-      var pctFam = totalVnRango>0?((famTot/totalVnRango)*100).toFixed(1)+'%':'--';
-
-      t += '<tr class="comp-fam-rows" id="'+famId+'" style="background:#F0F7FD;border-top:1px solid var(--bg);cursor:pointer">';
-      t += '<td style="padding:6px 14px 6px 26px;font-size:'+FS+'px;color:var(--navy)"><span id="'+famId+'a">&#9658;</span> '+fam+'</td>';
-      famVals.forEach(function(v){ t += '<td style="text-align:right;padding:6px 8px;font-size:'+FS+'px">'+fmt(v)+'</td>'; });
-      t += '<td style="text-align:right;padding:6px 8px;font-size:'+FS+'px;font-weight:600">'+fmt(famTot)+'</td>';
-      t += '<td style="text-align:right;padding:6px 8px;font-size:'+(FS-1)+'px;color:var(--muted)">'+pctFam+'</td>';
-      t += '</tr>';
-
-      // Categorías
-      var cats=[];
-      sel.forEach(function(p){if(dat[p].cats[fam])Object.keys(dat[p].cats[fam]).forEach(function(c){if(cats.indexOf(c)<0)cats.push(c);});});
-      cats.sort(function(a,b){
-        return sel.reduce(function(s,p){return s+((dat[p].cats[fam]&&dat[p].cats[fam][b])||0);},0)-
-               sel.reduce(function(s,p){return s+((dat[p].cats[fam]&&dat[p].cats[fam][a])||0);},0);
-      });
-      cats.forEach(function(cat){
-        var catVals = sel.map(function(p){return (dat[p].cats[fam]&&dat[p].cats[fam][cat])||0;});
-        var catTot  = catVals.reduce(function(s,v){return s+v;},0);
-        if(!catTot) return;
-        t += '<tr class="'+famId+'-c" style="display:none;background:var(--white);border-top:1px solid var(--bg)">';
-        t += '<td style="padding:5px 14px 5px 40px;font-size:'+(FS-1)+'px;color:var(--muted)">'+cat+'</td>';
-        catVals.forEach(function(v){ t += '<td style="text-align:right;padding:5px 8px;font-size:'+(FS-1)+'px;color:var(--muted)">'+fmt(v)+'</td>'; });
-        t += '<td style="text-align:right;padding:5px 8px;font-size:'+(FS-1)+'px;color:var(--muted)">'+fmt(catTot)+'</td>';
-        t += '<td></td>';
-        t += '</tr>';
-      });
+    th += secRow('Gastos Operacionales');
+    var gnVals=u6.map(function(p){return dat[p].gn;});
+    var gnTot=gnVals.reduce(function(s,v){return s+v;},0);
+    th += dataRow('Total gastos netos',gnVals,true,altBg,'');
+    todasFams.forEach(function(fam){
+      var vals=u6.map(function(p){return dat[p].fams[fam]||0;});
+      if(!vals.reduce(function(s,v){return s+v;},0)) return;
+      th += dataRow('  '+fam,vals,false,'','#475569');
     });
 
-    // RESULTADO
-    t += secRow('Resultado');
-    var resVals = sel.map(function(p){return dat[p].res;});
-    var resTot  = resVals.reduce(function(s,v){return s+v;},0);
-    var resColor = resTot<0?'var(--red)':'var(--text)';
-    var resBg    = resTot<0?'var(--rl)':'var(--bg)';
-    var pctRes   = totalVnRango>0?((resTot/totalVnRango)*100).toFixed(1)+'%':'--';
-    t += '<tr style="background:'+resBg+';border-top:2px solid var(--border)">';
-    t += '<td style="padding:8px 14px;font-size:'+FS+'px;font-weight:700;color:'+resColor+'">Resultado operacional</td>';
-    resVals.forEach(function(v){
-      var c = v<0?'var(--red)':'var(--text)';
-      t += '<td style="text-align:right;padding:8px 8px;font-size:'+FS+'px;font-weight:700;color:'+c+'">'+fmt(v)+'</td>';
+    th += secRow('Resultado');
+    var resVals=u6.map(function(p){return dat[p].res;});
+    var resTot=resVals.reduce(function(s,v){return s+v;},0);
+    var resColor=resTot<0?'#991b1b':'#166534';
+    var resBg=resTot<0?'#fee2e2':'#dcfce7';
+    th += '<tr style="background:'+resBg+';border-top:2px solid '+headBg+'">'
+      +'<td style="padding:6px 8px;font-weight:800;color:'+resColor+'">Resultado operacional</td>'
+      +resVals.map(function(v){return '<td style="padding:6px 6px;text-align:right;font-weight:800;color:'+(v<0?'#991b1b':'#166534')+'">'+fmtV(v)+'</td>';}).join('')
+      +'<td style="padding:6px 8px;text-align:right;font-weight:800;color:'+resColor+'">'+fmtV(resTot)+'</td>'
+      +'</tr>';
+
+    th += '</tbody></table>';
+    return th;
+  }
+
+  // ══════════════════════════════════════════════
+  // PLANTILLA 1: ONE-PAGE
+  // ══════════════════════════════════════════════
+  if(estilo==='one-page'){
+    buildEerrData(function(u6,dat,todasFams){
+      var catTable=buildTableHtml(['Categoría','Monto','%'],catRows,[1,2],'#0f172a');
+      var tdTable =buildTableHtml(['Tipo Documento','Monto','%'],tdRows,[1,2],'#0f172a');
+      var eerrTable=u6?buildEerrHtml(u6,dat,todasFams,'#0f172a','#fff','#f8fafc'):'<p style="color:#94a3b8;font-size:8pt">Sin datos históricos disponibles.</p>';
+      var eerrRows=[
+        ['Ventas brutas',vb],['Ventas netas (sin IVA)',vn],
+        ['Gastos netos operacionales',gn],['Costos fijos',cf],['Costos variables',cv],
+        ['RESULTADO OPERACIONAL',res]
+      ];
+      var bsHtml='<table style="width:100%;border-collapse:collapse;font-size:8pt"><tbody>'
+        +eerrRows.map(function(r,i){
+          var last=i===eerrRows.length-1;
+          return '<tr style="background:'+(last?(resNeg?'#fee2e2':'#dcfce7'):(i%2?'#f8fafc':'#fff'))+'">'
+            +'<td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;font-weight:'+(last?'800':'400')+';color:'+(last?(resNeg?'#991b1b':'#166534'):'#1e293b')+'">'+r[0]+'</td>'
+            +'<td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:right;font-weight:'+(last?'800':'400')+';color:'+(last?(resNeg?'#991b1b':'#166534'):'#1e293b')+'">'+r[1]+'</td>'
+            +'</tr>';
+        }).join('')
+        +'</tbody></table>';
+
+      var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>'
+        +'*{box-sizing:border-box;margin:0;padding:0}'
+        +'body{font-family:"Helvetica Neue",Arial,sans-serif;font-size:9pt;color:#1e293b;background:#fff}'
+        +'@page{size:A4 portrait;margin:14mm 14mm 18mm 14mm}'
+        +'.section-title{font-size:8pt;font-weight:700;color:#0f172a;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #e2e8f0}'
+        +'.page-break{page-break-before:always}'
+        +'.footer{margin-top:20px;padding-top:8px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;font-size:7pt;color:#94a3b8}'
+        +'</style></head><body>'
+        // Header
+        +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;padding-bottom:10px;border-bottom:2px solid #0f172a">'
+        +'<div><div style="font-size:18pt;font-weight:800;color:#0f172a;line-height:1">'+empresa+'</div>'
+        +'<div style="font-size:9pt;color:#64748b;margin-top:3px">'+periodo.charAt(0).toUpperCase()+periodo.slice(1)+'</div></div>'
+        +'<div style="text-align:right;font-size:7.5pt;color:#94a3b8"><div>Emisión: '+hoy+'</div><div style="margin-top:4px">Reporte Financiero Ejecutivo</div></div>'
+        +'</div>'
+        // KPIs macro 3
+        +'<div style="display:flex;gap:10px;margin-bottom:16px">'
+        +'<div style="flex:1;background:#f1f5f9;border-radius:8px;padding:14px;text-align:center"><div style="font-size:7.5pt;color:#64748b;text-transform:uppercase;margin-bottom:6px">Ventas Netas</div><div style="font-size:22pt;font-weight:800;color:#0f172a">'+vn+'</div></div>'
+        +'<div style="flex:1;background:#f1f5f9;border-radius:8px;padding:14px;text-align:center"><div style="font-size:7.5pt;color:#64748b;text-transform:uppercase;margin-bottom:6px">Gastos Netos</div><div style="font-size:22pt;font-weight:800;color:#0f172a">'+gn+'</div></div>'
+        +'<div style="flex:1;background:'+(resNeg?'#fee2e2':'#dcfce7')+';border-radius:8px;padding:14px;text-align:center"><div style="font-size:7.5pt;color:#64748b;text-transform:uppercase;margin-bottom:6px">Resultado</div><div style="font-size:22pt;font-weight:800;color:'+(resNeg?'#991b1b':'#166534')+'">'+res+'</div></div>'
+        +'</div>'
+        // KPIs secundarios
+        +'<div style="display:flex;gap:8px;margin-bottom:16px">'
+        +['Margen Bruto|'+mb,'Margen Neto|'+mn,'Punto Equilibrio|'+pe,'Proyección|'+proy].map(function(s){
+          var p=s.split('|');
+          return '<div style="flex:1;border:1px solid #e2e8f0;border-radius:6px;padding:8px;text-align:center"><div style="font-size:7pt;color:#64748b;margin-bottom:3px">'+p[0]+'</div><div style="font-size:11pt;font-weight:700;color:#0f172a">'+p[1]+'</div></div>';
+        }).join('')
+        +'<div style="flex:1;border:1px solid #e2e8f0;border-radius:6px;padding:8px;text-align:center"><div style="font-size:7pt;color:#64748b;margin-bottom:3px">YoY</div><div style="font-size:11pt;font-weight:700;color:'+(yoyNeg?'#991b1b':'#166534')+'">'+yoy+'</div></div>'
+        +'</div>'
+        // Dos columnas
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">'
+        +'<div><div class="section-title">Ventas por categoría</div>'+catTable+'</div>'
+        +'<div><div class="section-title">Gastos por tipo documento (SII)</div>'+tdTable+'</div>'
+        +'</div>'
+        // EERR condensado
+        +'<div class="section-title">Estado de Resultados del período</div>'+bsHtml
+        // Footer
+        +'<div class="footer">'+sgLogo()+'<span>surgestionpm.cl · '+hoy+'</span><span>'+periodo+'</span></div>'
+        // PÁG 2: EERR 6 meses
+        +'<div class="page-break">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid #0f172a">'
+        +'<div style="font-size:12pt;font-weight:800;color:#0f172a">Estado de Resultados Comparativo</div>'
+        +'<div style="font-size:7.5pt;color:#94a3b8">'+empresa+' · Últimos 6 meses</div></div>'
+        +eerrTable
+        +'<div class="footer">'+sgLogo()+'<span>surgestionpm.cl · '+hoy+'</span><span>Histórico comparativo</span></div>'
+        +'</div>'
+        +'</body></html>';
+
+      var opt={margin:[14,14,18,14],filename:empresa+' - '+periodo+' (Ejecutivo).pdf',image:{type:'jpeg',quality:.98},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}};
+      html2pdf().set(opt).from(html).save();
     });
-    t += '<td style="text-align:right;padding:8px 8px;font-size:'+FS+'px;font-weight:700;color:'+resColor+'">'+fmt(resTot)+'</td>';
-    t += '<td style="text-align:right;padding:8px 8px;font-size:'+(FS-1)+'px;color:'+resColor+'">'+pctRes+'</td>';
-    t += '</tr>';
+    return;
+  }
 
-    t += '</tbody></table>';
+  // ══════════════════════════════════════════════
+  // PLANTILLA 2: WALL-STREET
+  // ══════════════════════════════════════════════
+  if(estilo==='wall-street'){
+    buildEerrData(function(u6,dat,todasFams){
+      var catTableWS=buildTableHtml(['Categoría','Monto CLP','% Total'],catRows,[1,2],'#1e3a8a');
+      var famTableWS=buildTableHtml(['Familia','Gasto Neto','% G','% VN'],famRows,[1,2,3],'#1e3a8a');
+      var tdTableWS =buildTableHtml(['Tipo Documento','Monto Neto','% Total'],tdRows,[1,2],'#1e3a8a');
+      var pagTableWS=buildTableHtml(['Forma de Pago','Monto','% Total'],pagRows,[1,2],'#1e3a8a');
+      var eerrWS=u6?buildEerrHtml(u6,dat,todasFams,'#1e3a8a','#fff','#f8fafc'):
+        '<p style="color:#94a3b8;font-size:8pt;padding:12px">Sin datos históricos disponibles.</p>';
 
-    document.getElementById('eerr-comp-body').innerHTML = t;
+      var bsRows=[
+        {l:'Ingresos operacionales (brutas)',v:vb,sub:true},
+        {l:'  Ventas netas (sin IVA)',v:vn,sub:false},
+        {l:'Gastos Operacionales',v:gn,sub:true},
+        {l:'  Costos fijos',v:cf,sub:false},
+        {l:'  Costos variables',v:cv,sub:false},
+        {l:'IVA Débito estimado',v:ivaD,sub:false},
+        {l:'IVA Crédito fiscal',v:ivaC,sub:false},
+        {l:'RESULTADO OPERACIONAL DEL PERÍODO',v:res,total:true}
+      ];
+      var bsHtml='<table style="width:100%;border-collapse:collapse;font-size:8.5pt">'
+        +'<thead><tr style="background:#1e3a8a;color:#fff"><th style="padding:7px 10px;text-align:left">Partida Contable</th><th style="padding:7px 10px;text-align:right">Importe (CLP)</th></tr></thead><tbody>'
+        +bsRows.map(function(r,i){
+          if(r.total) return '<tr style="border-top:3px double #1e293b;border-bottom:3px double #1e293b;background:'+(resNeg?'#fee2e2':'#dcfce7')+'">'
+            +'<td style="padding:7px 10px;font-weight:800;color:'+(resNeg?'#991b1b':'#166534')+'">'+r.l+'</td>'
+            +'<td style="padding:7px 10px;text-align:right;font-weight:800;color:'+(resNeg?'#991b1b':'#166534')+'">'+r.v+'</td></tr>';
+          var bg=r.sub?'#f1f5f9':(i%2?'#fff':'#f8fafc');
+          var fw=r.sub?'700':'400';
+          return '<tr style="background:'+bg+'"><td style="padding:6px 10px;font-weight:'+fw+';color:#334155">'+r.l+'</td>'
+            +'<td style="padding:6px 10px;text-align:right;font-weight:'+fw+';color:#334155">'+r.v+'</td></tr>';
+        }).join('')+'</tbody></table>';
 
-    // Event listeners
-    var gh = document.getElementById('comp-gh');
-    if(gh){
-      gh.addEventListener('click', function(){
-        var rows = document.querySelectorAll('.comp-fam-rows');
-        var isOpen = rows.length && rows[0].style.display!=='none';
-        rows.forEach(function(r){r.style.display=isOpen?'none':'';});
-        var arr = document.getElementById('comp-gh-arr');
-        if(arr) arr.innerHTML = isOpen?'&#9658;':'&#9660;';
-        // Cerrar todas las categorías al contraer familias
-        if(isOpen) document.querySelectorAll('[class$="-c"]').forEach(function(r){r.style.display='none';});
-      });
-    }
+      function wsHead(titulo){
+        return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid #1e3a8a">'
+          +'<div style="font-size:11pt;font-weight:800;color:#1e3a8a">'+titulo+'</div>'
+          +'<div style="font-size:7pt;color:#94a3b8">'+empresa+' · '+periodo+' · '+hoy+'</div></div>';
+      }
+      function wsSection(t){
+        return '<div style="background:#1e3a8a;color:#fff;font-weight:700;font-size:8.5pt;padding:6px 10px;margin:14px 0 8px;letter-spacing:.3px">'+t+'</div>';
+      }
 
-    todasFams.forEach(function(fam,fi){
-      var famId = 'cf'+fi;
-      var row = document.getElementById(famId);
-      if(!row) return;
-      row.addEventListener('click', function(){
-        var cats = document.querySelectorAll('.'+famId+'-c');
-        var isOpen = cats.length && cats[0].style.display!=='none';
-        cats.forEach(function(r){r.style.display=isOpen?'none':'';});
-        var arr = document.getElementById(famId+'a');
-        if(arr) arr.innerHTML = isOpen?'&#9658;':'&#9660;';
-      });
+      var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>'
+        +'*{box-sizing:border-box;margin:0;padding:0}'
+        +'body{font-family:"Helvetica Neue",Arial,sans-serif;font-size:9pt;color:#334155;background:#fff}'
+        +'@page{size:A4 portrait;margin:15mm}'
+        +'.pb{page-break-before:always}'
+        +'</style></head><body>'
+        // PORTADA
+        +'<div style="min-height:270mm;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">'
+        +'<div style="margin-bottom:24px">'+sgLogo()+'</div>'
+        +'<div style="width:60px;height:3px;background:#1e3a8a;margin:0 auto 24px"></div>'
+        +'<div style="font-size:17pt;font-weight:800;color:#1e293b;line-height:1.2;max-width:380px;margin:0 auto 16px">REPORTE DE DESEMPEÑO FINANCIERO Y CONTROL DE GESTIÓN</div>'
+        +'<div style="font-size:13pt;font-weight:700;color:#1e3a8a;margin-bottom:6px">'+empresa+'</div>'
+        +'<div style="font-size:10pt;color:#64748b;margin-bottom:24px">'+periodo.charAt(0).toUpperCase()+periodo.slice(1)+'</div>'
+        +'<div style="width:60px;height:1px;background:#cbd5e1;margin:0 auto 24px"></div>'
+        +'<div style="font-size:8pt;color:#94a3b8;line-height:2.2">'
+        +'<div>Fecha de emisión: '+hoy+'</div>'
+        +'<div>Preparado por: Dirección de Finanzas</div>'
+        +'<div>Aprobado por: Directorio / Socios</div>'
+        +'</div>'
+        +'<div style="margin-top:32px;font-size:7pt;color:#cbd5e1">CONFIDENCIAL — Para uso exclusivo de la dirección</div>'
+        +'</div>'
+        // PÁG 2: RESUMEN EJECUTIVO
+        +'<div class="pb">'+wsHead('RESUMEN EJECUTIVO')
+        +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">'
+        +[['VENTAS BRUTAS',vb,'#0f172a','#fff'],['VENTAS NETAS',vn,'#1e3a8a','#fff'],['GASTOS NETOS',gn,'#f1f5f9','#1e293b'],['RESULTADO',res,resNeg?'#991b1b':'#166534','#fff']].map(function(k){
+          return '<div style="background:'+k[2]+';color:'+k[3]+';border-radius:6px;padding:12px;text-align:center">'
+            +'<div style="font-size:7pt;opacity:.7;margin-bottom:4px">'+k[0]+'</div>'
+            +'<div style="font-size:13pt;font-weight:800">'+k[1]+'</div></div>';
+        }).join('')
+        +'</div>'
+        +'<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:14px">'
+        +[['Margen Bruto',mb],['Margen Neto',mn],['C. Fijos',cf],['Proyección',proy],['YoY',yoy]].map(function(k){
+          var color=k[0]==='YoY'?(yoyNeg?'#991b1b':'#166534'):'#1e3a8a';
+          return '<div style="border:1px solid #e2e8f0;border-radius:4px;padding:8px;text-align:center">'
+            +'<div style="font-size:7pt;color:#64748b">'+k[0]+'</div>'
+            +'<div style="font-weight:700;font-size:10pt;color:'+color+'">'+k[1]+'</div></div>';
+        }).join('')
+        +'</div>'
+        +wsSection('ESTADO DE RESULTADOS DEL PERÍODO')+bsHtml
+        +footnote()+'</div>'
+        // PÁG 3: VENTAS
+        +'<div class="pb">'+wsHead('ANÁLISIS DE VENTAS')
+        +wsSection('VENTAS POR CATEGORÍA DE PRODUCTO')+catTableWS
+        +wsSection('FORMAS DE PAGO')+pagTableWS
+        +footnote()+'</div>'
+        // PÁG 4: GASTOS
+        +'<div class="pb">'+wsHead('ANÁLISIS DE GASTOS OPERACIONALES')
+        +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">'
+        +[['Gastos Brutos',gb],['Gastos Netos',gn],['Costos Fijos',cf],['Costos Variables',cv]].map(function(k){
+          return '<div style="border:1px solid #e2e8f0;border-radius:4px;padding:10px;text-align:center">'
+            +'<div style="font-size:7pt;color:#64748b">'+k[0]+'</div>'
+            +'<div style="font-size:11pt;font-weight:800;color:#1e3a8a">'+k[1]+'</div></div>';
+        }).join('')
+        +'</div>'
+        +wsSection('DESGLOSE POR FAMILIA DE GASTO')+famTableWS
+        +wsSection('CLASIFICACIÓN POR TIPO DE DOCUMENTO SII')+tdTableWS
+        +footnote()+'</div>'
+        // PÁG 5: EERR HISTÓRICO (página exclusiva)
+        +'<div class="pb">'+wsHead('ESTADO DE RESULTADOS COMPARATIVO — ÚLTIMOS 6 MESES')
+        +'<div style="font-size:7.5pt;color:#64748b;margin-bottom:12px">Análisis evolutivo de ingresos, gastos y resultado operacional por mes. Valores abreviados (K=miles, M=millones). Gastos calculados en base neta según SII.</div>'
+        +eerrWS
+        +footnote()+'</div>'
+        +'</body></html>';
+
+      var opt={margin:15,filename:empresa+' - '+periodo+' (Corporate).pdf',image:{type:'jpeg',quality:.98},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}};
+      html2pdf().set(opt).from(html).save();
     });
-  });
+    return;
+  }
+
+  // ══════════════════════════════════════════════
+  // PLANTILLA 3: MODERN-BI
+  // ══════════════════════════════════════════════
+  if(estilo==='modern-bi'){
+    buildEerrData(function(u6,dat,todasFams){
+      function biCard(content,extra){
+        return '<div style="background:#fff;border-radius:8px;box-shadow:0 4px 6px -1px rgba(0,0,0,.05);padding:14px;'+(extra||'')+'">'+content+'</div>';
+      }
+      function biHead(num,title){
+        return '<div style="background:#0f172a;color:#fff;border-radius:8px;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
+          +'<div style="display:flex;align-items:center;gap:12px">'
+          +'<span style="background:#fff;color:#0f172a;font-weight:800;padding:2px 6px;border-radius:4px;font-size:9pt">SG</span>'
+          +'<span style="font-size:9pt;font-weight:500">'+empresa+' · '+title+'</span></div>'
+          +'<div style="display:flex;align-items:center;gap:10px">'
+          +'<span style="font-size:7.5pt;opacity:.6">'+periodo+' · '+hoy+'</span>'
+          +'<span style="background:#1e40af;border-radius:20px;padding:2px 10px;font-size:7.5pt;font-weight:700">Slide '+num+'</span>'
+          +'</div></div>';
+      }
+      function biKpi(label,val,color,big){
+        return '<div style="text-align:center">'
+          +'<div style="font-size:7pt;color:#64748b;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">'+label+'</div>'
+          +'<div style="font-size:'+(big?'18':'13')+'pt;font-weight:800;color:'+(color||'#0f172a')+'">'+val+'</div>'
+          +'</div>';
+      }
+
+      // EERR moderno con indicadores de tendencia
+      var eerrBIHtml='<div style="overflow-x:auto">';
+      if(u6){
+        eerrBIHtml+='<table style="width:100%;border-collapse:collapse;font-size:7.5pt">'
+          +'<thead><tr style="border-bottom:2px solid #e2e8f0">'
+          +'<th style="padding:6px 8px;text-align:left;color:#64748b;font-weight:600;width:25%">CONCEPTO</th>'
+          +u6.map(function(p){
+            var parts=p.split(' ');
+            var label=parts[0].charAt(0).toUpperCase()+parts[0].slice(1,3)+" '"+((parts[1]||'').slice(2));
+            return '<th style="padding:6px 6px;text-align:right;color:#64748b;font-weight:600;white-space:nowrap">'+label+'</th>';
+          }).join('')
+          +'<th style="padding:6px 8px;text-align:right;color:#0f172a;font-weight:700">Total</th>'
+          +'</tr></thead><tbody>';
+
+        function biRow(txt,vals,isTotal,isGasto){
+          var tot=vals.reduce(function(s,v){return s+v;},0);
+          // Tendencia: comparar último vs penúltimo
+          var trend='';
+          if(vals.length>=2){
+            var last=vals[vals.length-1], prev=vals[vals.length-2];
+            if(prev!==0){
+              var pct=((last-prev)/Math.abs(prev)*100).toFixed(1);
+              var pos=parseFloat(pct)>=0;
+              // Para gastos, positivo es malo
+              if(isGasto) pos=!pos;
+              trend='<span style="margin-left:4px;background:'+(pos?'#dcfce7':'#fee2e2')+';color:'+(pos?'#166534':'#991b1b')+';padding:1px 5px;border-radius:10px;font-size:6pt;font-weight:700">'+(parseFloat(pct)>=0?'▲':'▼')+Math.abs(pct)+'%</span>';
+            }
+          }
+          var bg=isTotal?(tot<0?'#fee2e2':'#dcfce7'):'';
+          var color=isTotal?(tot<0?'#991b1b':'#166534'):'#1e293b';
+          var fw=isTotal?'800':'500';
+          function fmtV(v){ return Math.round(v)>=1000000?'$'+(Math.round(v)/1000000).toFixed(1)+'M':Math.round(v)>=1000?'$'+(Math.round(v)/1000).toFixed(0)+'K':'$'+Math.round(v).toLocaleString('es-CL'); }
+          return '<tr style="background:'+(bg||((isTotal?'':'')))+';border-bottom:1px solid #f1f5f9">'
+            +'<td style="padding:5px 8px;font-weight:'+fw+';color:'+color+'">'+txt+trend+'</td>'
+            +vals.map(function(v){return '<td style="padding:5px 6px;text-align:right;font-weight:'+fw+';color:'+(v<0?'#991b1b':color)+'">'+fmtV(v)+'</td>';}).join('')
+            +'<td style="padding:5px 8px;text-align:right;font-weight:800;color:'+(tot<0?'#991b1b':color)+'">'+fmtV(tot)+'</td>'
+            +'</tr>';
+        }
+
+        eerrBIHtml += '<tr style="background:#f8fafc"><td colspan="'+(u6.length+2)+'" style="padding:4px 8px;font-size:7pt;font-weight:700;color:#0f172a;text-transform:uppercase;letter-spacing:.5px">▸ INGRESOS</td></tr>';
+        eerrBIHtml += biRow('Ventas brutas',u6.map(function(p){return dat[p].vb;}),false,false);
+        eerrBIHtml += biRow('Ventas netas',u6.map(function(p){return dat[p].vn;}),false,false);
+        eerrBIHtml += '<tr style="background:#f8fafc"><td colspan="'+(u6.length+2)+'" style="padding:4px 8px;font-size:7pt;font-weight:700;color:#0f172a;text-transform:uppercase;letter-spacing:.5px">▸ GASTOS</td></tr>';
+        eerrBIHtml += biRow('Total gastos netos',u6.map(function(p){return dat[p].gn;}),false,true);
+        todasFams.slice(0,5).forEach(function(fam){
+          var vals=u6.map(function(p){return dat[p].fams[fam]||0;});
+          if(!vals.reduce(function(s,v){return s+v;},0)) return;
+          eerrBIHtml += biRow('  '+fam,vals,false,true);
+        });
+        eerrBIHtml += '<tr style="background:#f8fafc"><td colspan="'+(u6.length+2)+'" style="padding:4px 8px;font-size:7pt;font-weight:700;color:#0f172a;text-transform:uppercase;letter-spacing:.5px">▸ RESULTADO</td></tr>';
+        eerrBIHtml += biRow('Resultado operacional',u6.map(function(p){return dat[p].res;}),true,false);
+        eerrBIHtml += '</tbody></table>';
+      } else {
+        eerrBIHtml += '<div style="color:#94a3b8;font-size:8pt;padding:12px">Sin datos históricos disponibles.</div>';
+      }
+      eerrBIHtml += '</div>';
+
+      var catTableBI='<table style="width:100%;border-collapse:collapse;font-size:7.5pt"><thead><tr style="border-bottom:2px solid #e2e8f0"><th style="padding:5px 6px;text-align:left;color:#64748b;font-weight:600">CATEGORÍA</th><th style="padding:5px 6px;text-align:right;color:#64748b;font-weight:600">MONTO</th><th style="padding:5px 6px;text-align:right;color:#64748b;font-weight:600">%</th></tr></thead><tbody>'+catRows.map(function(r,i){return '<tr style="background:'+(i%2?'#f8fafc':'#fff')+';border-bottom:1px solid #f1f5f9"><td style="padding:5px 6px">'+r[0]+'</td><td style="padding:5px 6px;text-align:right;font-weight:600">'+r[1]+'</td><td style="padding:5px 6px;text-align:right;color:#64748b">'+r[2]+'</td></tr>';}).join('')+'</tbody></table>';
+      var famTableBI='<table style="width:100%;border-collapse:collapse;font-size:7.5pt"><thead><tr style="border-bottom:2px solid #e2e8f0"><th style="padding:5px 6px;text-align:left;color:#64748b;font-weight:600">FAMILIA</th><th style="padding:5px 6px;text-align:right;color:#64748b;font-weight:600">GASTO</th><th style="padding:5px 6px;text-align:right;color:#64748b;font-weight:600">%</th></tr></thead><tbody>'+famRows.map(function(r,i){return '<tr style="background:'+(i%2?'#f8fafc':'#fff')+';border-bottom:1px solid #f1f5f9"><td style="padding:5px 6px">'+r[0]+'</td><td style="padding:5px 6px;text-align:right;font-weight:600">'+r[1]+'</td><td style="padding:5px 6px;text-align:right;color:#64748b">'+r[2]+'</td></tr>';}).join('')+'</tbody></table>';
+
+      var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>'
+        +'*{box-sizing:border-box;margin:0;padding:0}'
+        +'body{font-family:"Helvetica Neue",Arial,sans-serif;font-size:9pt;color:#1e293b;background:#f1f5f9;padding:10mm}'
+        +'@page{size:A4 landscape;margin:10mm}'
+        +'.slide{min-height:185mm;page-break-after:always}'
+        +'.slide:last-child{page-break-after:auto}'
+        +'.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}'
+        +'.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}'
+        +'.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}'
+        +'.g5{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}'
+        +'.lbl{font-size:7.5pt;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}'
+        +'</style></head><body>'
+        // SLIDE 1
+        +'<div class="slide">'
+        +biHead(1,'Dashboard Financiero de Proyecciones')
+        +'<div class="g5" style="margin-bottom:10px">'
+        +biCard(biKpi('Ventas Brutas',vb,'#0f172a',true),'text-align:center')
+        +biCard(biKpi('Ventas Netas',vn,'#1e40af',true),'text-align:center')
+        +biCard(biKpi('Gastos Netos',gn,'#0f172a',true),'text-align:center')
+        +biCard(biKpi('Costos Fijos',cf,'#7c3aed',true),'text-align:center')
+        +biCard('<div style="text-align:center"><div class="lbl">Resultado</div><div style="font-size:18pt;font-weight:800;color:'+(resNeg?'#991b1b':'#166534')+'">'+res+'</div></div>','')
+        +'</div>'
+        +'<div class="g3" style="margin-bottom:10px">'
+        +biCard('<div class="lbl">Proyección Run Rate</div><div style="font-size:22pt;font-weight:800;color:#1e40af;margin-bottom:6px">'+proy+'</div><div style="font-size:7.5pt;color:#64748b">Estimación ritmo diario del período</div>','')
+        +biCard('<div class="lbl">Variación Interanual (YoY)</div><div style="font-size:22pt;font-weight:800;color:'+(yoyNeg?'#991b1b':'#166534')+';margin-bottom:6px">'+yoy+'</div><div style="font-size:7.5pt;color:#64748b">Vs mismo mes año anterior</div>','')
+        +biCard('<div class="lbl">Indicadores clave</div>'
+          +'<div style="display:flex;flex-direction:column;gap:7px">'
+          +[['Margen bruto',mb],['Margen neto',mn],['Punto equilibrio',pe],['IVA F29 estimado',ivaP]].map(function(k){
+            return '<div style="display:flex;justify-content:space-between;align-items:center">'
+              +'<span style="font-size:7.5pt;color:#64748b">'+k[0]+'</span>'
+              +'<span style="font-size:8.5pt;font-weight:700;color:#0f172a">'+k[1]+'</span></div>';
+          }).join('')
+          +'</div>','')
+        +'</div>'
+        +'<div class="g3">'
+        +biCard('<div class="lbl">IVA Débito (Ventas)</div><div style="font-size:14pt;font-weight:800;color:#1e293b">'+ivaD+'</div><div style="font-size:7pt;color:#94a3b8;margin-top:4px">Ventas brutas × 0.19/1.19</div>','')
+        +biCard('<div class="lbl">IVA Crédito (Facturas)</div><div style="font-size:14pt;font-weight:800;color:#1e293b">'+ivaC+'</div><div style="font-size:7pt;color:#94a3b8;margin-top:4px">(Facturas neto × 0.19) − (NC neto × 0.19)</div>','')
+        +biCard('<div class="lbl">IVA Estimado F29</div><div style="font-size:14pt;font-weight:800;color:'+(resNeg?'#991b1b':'#166534')+'">'+ivaP+'</div><div style="font-size:7pt;color:#94a3b8;margin-top:4px">Débito − Crédito (Aproximado)</div>','')
+        +'</div>'
+        +'</div>'
+        // SLIDE 2
+        +'<div class="slide">'
+        +biHead(2,'Análisis de Gastos Operacionales')
+        +'<div class="g4" style="margin-bottom:10px">'
+        +biCard(biKpi('Gastos Brutos',gb),'text-align:center')
+        +biCard(biKpi('Gastos Netos',gn),'text-align:center')
+        +biCard(biKpi('Costos Fijos',cf,'#1e40af'),'text-align:center')
+        +biCard(biKpi('Costos Variables',cv,'#7c3aed'),'text-align:center')
+        +'</div>'
+        +'<div class="g2">'
+        +biCard('<div class="lbl">Desglose tipo documento (SII)</div>'
+          +'<table style="width:100%;border-collapse:collapse;font-size:7.5pt"><thead><tr style="border-bottom:2px solid #e2e8f0"><th style="padding:5px;text-align:left;color:#64748b;font-weight:600">DOCUMENTO</th><th style="padding:5px;text-align:right;color:#64748b;font-weight:600">MONTO</th><th style="padding:5px;text-align:right;color:#64748b;font-weight:600">%</th></tr></thead><tbody>'
+          +tdRows.map(function(r,i){return '<tr style="background:'+(i%2?'#f8fafc':'#fff')+';border-bottom:1px solid #f1f5f9"><td style="padding:5px">'+r[0]+'</td><td style="padding:5px;text-align:right;font-weight:600">'+r[1]+'</td><td style="padding:5px;text-align:right;color:#64748b">'+r[2]+'</td></tr>';}).join('')
+          +'</tbody></table>','')
+        +biCard('<div class="lbl">Estructura fijos vs variables</div>'
+          +'<div style="display:flex;gap:8px;margin-bottom:10px">'
+          +'<div style="flex:1;background:#eff6ff;border-radius:6px;padding:10px;text-align:center"><div style="font-size:7pt;color:#1e40af;margin-bottom:4px">FIJOS</div><div style="font-size:15pt;font-weight:800;color:#1e40af">'+cf+'</div></div>'
+          +'<div style="flex:1;background:#f5f3ff;border-radius:6px;padding:10px;text-align:center"><div style="font-size:7pt;color:#7c3aed;margin-bottom:4px">VARIABLES</div><div style="font-size:15pt;font-weight:800;color:#7c3aed">'+cv+'</div></div>'
+          +'</div>'
+          +'<div style="background:#f1f5f9;border-radius:6px;padding:12px;text-align:center">'
+          +'<div style="font-size:7.5pt;color:#64748b;margin-bottom:4px">PUNTO DE EQUILIBRIO</div>'
+          +'<div style="font-size:20pt;font-weight:800;color:#0f172a">'+pe+'</div>'
+          +'<div style="font-size:7pt;color:#94a3b8;margin-top:4px">CF / (1 − CV/VN) · Prom. 3 meses</div>'
+          +'</div>','')
+        +'</div>'
+        +'</div>'
+        // SLIDE 3: EERR histórico expandido
+        +'<div class="slide">'
+        +biHead(3,'Cuadro de Control Evolutivo — Últimos 6 Meses')
+        +biCard('<div class="lbl" style="margin-bottom:10px">Estado de Resultados Comparativo con indicadores de tendencia mensual (▲▼ vs mes anterior)</div>'+eerrBIHtml,'')
+        +'<div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center">'
+        +'<div class="g2" style="gap:8px;flex:1;margin-right:12px">'
+        +biCard('<div class="lbl">Ventas por categoría</div>'+catTableBI,'')
+        +biCard('<div class="lbl">Gastos por familia</div>'+famTableBI,'')
+        +'</div></div>'
+        +'</div>'
+        +'</body></html>';
+
+      var opt={margin:10,filename:empresa+' - '+periodo+' (Modern BI).pdf',image:{type:'jpeg',quality:.98},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'a4',orientation:'landscape'}};
+      html2pdf().set(opt).from(html).save();
+    });
+    return;
+  }
 }
 
-// Escuchar mensaje de admin_view
-window.addEventListener('message', function(e){
-  if(e.data && e.data.type === 'admin_view' && e.data.userId){
-    cargarDatos(e.data.userId);
-    document.getElementById('btn-logout').style.display='none';
-    document.getElementById('nav-email').textContent='Vista administrador';
-    document.getElementById('loading').style.display='flex';
-    document.getElementById('dashboard').style.display='none';
-  }
-});
+// ── Helper buildTableHtml (compartido por todas las plantillas) ──
+function buildTableHtml(head,rows,rightCols,headBg){
+  headBg=headBg||'#0f172a';
+  var th=head.map(function(h){return '<th style="padding:6px 8px;text-align:left;white-space:nowrap">'+h+'</th>';}).join('');
+  var trs=rows.map(function(r,i){
+    var bg=i%2===0?'#ffffff':'#f8fafc';
+    return '<tr style="background:'+bg+'">'+r.map(function(c,ci){
+      var align=rightCols&&rightCols.indexOf(ci)>=0?'right':'left';
+      return '<td style="padding:5px 8px;text-align:'+align+';border-bottom:1px solid #f1f5f9">'+c+'</td>';
+    }).join('')+'</tr>';
+  }).join('');
+  return '<table style="width:100%;border-collapse:collapse;font-size:8pt">'
+    +'<thead><tr style="background:'+headBg+';color:#fff;font-weight:700">'+th+'</tr></thead>'
+    +'<tbody>'+trs+'</tbody></table>';
+}
 
-iniciar();
 
-</script>
-  <script>
-    if('serviceWorker' in navigator){
-      navigator.serviceWorker.register('/service-worker.js');
-    }
-  </script>
-</body>
-</html>
+>
