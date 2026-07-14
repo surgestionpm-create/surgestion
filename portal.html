@@ -681,20 +681,35 @@ function cargarRango(){
 
     // Comparativo por turno - transacciones = folios únicos por turno
     var turnos={};
-    var turnosUnicos=[];
-    productos.forEach(function(p){if(p.turno&&turnosUnicos.indexOf(p.turno)<0)turnosUnicos.push(p.turno);});
-    console.log('Turnos encontrados:',turnosUnicos,'Total productos:',productos.length);
+    // ── Deduplicar por folio único antes de sumar por turno ──────
+    // Paso 1: agrupar por folio → capturar turno y monto del folio
+    var foliosMap={};
     productos.forEach(function(p){
+      var folio=p.folio&&p.folio.trim()!==''?p.folio.trim():null;
       var t=p.turno&&p.turno.trim()!==''?p.turno.trim():'Sin turno';
-      if(!turnos[t])turnos[t]={monto:0,folios:{}};
-      turnos[t].monto+=getMontoProducto(p);
-      // Contar folio único
-      if(p.folio&&p.folio!==''){
-        turnos[t].folios[p.folio]=1;
+      var m=Number(p.monto||0); // monto total del folio (Total a Pagar)
+      if(folio){
+        if(!foliosMap[folio]){
+          foliosMap[folio]={turno:t, monto:m};
+        } else {
+          // Si el mismo folio aparece en múltiples filas, usar el monto máximo
+          // (el monto del folio está repetido en cada línea de producto)
+          if(m>foliosMap[folio].monto) foliosMap[folio].monto=m;
+          // El turno es el mismo para todas las filas del mismo folio
+        }
       } else {
-        // Sin folio: cada línea es una transacción
-        turnos[t].folios['__'+Math.random()]=1;
+        // Sin folio: cada línea es transacción independiente
+        var key='__nofolio_'+Math.random();
+        foliosMap[key]={turno:t, monto:m};
       }
+    });
+    // Paso 2: acumular por turno sobre los folios únicos
+    Object.keys(foliosMap).forEach(function(folio){
+      var f=foliosMap[folio];
+      var t=f.turno;
+      if(!turnos[t])turnos[t]={monto:0,folios:{}};
+      turnos[t].monto+=f.monto;
+      turnos[t].folios[folio]=1;
     });
     var turnoArr=Object.entries(turnos).sort(function(a,b){
       var orden=['Mañana','Manana','Tarde','Noche'];
@@ -713,9 +728,10 @@ function cargarRango(){
           var tn=e[0].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
           var color=tn.indexOf('ma')===0?'#3A8FD1':tn.indexOf('ta')===0?'#E67E22':'#1B3A5C';
           var totalTurnos=turnoArr.reduce(function(s,x){return s+x[1].monto;},0);
+          var baseTotal=vb>0?vb:totalTurnos; // usar ventas brutas del reporte como base
           return '<tr><td style="padding:7px 10px;font-size:12px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+color+';margin-right:6px"></span>'+e[0]+'</td>'
             +'<td class="num">'+fmt(e[1].monto)+'</td>'
-            +'<td class="pct">'+pct(e[1].monto,totalTurnos)+'</td>'
+            +'<td class="pct">'+pct(e[1].monto,baseTotal)+'</td>'
             +'<td class="num">'+nTrans+'</td>'
             +'<td class="num">'+fmt(ticket)+'</td>'
             +'</tr>';
