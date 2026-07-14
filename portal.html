@@ -1653,10 +1653,22 @@ function iniciarConCliente(cliente){
       var selMH=document.getElementById('sel-mes-hasta');
       if(selMD) selMD.value=mesSelec;
       if(selMH) selMH.value=mesSelec;
+      // Determinar rango inicial del comparativo:
+      // DESDE: enero del año más reciente con datos (o el primer mes disponible)
+      // HASTA: el mes más reciente disponible
+      var anioCompH = anioSelec; // año más reciente
+      var mesCompH  = mesSelec;  // mes más reciente
+
+      // Primer mes disponible del año más reciente
+      var MESES_ORDEN=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+      var mesesAnioComp = (_mesesPorAnio[anioCompH]||[]).slice().sort(function(a,b){return MESES_ORDEN.indexOf(a)-MESES_ORDEN.indexOf(b);});
+      var mesCompD = mesesAnioComp.length>0 ? mesesAnioComp[0] : mesCompH; // primer mes del año
+      var anioCompD = anioCompH;
+
       ['comp-anio-desde','comp-anio-hasta'].forEach(function(id){
         var el=document.getElementById(id);if(!el)return;
         el.innerHTML=aniosDisp.map(function(a){return '<option value="'+a+'">'+a+'</option>';}).join('');
-        el.value=anioSelec;
+        el.value = id==='comp-anio-desde' ? anioCompD : anioCompH;
         el.onchange=function(){actualizarComp();};
       });
       ['comp-mes-desde','comp-mes-hasta'].forEach(function(id){
@@ -1670,7 +1682,9 @@ function iniciarConCliente(cliente){
           if(!anioEl||!mesEl)return;
           var meses=(_mesesPorAnio[anioEl.value]||[]).slice().sort(function(a,b){return orden.indexOf(a)-orden.indexOf(b);});
           mesEl.innerHTML=meses.map(function(m){return '<option value="'+m+'">'+m.charAt(0).toUpperCase()+m.slice(1)+'</option>';}).join('');
-          mesEl.value=mesSelec;
+          // Desde: primer mes del año / Hasta: mes más reciente
+          if(dir==='desde') mesEl.value=mesCompD;
+          else mesEl.value=mesCompH;
         });
       }
       poblarCompMeses();
@@ -1679,6 +1693,149 @@ function iniciarConCliente(cliente){
       setTimeout(function(){ cargarRango(); actualizarComp(); }, 50);
     });
 }
+
+function actualizarComp(){
+  var anioD  = document.getElementById('comp-anio-desde').value;
+  var mesD   = document.getElementById('comp-mes-desde').value;
+  var anioH  = document.getElementById('comp-anio-hasta').value;
+  var mesH   = document.getElementById('comp-mes-hasta').value;
+  if(!anioD||!mesD||!anioH||!mesH) return;
+
+  var MESES_ORD=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  var idxD = MESES_ORD.indexOf(mesD);
+  var idxH = MESES_ORD.indexOf(mesH);
+
+  // Construir lista de periodos del rango
+  var periodos=[];
+  _periodos.forEach(function(p){
+    var parts=p.split(' ');
+    var mes=parts[0], anio=parts[1];
+    if(!anio||!mes) return;
+    var anioN=parseInt(anio);
+    var mesN=MESES_ORD.indexOf(mes);
+    if(mesN<0) return;
+    var anioDF=parseInt(anioD), anioHF=parseInt(anioH);
+    var ok=false;
+    if(anioN>anioDF&&anioN<anioHF) ok=true;
+    else if(anioN===anioDF&&anioN===anioHF) ok=(mesN>=idxD&&mesN<=idxH);
+    else if(anioN===anioDF) ok=(mesN>=idxD);
+    else if(anioN===anioHF) ok=(mesN<=idxH);
+    if(ok) periodos.push(p);
+  });
+
+  // Ordenar periodos cronológicamente
+  periodos.sort(function(a,b){
+    var pa=a.split(' '), pb=b.split(' ');
+    var ya=parseInt(pa[1]||0), yb=parseInt(pb[1]||0);
+    if(ya!==yb) return ya-yb;
+    return MESES_ORD.indexOf(pa[0])-MESES_ORD.indexOf(pb[0]);
+  });
+
+  if(!periodos.length){
+    var cont=document.getElementById('eerr-comp-body');
+    if(cont) cont.innerHTML='<div style="padding:16px;color:var(--muted);font-size:12px">Sin datos para el rango seleccionado.</div>';
+    return;
+  }
+
+  // Obtener reportes del rango
+  var reps=_reportes.filter(function(r){return periodos.indexOf(r.periodo)>=0;});
+  var ids=reps.map(function(r){return r.id;});
+  var repMap={};
+  reps.forEach(function(r){repMap[r.id]=r.periodo;});
+
+  var cont=document.getElementById('eerr-comp-body');
+  if(cont) cont.innerHTML='<div style="padding:12px;font-size:12px;color:var(--muted)">Cargando...</div>';
+
+  fetchByIds('costos',ids).then(function(costos){
+    // Acumular datos por periodo
+    var dat={};
+    periodos.forEach(function(p){dat[p]={vb:0,vn:0,gn:0,fams:{}};});
+    reps.forEach(function(r){
+      dat[r.periodo].vb=Number(r.ventas_brutas||0);
+      dat[r.periodo].vn=_aplicaIva?Number(r.ventas_netas||0):Number(r.ventas_brutas||0);
+    });
+    costos.forEach(function(c){
+      var p=repMap[c.reporte_id];
+      if(!p||!dat[p]) return;
+      if(/impuesto|iva|tribut/i.test(c.familia||c.categoria||'')) return;
+      var neto=getNetoDoc(c);
+      dat[p].gn+=neto;
+      var fam=c.familia||c.categoria||'Sin familia';
+      if(!dat[p].fams[fam]) dat[p].fams[fam]=0;
+      dat[p].fams[fam]+=neto;
+    });
+
+    // Familias ordenadas por total
+    var fams=[];
+    periodos.forEach(function(p){
+      Object.keys(dat[p].fams).forEach(function(f){if(fams.indexOf(f)<0)fams.push(f);});
+    });
+    fams.sort(function(a,b){
+      return periodos.reduce(function(s,p){return s+(dat[p].fams[b]||0);},0)
+           - periodos.reduce(function(s,p){return s+(dat[p].fams[a]||0);},0);
+    });
+
+    // Label de columna
+    function lbl(p){
+      var parts=p.split(' ');
+      return parts[0].charAt(0).toUpperCase()+parts[0].slice(1,3)+" '"+((parts[1]||'').slice(2));
+    }
+
+    // Construir tabla
+    var t='<table style="width:100%;border-collapse:collapse;font-size:12px">';
+    // Header
+    t+='<thead><tr style="background:var(--navy)">';
+    t+='<th style="text-align:left;padding:8px 14px;font-size:11px;color:#fff;min-width:160px">Concepto</th>';
+    periodos.forEach(function(p){
+      t+='<th style="text-align:right;padding:8px 10px;font-size:11px;color:rgba(255,255,255,.85);white-space:nowrap">'+lbl(p)+'</th>';
+    });
+    t+='<th style="text-align:right;padding:8px 10px;font-size:11px;color:rgba(255,255,255,.85)">Total</th>';
+    t+='</tr></thead><tbody>';
+
+    function fila(nombre, vals, bold, bg, color){
+      var tot=vals.reduce(function(s,v){return s+v;},0);
+      var st='padding:6px 10px;font-size:12px;'+(bold?'font-weight:700;':'')+(color?'color:'+color+';':'');
+      var bgs=bg?'background:'+bg+';':'';
+      return '<tr style="'+bgs+'border-bottom:1px solid var(--border)">'
+        +'<td style="'+st+'padding-left:14px">'+nombre+'</td>'
+        +vals.map(function(v){return '<td style="text-align:right;'+st+'">'+fmt(v)+'</td>';}).join('')
+        +'<td style="text-align:right;'+st+'font-weight:700">'+fmt(tot)+'</td>'
+        +'</tr>';
+    }
+
+    function seccion(nombre){
+      return '<tr style="background:var(--navy)22"><td colspan="'+(periodos.length+2)+'" style="padding:5px 14px;font-size:10px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.6px">'+nombre+'</td></tr>';
+    }
+
+    // Ventas
+    t+=seccion('Ingresos');
+    t+=fila('Ventas brutas', periodos.map(function(p){return dat[p].vb;}), false, '', '');
+    t+=fila('Ventas netas (sin IVA)', periodos.map(function(p){return dat[p].vn;}), true, '', '');
+
+    // Gastos
+    t+=seccion('Gastos operacionales');
+    fams.forEach(function(fam){
+      var vals=periodos.map(function(p){return dat[p].fams[fam]||0;});
+      if(!vals.reduce(function(s,v){return s+v;},0)) return;
+      t+=fila(fam, vals, false, '', '#475569');
+    });
+    t+=fila('Total gastos netos', periodos.map(function(p){return dat[p].gn;}), true, 'var(--bg)', '');
+
+    // Resultado
+    var resVals=periodos.map(function(p){return dat[p].vn-dat[p].gn;});
+    var resTot=resVals.reduce(function(s,v){return s+v;},0);
+    var resColor=resTot>=0?'var(--green)':'var(--red)';
+    var resBg=resTot>=0?'var(--gl)':'var(--rl)';
+    t+=seccion('Resultado');
+    t+='<tr style="background:'+resBg+'"><td style="padding:7px 14px;font-size:12px;font-weight:700;color:'+resColor+'">Resultado operacional</td>'
+      +resVals.map(function(v){return '<td style="text-align:right;padding:7px 10px;font-size:12px;font-weight:700;color:'+(v>=0?'var(--green)':'var(--red)')+'">'+fmt(v)+'</td>';}).join('')
+      +'<td style="text-align:right;padding:7px 10px;font-size:12px;font-weight:700;color:'+resColor+'">'+fmt(resTot)+'</td></tr>';
+
+    t+='</tbody></table>';
+    if(cont) cont.innerHTML=t;
+  });
+}
+
 
 function iniciar(){
   // Si estamos en un iframe del admin, esperar el mensaje
