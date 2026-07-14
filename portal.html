@@ -219,7 +219,10 @@ table.t tr:hover td{background:#F0F7FD}
 
   <div class="card" id="sec-comp-anual" style="margin-bottom:16px">
     <div class="ch"><span class="ct">Comparativo anual de ventas brutas</span></div>
-    <div class="cb" style="padding:0;overflow-x:auto"><div id="tabla-comp-anual"></div></div>
+    <div class="cb" style="padding:0;overflow-x:auto">
+      <div id="tabla-comp-anual"></div>
+      <canvas id="c-comp-anual" height="220" style="display:none"></canvas>
+    </div>
   </div>
 
   <div class="g2">
@@ -709,9 +712,10 @@ function cargarRango(){
           // Color por turno - normalizar texto para comparar
           var tn=e[0].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
           var color=tn.indexOf('ma')===0?'#3A8FD1':tn.indexOf('ta')===0?'#E67E22':'#1B3A5C';
+          var totalTurnos=turnoArr.reduce(function(s,x){return s+x[1].monto;},0);
           return '<tr><td style="padding:7px 10px;font-size:12px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+color+';margin-right:6px"></span>'+e[0]+'</td>'
             +'<td class="num">'+fmt(e[1].monto)+'</td>'
-            +'<td class="pct">'+pct(e[1].monto,vb)+'</td>'
+            +'<td class="pct">'+pct(e[1].monto,totalTurnos)+'</td>'
             +'<td class="num">'+nTrans+'</td>'
             +'<td class="num">'+fmt(ticket)+'</td>'
             +'</tr>';
@@ -1484,6 +1488,8 @@ function renderCompAnual(){
   dc('comp-anual');
   var ctx=document.getElementById('c-comp-anual');
   if(!ctx)return;
+  ctx.style.display='block';
+  document.getElementById('tabla-comp-anual') && (document.getElementById('tabla-comp-anual').style.display='none');
   charts['comp-anual']=new Chart(ctx.getContext('2d'),{
     type:'bar',
     data:{labels:mesesCorto,datasets:datasets},
@@ -1520,7 +1526,121 @@ function renderEvolucion(){
 }
 
 // ── Arranque principal ─────────────────────────────────────────
+function iniciarConCliente(cliente){
+  _clienteId=cliente.id;
+  _aplicaIva=cliente.aplica_iva!==false;
+  if(cliente.eerr_desde) _eerrDesde=cliente.eerr_desde;
+  if(cliente.eerr_hasta) _eerrHasta=cliente.eerr_hasta;
+  var nombreEl=document.getElementById('empresa-nombre');
+  if(nombreEl) nombreEl.textContent=cliente.nombre_empresa||'';
+  var navEmp=document.getElementById('nav-empresa');
+  if(navEmp) navEmp.textContent=cliente.nombre_empresa||'';
+  if(cliente.logo_url){
+    var logoEl=document.getElementById('nav-logo');
+    if(logoEl) logoEl.src=cliente.logo_url;
+  }
+  sb_client.from('reportes').select('id,periodo,ventas_brutas,ventas_netas,created_at,updated_at')
+    .eq('cliente_id',cliente.id)
+    .order('created_at',{ascending:false})
+    .then(function(r2){
+      _reportes=r2.data||[];
+      _periodos=_reportes.map(function(r){return r.periodo;});
+      var MESES_ORD=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+      _periodos.sort(function(a,b){
+        var pa=a.split(' '),pb=b.split(' ');
+        var ya=parseInt(pa[1]||0),yb=parseInt(pb[1]||0);
+        if(ya!==yb)return yb-ya;
+        return MESES_ORD.indexOf(pb[0])-MESES_ORD.indexOf(pa[0]);
+      });
+      if(!_periodos.length){document.getElementById('loading').style.display='none';return;}
+      _mesesPorAnio={};
+      _periodos.forEach(function(p){
+        var parts=p.split(' ');var mes=parts[0],anio=parts[1];
+        if(!_mesesPorAnio[anio])_mesesPorAnio[anio]=[];
+        if(_mesesPorAnio[anio].indexOf(mes)<0)_mesesPorAnio[anio].push(mes);
+      });
+      var aniosDisp=Object.keys(_mesesPorAnio).sort().reverse();
+      ['sel-anio-desde','sel-anio-hasta'].forEach(function(id){
+        var el=document.getElementById(id);if(!el)return;
+        el.innerHTML=aniosDisp.map(function(a){return '<option value="'+a+'">'+a+'</option>';}).join('');
+      });
+      document.getElementById('sel-anio-desde').onchange=function(){poblarMesesRango();cargarRango();};
+      document.getElementById('sel-mes-desde').onchange=function(){cargarRango();};
+      document.getElementById('sel-anio-hasta').onchange=function(){poblarMesesRango();cargarRango();};
+      document.getElementById('sel-mes-hasta').onchange=function(){cargarRango();};
+      poblarMesesRango();
+      var hoy=new Date();
+      var MESES_ES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+      var mesActual=MESES_ES[hoy.getMonth()],anioActual=hoy.getFullYear().toString();
+      var periodoActivo=mesActual+' '+anioActual;
+      if(_periodos.indexOf(periodoActivo)<0){
+        var idxMes=hoy.getMonth()-1,anioAnt=anioActual;
+        if(idxMes<0){idxMes=11;anioAnt=(hoy.getFullYear()-1).toString();}
+        periodoActivo=MESES_ES[idxMes]+' '+anioAnt;
+        if(_periodos.indexOf(periodoActivo)<0) periodoActivo=_periodos[0];
+      }
+      var partesPer=periodoActivo.split(' ');
+      var mesSelec=partesPer[0],anioSelec=partesPer[1];
+      var selAD=document.getElementById('sel-anio-desde');
+      var selAH=document.getElementById('sel-anio-hasta');
+      if(selAD) selAD.value=anioSelec;
+      if(selAH) selAH.value=anioSelec;
+      poblarMesesRango();
+      var selMD=document.getElementById('sel-mes-desde');
+      var selMH=document.getElementById('sel-mes-hasta');
+      if(selMD) selMD.value=mesSelec;
+      if(selMH) selMH.value=mesSelec;
+      ['comp-anio-desde','comp-anio-hasta'].forEach(function(id){
+        var el=document.getElementById(id);if(!el)return;
+        el.innerHTML=aniosDisp.map(function(a){return '<option value="'+a+'">'+a+'</option>';}).join('');
+        el.value=anioSelec;
+        el.onchange=function(){actualizarComp();};
+      });
+      ['comp-mes-desde','comp-mes-hasta'].forEach(function(id){
+        var el=document.getElementById(id);if(el) el.onchange=function(){actualizarComp();};
+      });
+      function poblarCompMeses(){
+        var orden=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+        ['desde','hasta'].forEach(function(dir){
+          var anioEl=document.getElementById('comp-anio-'+dir);
+          var mesEl=document.getElementById('comp-mes-'+dir);
+          if(!anioEl||!mesEl)return;
+          var meses=(_mesesPorAnio[anioEl.value]||[]).slice().sort(function(a,b){return orden.indexOf(a)-orden.indexOf(b);});
+          mesEl.innerHTML=meses.map(function(m){return '<option value="'+m+'">'+m.charAt(0).toUpperCase()+m.slice(1)+'</option>';}).join('');
+          mesEl.value=mesSelec;
+        });
+      }
+      poblarCompMeses();
+      renderEvolucion();
+      renderCompAnual();
+      setTimeout(function(){ cargarRango(); actualizarComp(); }, 50);
+    });
+}
+
 function iniciar(){
+  // Si estamos en un iframe del admin, esperar el mensaje
+  if(window.self !== window.top){
+    // Estamos en iframe — no redirigir, solo esperar mensaje del admin
+    window.addEventListener('message', function handler(e){
+      if(e.data && e.data.type==='admin_view' && e.data.userId){
+        window.removeEventListener('message', handler);
+        document.getElementById('loading').style.display='flex';
+        document.getElementById('dashboard').style.display='none';
+        var navEmail=document.getElementById('nav-email');
+        if(navEmail) navEmail.textContent='Vista administrador';
+        var btnL=document.getElementById('btn-logout');
+        if(btnL) btnL.style.display='none';
+        sb_client.from('clientes').select('*').eq('user_id',e.data.userId).then(function(r){
+          if(r.data&&r.data.length){ iniciarConCliente(r.data[0]); }
+          else { document.getElementById('loading').style.display='none'; }
+        });
+      }
+    });
+    // Ocultar loading mientras espera
+    document.getElementById('loading').style.display='flex';
+    return;
+  }
+
   sb_client.auth.getUser().then(function(res){
     var user = res.data && res.data.user;
     if(!user){ window.location.href='login.html'; return; }
@@ -1537,145 +1657,12 @@ function iniciar(){
         document.getElementById('loading').style.display='none';
         return;
       }
-      var cliente=r.data[0];
-      _clienteId=cliente.id;
-      _aplicaIva=cliente.aplica_iva!==false;
-      if(cliente.eerr_desde) _eerrDesde=cliente.eerr_desde;
-      if(cliente.eerr_hasta) _eerrHasta=cliente.eerr_hasta;
-
-      var nombreEl=document.getElementById('empresa-nombre');
-      if(nombreEl) nombreEl.textContent=cliente.nombre_empresa||'';
-      var navEmp=document.getElementById('nav-empresa');
-      if(navEmp) navEmp.textContent=cliente.nombre_empresa||'';
-      if(cliente.logo_url){
-        var logoEl=document.getElementById('nav-logo');
-        if(logoEl) logoEl.src=cliente.logo_url;
-      }
-
-      sb_client.from('reportes').select('id,periodo,ventas_brutas,ventas_netas,created_at,updated_at')
-        .eq('cliente_id',cliente.id)
-        .order('created_at',{ascending:false})
-        .then(function(r2){
-          _reportes=r2.data||[];
-          _periodos=_reportes.map(function(r){return r.periodo;});
-
-          // Ordenar periodos cronológicamente (más reciente primero)
-          var MESES_ORD=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-          _periodos.sort(function(a,b){
-            var pa=a.split(' '),pb=b.split(' ');
-            var ya=parseInt(pa[1]||0),yb=parseInt(pb[1]||0);
-            if(ya!==yb)return yb-ya;
-            return MESES_ORD.indexOf(pb[0])-MESES_ORD.indexOf(pa[0]);
-          });
-
-          if(!_periodos.length){
-            document.getElementById('loading').style.display='none';
-            return;
-          }
-
-          // Meses por año
-          _mesesPorAnio={};
-          _periodos.forEach(function(p){
-            var parts=p.split(' ');
-            var mes=parts[0],anio=parts[1];
-            if(!_mesesPorAnio[anio])_mesesPorAnio[anio]=[];
-            if(_mesesPorAnio[anio].indexOf(mes)<0)_mesesPorAnio[anio].push(mes);
-          });
-
-          // Años disponibles
-          var aniosDisp=Object.keys(_mesesPorAnio).sort().reverse();
-
-          // Poblar selectores de año
-          ['sel-anio-desde','sel-anio-hasta'].forEach(function(id){
-            var el=document.getElementById(id);
-            if(!el)return;
-            el.innerHTML=aniosDisp.map(function(a){return '<option value="'+a+'">'+a+'</option>';}).join('');
-          });
-
-          // Event listeners selectores
-          document.getElementById('sel-anio-desde').onchange=function(){poblarMesesRango();cargarRango();};
-          document.getElementById('sel-mes-desde').onchange=function(){cargarRango();};
-          document.getElementById('sel-anio-hasta').onchange=function(){poblarMesesRango();cargarRango();};
-          document.getElementById('sel-mes-hasta').onchange=function(){cargarRango();};
-
-          // Poblar meses iniciales
-          poblarMesesRango();
-
-          // Seleccionar periodo más reciente
-          var hoy=new Date();
-          var MESES_ES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-          var mesActual=MESES_ES[hoy.getMonth()];
-          var anioActual=hoy.getFullYear().toString();
-          var periodoActivo=mesActual+' '+anioActual;
-          if(_periodos.indexOf(periodoActivo)<0){
-            var idxMes=hoy.getMonth()-1;
-            var anioAnt=anioActual;
-            if(idxMes<0){idxMes=11;anioAnt=(hoy.getFullYear()-1).toString();}
-            periodoActivo=MESES_ES[idxMes]+' '+anioAnt;
-            if(_periodos.indexOf(periodoActivo)<0) periodoActivo=_periodos[0];
-          }
-          var partesPer=periodoActivo.split(' ');
-          var mesSelec=partesPer[0],anioSelec=partesPer[1];
-
-          var selAD=document.getElementById('sel-anio-desde');
-          var selAH=document.getElementById('sel-anio-hasta');
-          if(selAD) selAD.value=anioSelec;
-          if(selAH) selAH.value=anioSelec;
-          poblarMesesRango();
-          var selMD=document.getElementById('sel-mes-desde');
-          var selMH=document.getElementById('sel-mes-hasta');
-          if(selMD) selMD.value=mesSelec;
-          if(selMH) selMH.value=mesSelec;
-
-          // Comparativo EERR selectores
-          var compAnioD=document.getElementById('comp-anio-desde');
-          var compAnioH=document.getElementById('comp-anio-hasta');
-          ['comp-anio-desde','comp-anio-hasta'].forEach(function(id){
-            var el=document.getElementById(id);
-            if(!el)return;
-            el.innerHTML=aniosDisp.map(function(a){return '<option value="'+a+'">'+a+'</option>';}).join('');
-            el.value=anioSelec;
-            el.onchange=function(){actualizarComp();};
-          });
-          ['comp-mes-desde','comp-mes-hasta'].forEach(function(id){
-            var el=document.getElementById(id);
-            if(el) el.onchange=function(){actualizarComp();};
-          });
-          // Poblar meses del comparativo
-          function poblarCompMeses(){
-            var orden=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-            ['desde','hasta'].forEach(function(dir){
-              var anioEl=document.getElementById('comp-anio-'+dir);
-              var mesEl=document.getElementById('comp-mes-'+dir);
-              if(!anioEl||!mesEl)return;
-              var meses=(_mesesPorAnio[anioEl.value]||[]).slice().sort(function(a,b){return orden.indexOf(a)-orden.indexOf(b);});
-              mesEl.innerHTML=meses.map(function(m){return '<option value="'+m+'">'+m.charAt(0).toUpperCase()+m.slice(1)+'</option>';}).join('');
-              mesEl.value=mesSelec;
-            });
-          }
-          poblarCompMeses();
-
-          // Cargar gráficos y datos
-          renderEvolucion();
-          renderCompAnual();
-          setTimeout(function(){ cargarRango(); actualizarComp(); }, 50);
-        });
+      iniciarConCliente(r.data[0]);
     });
   });
 }
 
-// Escuchar mensaje de admin_view
-window.addEventListener('message', function(e){
-  if(e.data && e.data.type === 'admin_view' && e.data.userId){
-    document.getElementById('btn-logout').style.display='none';
-    document.getElementById('nav-email').textContent='Vista administrador';
-    document.getElementById('loading').style.display='flex';
-    document.getElementById('dashboard').style.display='none';
-    sb_client.from('clientes').select('*').eq('user_id',e.data.userId).then(function(r){
-      if(r.data&&r.data.length) iniciarConCliente(r.data[0]);
-    });
-  }
-});
+// admin_view manejado dentro de iniciar()
 
 iniciar();
 
