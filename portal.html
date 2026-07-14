@@ -286,9 +286,9 @@ table.t tr:hover td{background:#F0F7FD}
     </div></div>
   </div>
 
-  <div class="g2">
-    <div class="card"><div class="ch"><span class="ct">Fijos vs Variables</span></div><div class="cb"><canvas id="c-fv" height="220"></canvas></div></div>
-    <div class="card"><div class="ch"><span class="ct">Evolucion mensual (ano en curso)</span></div><div class="cb"><canvas id="c-evo" height="220"></canvas></div></div>
+  <div class="g2" style="gap:12px">
+    <div class="card"><div class="ch"><span class="ct">Fijos vs Variables</span></div><div class="cb" style="padding:8px 12px 12px"><canvas id="c-fv" height="140"></canvas></div></div>
+    <div class="card"><div class="ch"><span class="ct">Evolución mensual (año en curso)</span></div><div class="cb" style="padding:8px 12px 12px"><canvas id="c-evo" height="140"></canvas></div></div>
   </div>
 
   <div class="card" style="margin-bottom:16px">
@@ -754,7 +754,36 @@ function cargarRango(){
 
     // Fijos vs Variables
     dc('fv');
-    if(cf>0||cv>0){charts['fv']=new Chart(document.getElementById('c-fv').getContext('2d'),{type:'doughnut',data:{labels:['Fijos','Variables'],datasets:[{data:[cf,cv],backgroundColor:['#1B3A5C','#3A8FD1'],borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:11}}}}}}); }
+    if(cf>0||cv>0){
+      dc('fv');
+      charts['fv']=new Chart(document.getElementById('c-fv').getContext('2d'),{
+        type:'doughnut',
+        data:{
+          labels:['Costos Fijos '+fmt(cf),'Costos Variables '+fmt(cv)],
+          datasets:[{
+            data:[cf,cv],
+            backgroundColor:['#1B3A5C','#3A8FD1'],
+            borderWidth:2,
+            borderColor:'#fff',
+            hoverOffset:4
+          }]
+        },
+        options:{
+          responsive:true,
+          cutout:'68%',
+          plugins:{
+            legend:{
+              position:'bottom',
+              labels:{font:{size:10},padding:10,boxWidth:12}
+            },
+            tooltip:{callbacks:{label:function(c){
+              var total=cf+cv;
+              return ' '+c.label.split(' ')[0]+' '+c.label.split(' ')[1]+': '+(total>0?((c.raw/total)*100).toFixed(1)+'%':'');
+            }}}
+          }
+        }
+      });
+    }
 
     // Tipo documento
     var tiposDocs={};var totalTipoDoc=0;
@@ -1579,12 +1608,12 @@ function renderEvolucion(){
     return {label:anio,data:orden.map(function(m){return anios[anio][m]||null;}),borderColor:colores[i],backgroundColor:colores[i]+'22',tension:.3,fill:false,pointRadius:3,borderWidth:2};
   });
   dc('evol');
-  var ctx=document.getElementById('c-evol');
+  var ctx=document.getElementById('c-evo');
   if(!ctx)return;
   charts['evol']=new Chart(ctx.getContext('2d'),{
     type:'line',
     data:{labels:labels,datasets:datasets},
-    options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:11}}},tooltip:{callbacks:{label:function(c){return ' '+c.dataset.label+': '+fmt(c.raw);}}}},scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{grid:{color:'#EBF5FB'},ticks:{font:{size:10},callback:function(v){return v>=1000000?'$'+(v/1000000).toFixed(1)+'M':'$'+(v/1000).toFixed(0)+'K';}}}}}
+    options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{position:'bottom',labels:{font:{size:10},padding:8,boxWidth:12}},tooltip:{callbacks:{label:function(c){return ' '+c.dataset.label+': '+fmt(c.raw);}}}},scales:{x:{grid:{display:false},ticks:{font:{size:9},maxRotation:0}},y:{grid:{color:'#EBF5FB'},border:{display:false},ticks:{font:{size:9},callback:function(v){return v>=1000000?'$'+(v/1000000).toFixed(1)+'M':'$'+(v/1000).toFixed(0)+'K';}}}}}
   });
 }
 
