@@ -308,17 +308,10 @@ html { scroll-behavior: smooth; }
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
         Exportar Excel
       </button>
-      <div style="display:flex;align-items:center;gap:6px">
-        <select id="pdf-estilo" style="border:1px solid #ddd;border-radius:8px;padding:7px 10px;font-size:12px;color:#1B3A5C;font-family:inherit;background:#fff;cursor:pointer;height:36px">
-          <option value="one-page">📋 Resumen Ejecutivo</option>
-          <option value="wall-street">🏦 Corporate Deep-Dive</option>
-          <option value="modern-bi">💻 Modern BI</option>
-        </select>
-        <button onclick="exportarPDF(document.getElementById('pdf-estilo').value)" style="display:flex;align-items:center;gap:6px;background:#E74C3C;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;height:36px">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-          Exportar PDF
-        </button>
-      </div>
+      <button onclick="exportarPDF()" style="display:flex;align-items:center;gap:6px;background:#E74C3C;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        Exportar PDF
+      </button>
     </div>
   </div>
   <div class="periodo-nav">
@@ -1095,505 +1088,334 @@ function exportarExcel(){
 }
 
 function exportarPDF(estilo){
-  estilo = estilo || 'one-page';
-  var periodo  = document.getElementById('periodo-pill').textContent || 'período';
-  var empresa  = document.getElementById('empresa-nombre').textContent || 'Empresa';
+  var periodo  = (document.getElementById('periodo-pill')||{}).textContent||'periodo';
+  var empresa  = (document.getElementById('empresa-nombre')||{}).textContent||'Empresa';
+  var hoy      = new Date().toLocaleDateString('es-CL',{day:'2-digit',month:'long',year:'numeric'});
   var logoEl   = document.getElementById('nav-logo');
   var logoSrc  = logoEl ? logoEl.src : '';
-  var hoy      = new Date().toLocaleDateString('es-CL',{day:'2-digit',month:'long',year:'numeric'});
 
-  // ── Variables vivas del dashboard ──
-  function gEl(id){ var e=document.getElementById(id); return e?e.textContent:'--'; }
-  var vb=gEl('kv-vb'), vn=gEl('kv-vn'), gb=gEl('kv-gb2'), gn=gEl('kv-gn2');
-  var cf=gEl('kv-cf'), cv=gEl('kv-cv'), res=gEl('iv-res'), mb=gEl('iv-mb'), mn=gEl('iv-mn');
-  var pe=gEl('iv-pe'), proy=gEl('kv-proyeccion'), yoy=gEl('kv-yoy');
-  var ivaD=gEl('iv-iva-debito'), ivaC=gEl('iv-iva-credito'), ivaP=gEl('iv-iva-pagar');
-  var resNeg=res.indexOf('-')>=0, yoyNeg=yoy.indexOf('-')>=0||yoy.indexOf('▼')>=0;
+  // ── Leer valores del DOM ──────────────────────────────────
+  function gv(id){ var e=document.getElementById(id); return e?e.textContent.trim():'--'; }
+  var vb=gv('kv-vb'), vn=gv('kv-vn'), gn=gv('kv-gn'), gb=gv('kv-gb2')||gv('kv-gb');
+  var cf=gv('kv-cf'), cv=gv('kv-cv'), res=gv('iv-res'), mb=gv('iv-mb'), mn=gv('iv-mn');
+  var pe=gv('iv-pe'), proy=gv('kv-proyeccion'), yoy=gv('kv-yoy');
+  var ivaD=gv('iv-iva-debito'), ivaC=gv('iv-iva-credito'), ivaP=gv('iv-iva-pagar'), ihP=gv('ih-iva-pagar');
+  var resNeg = res.indexOf('-')>=0;
+  var yoyNeg = yoy.indexOf('-')>=0 || yoy.indexOf('▼')>=0;
 
-  // ── Tablas DOM ──
-  function domRows(sel){
+  // ── Leer tablas DOM ───────────────────────────────────────
+  function domTable(id){
     var rows=[];
-    document.querySelectorAll(sel+' tr').forEach(function(tr){
-      var tds=tr.querySelectorAll('td');
-      if(tds.length) rows.push(Array.from(tds).map(function(td){return td.textContent.trim();}));
+    var el=document.getElementById(id);
+    if(!el) return rows;
+    el.querySelectorAll('tr').forEach(function(tr){
+      var cells=tr.querySelectorAll('td');
+      if(cells.length) rows.push(Array.from(cells).map(function(c){return c.textContent.trim();}));
     });
     return rows;
   }
-  var catRows=domRows('#tb-catv');
-  var pagRows=domRows('#tb-pagos');
-  var famRows=domRows('#tb-gfam');
-  var tdRows =domRows('#tb-tipo-doc').map(function(r){r[0]=r[0].replace(/Neto|Bruto/g,'').trim();return r;});
-
-  // ── Helpers HTML compartidos ──
-  function sgLogo(){
-    return '<div style="display:flex;align-items:center;gap:5px;font-family:\'Helvetica Neue\',sans-serif">'
-      +'<span style="background:#1e293b;color:#fff;font-weight:800;padding:2px 6px;border-radius:4px;font-size:9pt;letter-spacing:.5px">SG</span>'
-      +'<span style="font-weight:700;font-size:10pt;color:#1e293b;letter-spacing:-.3px">SurGestion</span>'
-      +'</div>';
-  }
-  function badge(val,isNeg){
-    var bg=isNeg?'#fee2e2':'#dcfce7', color=isNeg?'#991b1b':'#166534', icon=isNeg?'▼':'▲';
-    return '<span style="background:'+bg+';color:'+color+';padding:2px 8px;border-radius:20px;font-size:8pt;font-weight:700">'+icon+' '+val+'</span>';
-  }
-  function footnote(){
-    return '<div style="font-size:7pt;color:#94a3b8;margin-top:12px;padding-top:8px;border-top:1px solid #e2e8f0">'
-      +'*Cifras expresadas en Pesos Chilenos (CLP). Reporte certificado por SurGestion. Gastos calculados en base neta según criterios de validación fiscal del SII. '
-      +'Ventas brutas incluyen IVA. Run Rate calculado en base al ritmo diario del período.*'
-      +'</div>';
-  }
-
-  // ── Construcción EERR histórico 6 meses (async via fetchByIds) ──
-  function buildEerrData(callback){
-    var u6 = _periodos.slice(0,6).slice().reverse();
-    if(!u6.length){ callback(null,null,null); return; }
-    var r6 = _reportes.filter(function(r){return u6.indexOf(r.periodo)>=0;});
-    var ids6 = r6.map(function(r){return r.id;});
-    var rm6={};r6.forEach(function(r){rm6[r.id]=r.periodo;});
-
-    fetchByIds('costos',ids6).then(function(c6){
-      var dat={};
-      u6.forEach(function(p){dat[p]={vb:0,vn:0,gn:0,gb:0,fams:{}};});
-      r6.forEach(function(r){
-        dat[r.periodo].vb=Number(r.ventas_brutas||0);
-        dat[r.periodo].vn=_aplicaIva?Number(r.ventas_netas||0):Number(r.ventas_brutas||0);
-      });
-      c6.forEach(function(c){
-        var p=rm6[c.reporte_id]; if(!p||!dat[p]) return;
-        if(/impuesto|iva|tribut/i.test(c.familia||c.categoria||'')) return;
-        var neto=getNetoDoc(c);
-        dat[p].gn+=neto; dat[p].gb+=Number(c.monto||0);
-        var fam=c.familia||c.categoria||'Sin familia';
-        if(!dat[p].fams[fam]) dat[p].fams[fam]=0;
-        dat[p].fams[fam]+=neto;
-      });
-      u6.forEach(function(p){dat[p].res=dat[p].vn-dat[p].gn;});
-      var todasFams=[];
-      u6.forEach(function(p){Object.keys(dat[p].fams).forEach(function(f){if(todasFams.indexOf(f)<0)todasFams.push(f);});});
-      todasFams.sort(function(a,b){return u6.reduce(function(s,p){return s+(dat[p].fams[b]||0);},0)-u6.reduce(function(s,p){return s+(dat[p].fams[a]||0);},0);});
-      callback(u6,dat,todasFams);
+  var catRows   = domTable('tb-catv');
+  var famRows   = domTable('tb-gfam');
+  var pagRows   = domTable('tb-pagos');
+  var turRows   = domTable('tb-turnos');
+  var tdocRows  = domTable('tb-tipo-doc').map(function(r){
+    r[0]=r[0].replace(/Neto|Bruto/g,'').trim(); return r;
+  });
+  var compAnualEl = document.getElementById('tabla-comp-anual');
+  var compAnualHead=[], compAnualRows=[];
+  if(compAnualEl){
+    compAnualEl.querySelectorAll('tr').forEach(function(tr,i){
+      var cells=tr.querySelectorAll('th,td');
+      var row=Array.from(cells).map(function(c){return c.textContent.replace(/[▲▶▼]/g,'').trim();});
+      if(i===0) compAnualHead=row;
+      else if(row[0]) compAnualRows.push(row);
     });
   }
 
-  // ── EERR HTML para PDF (sin interactividad DOM) ──
-  function buildEerrHtml(u6,dat,todasFams,headBg,headColor,altBg,totalBg){
-    headBg=headBg||'#0f172a'; headColor=headColor||'#fff'; altBg=altBg||'#f8fafc';
-    function label(p){
-      var parts=p.split(' ');
-      var mes=parts[0].charAt(0).toUpperCase()+parts[0].slice(1,3);
-      return mes+" '"+((parts[1]||'').slice(2));
+  // ── jsPDF setup ───────────────────────────────────────────
+  var doc = new jspdf.jsPDF('p','mm','a4');
+  var PW=210, PH=297, ML=12, MR=12, CW=PW-ML-MR;
+
+  // ── Paleta ────────────────────────────────────────────────
+  var NAVY=[27,58,92], BLUE=[52,100,160], BLUE_L=[220,232,245];
+  var BG=[247,249,252], TEXT=[32,44,58], MUTED=[110,130,150];
+  var WHITE=[255,255,255], LINE=[210,220,232];
+  var GREEN=[39,122,86], GREEN_L=[209,236,220];
+  var RED=[150,50,50],   RED_L=[242,218,218];
+  var GOLD=[160,130,50], GOLD_L=[250,244,215];
+
+  function sf(c){doc.setFillColor(c[0],c[1],c[2]);}
+  function sd(c){doc.setDrawColor(c[0],c[1],c[2]);}
+  function st(c){doc.setTextColor(c[0],c[1],c[2]);}
+  function fb(size){doc.setFont('helvetica','bold');doc.setFontSize(size);}
+  function fn(size){doc.setFont('helvetica','normal');doc.setFontSize(size);}
+
+  // ── Helpers ───────────────────────────────────────────────
+  function header(title){
+    sf(NAVY); doc.rect(0,0,PW,18,'F');
+    if(logoSrc && logoSrc.indexOf('base64')>=0){
+      try{ doc.addImage(logoSrc,'PNG',PW-20,1,16,16); }catch(e){}
     }
-    function fmtV(v){ return v===0?'-':Math.round(v)>=1000000?'$'+(Math.round(v)/1000000).toFixed(1)+'M':Math.round(v)>=1000?'$'+(Math.round(v)/1000).toFixed(0)+'K':'$'+Math.round(v).toLocaleString('es-CL'); }
-
-    var tvn=u6.reduce(function(s,p){return s+dat[p].vn;},0);
-    var th='<table style="width:100%;border-collapse:collapse;font-size:7.5pt">'
-      +'<thead><tr style="background:'+headBg+';color:'+headColor+'">'
-      +'<th style="padding:6px 8px;text-align:left;width:28%">Concepto</th>'
-      +u6.map(function(p){return '<th style="padding:6px 6px;text-align:right;white-space:nowrap">'+label(p)+'</th>';}).join('')
-      +'<th style="padding:6px 8px;text-align:right;font-weight:800">Total</th>'
-      +'</tr></thead><tbody>';
-
-    function secRow(txt){
-      return '<tr style="background:'+headBg+'22"><td colspan="'+(u6.length+2)+'" style="padding:4px 8px;font-size:7pt;font-weight:700;color:'+headBg+';text-transform:uppercase;letter-spacing:.6px">'+txt+'</td></tr>';
+    st(WHITE); fb(9); doc.text(empresa,ML,10);
+    fn(7); st([160,190,220]); doc.text(periodo,ML,15);
+    st([160,185,215]); doc.text('Pág.'+doc.internal.getNumberOfPages(),PW-22,15);
+    if(title){
+      st(NAVY); fb(13); doc.text(title,ML,29);
+      sf(BLUE); doc.rect(ML,31,doc.getTextWidth(title)+3,1.2,'F');
     }
-    function dataRow(txt,vals,bold,bg,color){
-      var tot=vals.reduce(function(s,v){return s+v;},0);
-      var fw=bold?'font-weight:700;':'';
-      var bgs=bg?'background:'+bg+';':'';
-      var cl=color?'color:'+color+';':'';
-      return '<tr style="'+bgs+'border-bottom:1px solid #f1f5f9">'
-        +'<td style="padding:5px 8px;'+fw+cl+'">'+txt+'</td>'
-        +vals.map(function(v){return '<td style="padding:5px 6px;text-align:right;'+fw+cl+'">'+fmtV(v)+'</td>';}).join('')
-        +'<td style="padding:5px 8px;text-align:right;'+fw+cl+'">'+fmtV(tot)+'</td>'
-        +'</tr>';
-    }
-
-    th += secRow('Ingresos');
-    th += dataRow('Ventas brutas',u6.map(function(p){return dat[p].vb;}),false,altBg,'');
-    th += dataRow('Ventas netas',u6.map(function(p){return dat[p].vn;}),true,'','');
-
-    th += secRow('Gastos Operacionales');
-    var gnVals=u6.map(function(p){return dat[p].gn;});
-    var gnTot=gnVals.reduce(function(s,v){return s+v;},0);
-    th += dataRow('Total gastos netos',gnVals,true,altBg,'');
-    todasFams.forEach(function(fam){
-      var vals=u6.map(function(p){return dat[p].fams[fam]||0;});
-      if(!vals.reduce(function(s,v){return s+v;},0)) return;
-      th += dataRow('  '+fam,vals,false,'','#475569');
-    });
-
-    th += secRow('Resultado');
-    var resVals=u6.map(function(p){return dat[p].res;});
-    var resTot=resVals.reduce(function(s,v){return s+v;},0);
-    var resColor=resTot<0?'#991b1b':'#166534';
-    var resBg=resTot<0?'#fee2e2':'#dcfce7';
-    th += '<tr style="background:'+resBg+';border-top:2px solid '+headBg+'">'
-      +'<td style="padding:6px 8px;font-weight:800;color:'+resColor+'">Resultado operacional</td>'
-      +resVals.map(function(v){return '<td style="padding:6px 6px;text-align:right;font-weight:800;color:'+(v<0?'#991b1b':'#166534')+'">'+fmtV(v)+'</td>';}).join('')
-      +'<td style="padding:6px 8px;text-align:right;font-weight:800;color:'+resColor+'">'+fmtV(resTot)+'</td>'
-      +'</tr>';
-
-    th += '</tbody></table>';
-    return th;
   }
 
-  // ══════════════════════════════════════════════
-  // PLANTILLA 1: ONE-PAGE
-  // ══════════════════════════════════════════════
-  if(estilo==='one-page'){
-    buildEerrData(function(u6,dat,todasFams){
-      var catTable=buildTableHtml(['Categoría','Monto','%'],catRows,[1,2],'#0f172a');
-      var tdTable =buildTableHtml(['Tipo Documento','Monto','%'],tdRows,[1,2],'#0f172a');
-      var eerrTable=u6?buildEerrHtml(u6,dat,todasFams,'#0f172a','#fff','#f8fafc'):'<p style="color:#94a3b8;font-size:8pt">Sin datos históricos disponibles.</p>';
-      var eerrRows=[
-        ['Ventas brutas',vb],['Ventas netas (sin IVA)',vn],
-        ['Gastos netos operacionales',gn],['Costos fijos',cf],['Costos variables',cv],
-        ['RESULTADO OPERACIONAL',res]
-      ];
-      var bsHtml='<table style="width:100%;border-collapse:collapse;font-size:8pt"><tbody>'
-        +eerrRows.map(function(r,i){
-          var last=i===eerrRows.length-1;
-          return '<tr style="background:'+(last?(resNeg?'#fee2e2':'#dcfce7'):(i%2?'#f8fafc':'#fff'))+'">'
-            +'<td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;font-weight:'+(last?'800':'400')+';color:'+(last?(resNeg?'#991b1b':'#166534'):'#1e293b')+'">'+r[0]+'</td>'
-            +'<td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:right;font-weight:'+(last?'800':'400')+';color:'+(last?(resNeg?'#991b1b':'#166534'):'#1e293b')+'">'+r[1]+'</td>'
-            +'</tr>';
-        }).join('')
-        +'</tbody></table>';
-
-      var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>'
-        +'*{box-sizing:border-box;margin:0;padding:0}'
-        +'body{font-family:"Helvetica Neue",Arial,sans-serif;font-size:9pt;color:#1e293b;background:#fff}'
-        +'@page{size:A4 portrait;margin:14mm 14mm 18mm 14mm}'
-        +'.section-title{font-size:8pt;font-weight:700;color:#0f172a;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #e2e8f0}'
-        +'.page-break{page-break-before:always}'
-        +'.footer{margin-top:20px;padding-top:8px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;font-size:7pt;color:#94a3b8}'
-        +'</style></head><body>'
-        // Header
-        +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;padding-bottom:10px;border-bottom:2px solid #0f172a">'
-        +'<div><div style="font-size:18pt;font-weight:800;color:#0f172a;line-height:1">'+empresa+'</div>'
-        +'<div style="font-size:9pt;color:#64748b;margin-top:3px">'+periodo.charAt(0).toUpperCase()+periodo.slice(1)+'</div></div>'
-        +'<div style="text-align:right;font-size:7.5pt;color:#94a3b8"><div>Emisión: '+hoy+'</div><div style="margin-top:4px">Reporte Financiero Ejecutivo</div></div>'
-        +'</div>'
-        // KPIs macro 3
-        +'<div style="display:flex;gap:10px;margin-bottom:16px">'
-        +'<div style="flex:1;background:#f1f5f9;border-radius:8px;padding:14px;text-align:center"><div style="font-size:7.5pt;color:#64748b;text-transform:uppercase;margin-bottom:6px">Ventas Netas</div><div style="font-size:22pt;font-weight:800;color:#0f172a">'+vn+'</div></div>'
-        +'<div style="flex:1;background:#f1f5f9;border-radius:8px;padding:14px;text-align:center"><div style="font-size:7.5pt;color:#64748b;text-transform:uppercase;margin-bottom:6px">Gastos Netos</div><div style="font-size:22pt;font-weight:800;color:#0f172a">'+gn+'</div></div>'
-        +'<div style="flex:1;background:'+(resNeg?'#fee2e2':'#dcfce7')+';border-radius:8px;padding:14px;text-align:center"><div style="font-size:7.5pt;color:#64748b;text-transform:uppercase;margin-bottom:6px">Resultado</div><div style="font-size:22pt;font-weight:800;color:'+(resNeg?'#991b1b':'#166534')+'">'+res+'</div></div>'
-        +'</div>'
-        // KPIs secundarios
-        +'<div style="display:flex;gap:8px;margin-bottom:16px">'
-        +['Margen Bruto|'+mb,'Margen Neto|'+mn,'Punto Equilibrio|'+pe,'Proyección|'+proy].map(function(s){
-          var p=s.split('|');
-          return '<div style="flex:1;border:1px solid #e2e8f0;border-radius:6px;padding:8px;text-align:center"><div style="font-size:7pt;color:#64748b;margin-bottom:3px">'+p[0]+'</div><div style="font-size:11pt;font-weight:700;color:#0f172a">'+p[1]+'</div></div>';
-        }).join('')
-        +'<div style="flex:1;border:1px solid #e2e8f0;border-radius:6px;padding:8px;text-align:center"><div style="font-size:7pt;color:#64748b;margin-bottom:3px">YoY</div><div style="font-size:11pt;font-weight:700;color:'+(yoyNeg?'#991b1b':'#166534')+'">'+yoy+'</div></div>'
-        +'</div>'
-        // Dos columnas
-        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">'
-        +'<div><div class="section-title">Ventas por categoría</div>'+catTable+'</div>'
-        +'<div><div class="section-title">Gastos por tipo documento (SII)</div>'+tdTable+'</div>'
-        +'</div>'
-        // EERR condensado
-        +'<div class="section-title">Estado de Resultados del período</div>'+bsHtml
-        // Footer
-        +'<div class="footer">'+sgLogo()+'<span>surgestionpm.cl · '+hoy+'</span><span>'+periodo+'</span></div>'
-        // PÁG 2: EERR 6 meses
-        +'<div class="page-break">'
-        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid #0f172a">'
-        +'<div style="font-size:12pt;font-weight:800;color:#0f172a">Estado de Resultados Comparativo</div>'
-        +'<div style="font-size:7.5pt;color:#94a3b8">'+empresa+' · Últimos 6 meses</div></div>'
-        +eerrTable
-        +'<div class="footer">'+sgLogo()+'<span>surgestionpm.cl · '+hoy+'</span><span>Histórico comparativo</span></div>'
-        +'</div>'
-        +'</body></html>';
-
-      var opt={margin:[14,14,18,14],filename:empresa+' - '+periodo+' (Ejecutivo).pdf',image:{type:'jpeg',quality:.98},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}};
-      html2pdf().set(opt).from(html).save();
-    });
-    return;
+  function footer(){
+    sd(LINE); doc.setLineWidth(0.25); doc.line(ML,PH-10,PW-ML,PH-10);
+    fn(7); st(MUTED);
+    doc.text('SurGestion | surgestionpm.cl',ML,PH-5);
+    doc.text(hoy,PW/2,PH-5,{align:'center'});
+    doc.text('Página '+doc.internal.getNumberOfPages(),PW-ML,PH-5,{align:'right'});
   }
 
-  // ══════════════════════════════════════════════
-  // PLANTILLA 2: WALL-STREET
-  // ══════════════════════════════════════════════
-  if(estilo==='wall-street'){
-    buildEerrData(function(u6,dat,todasFams){
-      var catTableWS=buildTableHtml(['Categoría','Monto CLP','% Total'],catRows,[1,2],'#1e3a8a');
-      var famTableWS=buildTableHtml(['Familia','Gasto Neto','% G','% VN'],famRows,[1,2,3],'#1e3a8a');
-      var tdTableWS =buildTableHtml(['Tipo Documento','Monto Neto','% Total'],tdRows,[1,2],'#1e3a8a');
-      var pagTableWS=buildTableHtml(['Forma de Pago','Monto','% Total'],pagRows,[1,2],'#1e3a8a');
-      var eerrWS=u6?buildEerrHtml(u6,dat,todasFams,'#1e3a8a','#fff','#f8fafc'):
-        '<p style="color:#94a3b8;font-size:8pt;padding:12px">Sin datos históricos disponibles.</p>';
-
-      var bsRows=[
-        {l:'Ingresos operacionales (brutas)',v:vb,sub:true},
-        {l:'  Ventas netas (sin IVA)',v:vn,sub:false},
-        {l:'Gastos Operacionales',v:gn,sub:true},
-        {l:'  Costos fijos',v:cf,sub:false},
-        {l:'  Costos variables',v:cv,sub:false},
-        {l:'IVA Débito estimado',v:ivaD,sub:false},
-        {l:'IVA Crédito fiscal',v:ivaC,sub:false},
-        {l:'RESULTADO OPERACIONAL DEL PERÍODO',v:res,total:true}
-      ];
-      var bsHtml='<table style="width:100%;border-collapse:collapse;font-size:8.5pt">'
-        +'<thead><tr style="background:#1e3a8a;color:#fff"><th style="padding:7px 10px;text-align:left">Partida Contable</th><th style="padding:7px 10px;text-align:right">Importe (CLP)</th></tr></thead><tbody>'
-        +bsRows.map(function(r,i){
-          if(r.total) return '<tr style="border-top:3px double #1e293b;border-bottom:3px double #1e293b;background:'+(resNeg?'#fee2e2':'#dcfce7')+'">'
-            +'<td style="padding:7px 10px;font-weight:800;color:'+(resNeg?'#991b1b':'#166534')+'">'+r.l+'</td>'
-            +'<td style="padding:7px 10px;text-align:right;font-weight:800;color:'+(resNeg?'#991b1b':'#166534')+'">'+r.v+'</td></tr>';
-          var bg=r.sub?'#f1f5f9':(i%2?'#fff':'#f8fafc');
-          var fw=r.sub?'700':'400';
-          return '<tr style="background:'+bg+'"><td style="padding:6px 10px;font-weight:'+fw+';color:#334155">'+r.l+'</td>'
-            +'<td style="padding:6px 10px;text-align:right;font-weight:'+fw+';color:#334155">'+r.v+'</td></tr>';
-        }).join('')+'</tbody></table>';
-
-      function wsHead(titulo){
-        return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid #1e3a8a">'
-          +'<div style="font-size:11pt;font-weight:800;color:#1e3a8a">'+titulo+'</div>'
-          +'<div style="font-size:7pt;color:#94a3b8">'+empresa+' · '+periodo+' · '+hoy+'</div></div>';
-      }
-      function wsSection(t){
-        return '<div style="background:#1e3a8a;color:#fff;font-weight:700;font-size:8.5pt;padding:6px 10px;margin:14px 0 8px;letter-spacing:.3px">'+t+'</div>';
-      }
-
-      var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>'
-        +'*{box-sizing:border-box;margin:0;padding:0}'
-        +'body{font-family:"Helvetica Neue",Arial,sans-serif;font-size:9pt;color:#334155;background:#fff}'
-        +'@page{size:A4 portrait;margin:15mm}'
-        +'.pb{page-break-before:always}'
-        +'</style></head><body>'
-        // PORTADA
-        +'<div style="min-height:270mm;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">'
-        +'<div style="margin-bottom:24px">'+sgLogo()+'</div>'
-        +'<div style="width:60px;height:3px;background:#1e3a8a;margin:0 auto 24px"></div>'
-        +'<div style="font-size:17pt;font-weight:800;color:#1e293b;line-height:1.2;max-width:380px;margin:0 auto 16px">REPORTE DE DESEMPEÑO FINANCIERO Y CONTROL DE GESTIÓN</div>'
-        +'<div style="font-size:13pt;font-weight:700;color:#1e3a8a;margin-bottom:6px">'+empresa+'</div>'
-        +'<div style="font-size:10pt;color:#64748b;margin-bottom:24px">'+periodo.charAt(0).toUpperCase()+periodo.slice(1)+'</div>'
-        +'<div style="width:60px;height:1px;background:#cbd5e1;margin:0 auto 24px"></div>'
-        +'<div style="font-size:8pt;color:#94a3b8;line-height:2.2">'
-        +'<div>Fecha de emisión: '+hoy+'</div>'
-        +'<div>Preparado por: Dirección de Finanzas</div>'
-        +'<div>Aprobado por: Directorio / Socios</div>'
-        +'</div>'
-        +'<div style="margin-top:32px;font-size:7pt;color:#cbd5e1">CONFIDENCIAL — Para uso exclusivo de la dirección</div>'
-        +'</div>'
-        // PÁG 2: RESUMEN EJECUTIVO
-        +'<div class="pb">'+wsHead('RESUMEN EJECUTIVO')
-        +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">'
-        +[['VENTAS BRUTAS',vb,'#0f172a','#fff'],['VENTAS NETAS',vn,'#1e3a8a','#fff'],['GASTOS NETOS',gn,'#f1f5f9','#1e293b'],['RESULTADO',res,resNeg?'#991b1b':'#166534','#fff']].map(function(k){
-          return '<div style="background:'+k[2]+';color:'+k[3]+';border-radius:6px;padding:12px;text-align:center">'
-            +'<div style="font-size:7pt;opacity:.7;margin-bottom:4px">'+k[0]+'</div>'
-            +'<div style="font-size:13pt;font-weight:800">'+k[1]+'</div></div>';
-        }).join('')
-        +'</div>'
-        +'<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:14px">'
-        +[['Margen Bruto',mb],['Margen Neto',mn],['C. Fijos',cf],['Proyección',proy],['YoY',yoy]].map(function(k){
-          var color=k[0]==='YoY'?(yoyNeg?'#991b1b':'#166534'):'#1e3a8a';
-          return '<div style="border:1px solid #e2e8f0;border-radius:4px;padding:8px;text-align:center">'
-            +'<div style="font-size:7pt;color:#64748b">'+k[0]+'</div>'
-            +'<div style="font-weight:700;font-size:10pt;color:'+color+'">'+k[1]+'</div></div>';
-        }).join('')
-        +'</div>'
-        +wsSection('ESTADO DE RESULTADOS DEL PERÍODO')+bsHtml
-        +footnote()+'</div>'
-        // PÁG 3: VENTAS
-        +'<div class="pb">'+wsHead('ANÁLISIS DE VENTAS')
-        +wsSection('VENTAS POR CATEGORÍA DE PRODUCTO')+catTableWS
-        +wsSection('FORMAS DE PAGO')+pagTableWS
-        +footnote()+'</div>'
-        // PÁG 4: GASTOS
-        +'<div class="pb">'+wsHead('ANÁLISIS DE GASTOS OPERACIONALES')
-        +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">'
-        +[['Gastos Brutos',gb],['Gastos Netos',gn],['Costos Fijos',cf],['Costos Variables',cv]].map(function(k){
-          return '<div style="border:1px solid #e2e8f0;border-radius:4px;padding:10px;text-align:center">'
-            +'<div style="font-size:7pt;color:#64748b">'+k[0]+'</div>'
-            +'<div style="font-size:11pt;font-weight:800;color:#1e3a8a">'+k[1]+'</div></div>';
-        }).join('')
-        +'</div>'
-        +wsSection('DESGLOSE POR FAMILIA DE GASTO')+famTableWS
-        +wsSection('CLASIFICACIÓN POR TIPO DE DOCUMENTO SII')+tdTableWS
-        +footnote()+'</div>'
-        // PÁG 5: EERR HISTÓRICO (página exclusiva)
-        +'<div class="pb">'+wsHead('ESTADO DE RESULTADOS COMPARATIVO — ÚLTIMOS 6 MESES')
-        +'<div style="font-size:7.5pt;color:#64748b;margin-bottom:12px">Análisis evolutivo de ingresos, gastos y resultado operacional por mes. Valores abreviados (K=miles, M=millones). Gastos calculados en base neta según SII.</div>'
-        +eerrWS
-        +footnote()+'</div>'
-        +'</body></html>';
-
-      var opt={margin:15,filename:empresa+' - '+periodo+' (Corporate).pdf',image:{type:'jpeg',quality:.98},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}};
-      html2pdf().set(opt).from(html).save();
-    });
-    return;
+  function kpiCard(x,y,w,h,label,val,bgC,valC,sub){
+    sf(bgC||BG); doc.roundedRect(x,y,w,h,2,2,'F');
+    sd(LINE); doc.setLineWidth(0.2); doc.roundedRect(x,y,w,h,2,2,'S');
+    fn(6.5); st(MUTED); doc.text(label.toUpperCase(),x+w/2,y+5,{align:'center'});
+    fb(10); st(valC||NAVY); doc.text(val,x+w/2,y+11.5,{align:'center'});
+    if(sub){ fn(6); st(MUTED); doc.text(sub,x+w/2,y+h-2.5,{align:'center'}); }
   }
 
-  // ══════════════════════════════════════════════
-  // PLANTILLA 3: MODERN-BI
-  // ══════════════════════════════════════════════
-  if(estilo==='modern-bi'){
-    buildEerrData(function(u6,dat,todasFams){
-      function biCard(content,extra){
-        return '<div style="background:#fff;border-radius:8px;box-shadow:0 4px 6px -1px rgba(0,0,0,.05);padding:14px;'+(extra||'')+'">'+content+'</div>';
-      }
-      function biHead(num,title){
-        return '<div style="background:#0f172a;color:#fff;border-radius:8px;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
-          +'<div style="display:flex;align-items:center;gap:12px">'
-          +'<span style="background:#fff;color:#0f172a;font-weight:800;padding:2px 6px;border-radius:4px;font-size:9pt">SG</span>'
-          +'<span style="font-size:9pt;font-weight:500">'+empresa+' · '+title+'</span></div>'
-          +'<div style="display:flex;align-items:center;gap:10px">'
-          +'<span style="font-size:7.5pt;opacity:.6">'+periodo+' · '+hoy+'</span>'
-          +'<span style="background:#1e40af;border-radius:20px;padding:2px 10px;font-size:7.5pt;font-weight:700">Slide '+num+'</span>'
-          +'</div></div>';
-      }
-      function biKpi(label,val,color,big){
-        return '<div style="text-align:center">'
-          +'<div style="font-size:7pt;color:#64748b;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">'+label+'</div>'
-          +'<div style="font-size:'+(big?'18':'13')+'pt;font-weight:800;color:'+(color||'#0f172a')+'">'+val+'</div>'
-          +'</div>';
-      }
+  function sLabel(txt,y){
+    st(BLUE); fb(8); doc.text(txt,ML,y); return y+5;
+  }
 
-      // EERR moderno con indicadores de tendencia
-      var eerrBIHtml='<div style="overflow-x:auto">';
-      if(u6){
-        eerrBIHtml+='<table style="width:100%;border-collapse:collapse;font-size:7.5pt">'
-          +'<thead><tr style="border-bottom:2px solid #e2e8f0">'
-          +'<th style="padding:6px 8px;text-align:left;color:#64748b;font-weight:600;width:25%">CONCEPTO</th>'
-          +u6.map(function(p){
-            var parts=p.split(' ');
-            var label=parts[0].charAt(0).toUpperCase()+parts[0].slice(1,3)+" '"+((parts[1]||'').slice(2));
-            return '<th style="padding:6px 6px;text-align:right;color:#64748b;font-weight:600;white-space:nowrap">'+label+'</th>';
-          }).join('')
-          +'<th style="padding:6px 8px;text-align:right;color:#0f172a;font-weight:700">Total</th>'
-          +'</tr></thead><tbody>';
+  function autoT(head,rows,colW,y0,parseFn,margin){
+    var m=margin||{left:ML,right:MR};
+    doc.autoTable({
+      startY:y0, head:[head], body:rows, theme:'plain',
+      headStyles:{fillColor:NAVY,textColor:WHITE,fontStyle:'bold',fontSize:7,
+                  cellPadding:{top:2.5,bottom:2.5,left:4,right:4}},
+      bodyStyles:{fontSize:7,cellPadding:{top:2,bottom:2,left:4,right:4},textColor:TEXT},
+      alternateRowStyles:{fillColor:BG},
+      columnStyles:colW||{},
+      didParseCell:parseFn||function(){},
+      tableLineColor:LINE, tableLineWidth:0.2,
+      margin:m
+    });
+    return doc.lastAutoTable.finalY;
+  }
 
-        function biRow(txt,vals,isTotal,isGasto){
-          var tot=vals.reduce(function(s,v){return s+v;},0);
-          // Tendencia: comparar último vs penúltimo
-          var trend='';
-          if(vals.length>=2){
-            var last=vals[vals.length-1], prev=vals[vals.length-2];
-            if(prev!==0){
-              var pct=((last-prev)/Math.abs(prev)*100).toFixed(1);
-              var pos=parseFloat(pct)>=0;
-              // Para gastos, positivo es malo
-              if(isGasto) pos=!pos;
-              trend='<span style="margin-left:4px;background:'+(pos?'#dcfce7':'#fee2e2')+';color:'+(pos?'#166534':'#991b1b')+';padding:1px 5px;border-radius:10px;font-size:6pt;font-weight:700">'+(parseFloat(pct)>=0?'▲':'▼')+Math.abs(pct)+'%</span>';
-            }
-          }
-          var bg=isTotal?(tot<0?'#fee2e2':'#dcfce7'):'';
-          var color=isTotal?(tot<0?'#991b1b':'#166534'):'#1e293b';
-          var fw=isTotal?'800':'500';
-          function fmtV(v){ return Math.round(v)>=1000000?'$'+(Math.round(v)/1000000).toFixed(1)+'M':Math.round(v)>=1000?'$'+(Math.round(v)/1000).toFixed(0)+'K':'$'+Math.round(v).toLocaleString('es-CL'); }
-          return '<tr style="background:'+(bg||((isTotal?'':'')))+';border-bottom:1px solid #f1f5f9">'
-            +'<td style="padding:5px 8px;font-weight:'+fw+';color:'+color+'">'+txt+trend+'</td>'
-            +vals.map(function(v){return '<td style="padding:5px 6px;text-align:right;font-weight:'+fw+';color:'+(v<0?'#991b1b':color)+'">'+fmtV(v)+'</td>';}).join('')
-            +'<td style="padding:5px 8px;text-align:right;font-weight:800;color:'+(tot<0?'#991b1b':color)+'">'+fmtV(tot)+'</td>'
-            +'</tr>';
+  // ══════════════════════════════════════════════════════════
+  // PÁGINA 1 — PORTADA EJECUTIVA
+  // ══════════════════════════════════════════════════════════
+  sf(NAVY); doc.rect(0,0,PW,PH*0.46,'F');
+  sf(BLUE); doc.rect(0,PH*0.46-4,PW,4,'F');
+
+  if(logoSrc && logoSrc.indexOf('base64')>=0){
+    try{ doc.addImage(logoSrc,'PNG',PW/2-22,24,44,44); }catch(e){}
+  }
+  st(WHITE); fb(22); doc.text(empresa,PW/2,82,{align:'center'});
+  fn(10.5); st([160,195,230]); doc.text('Reporte Financiero Ejecutivo',PW/2,91,{align:'center'});
+  sf(BLUE); doc.roundedRect(PW/2-32,98,64,12,6,6,'F');
+  st(WHITE); fb(8.5); doc.text(periodo.charAt(0).toUpperCase()+periodo.slice(1),PW/2,106,{align:'center'});
+
+  // Resumen en portada
+  var py=PH*0.46+14;
+  st(NAVY); fb(9); doc.text('RESUMEN EJECUTIVO',PW/2,py,{align:'center'}); py+=8;
+
+  var kw4=(CW-6)/4;
+  kpiCard(ML,py,kw4,17,'Ventas Brutas',vb,BG,NAVY,'Con IVA');
+  kpiCard(ML+kw4+2,py,kw4,17,'Ventas Netas',vn,BG,NAVY,'Sin IVA');
+  kpiCard(ML+(kw4+2)*2,py,kw4,17,'Gastos Netos',gn,BG,NAVY,'Operacional');
+  kpiCard(ML+(kw4+2)*3,py,kw4,17,'Resultado',res,resNeg?RED_L:GREEN_L,resNeg?RED:GREEN,'Operacional');
+  py+=22;
+
+  var kw3=(CW-4)/3;
+  kpiCard(ML,py,kw3,15,'Margen Bruto',mb,BG,BLUE);
+  kpiCard(ML+kw3+2,py,kw3,15,'Margen Neto',mn,BG,BLUE);
+  kpiCard(ML+(kw3+2)*2,py,kw3,15,'Punto Equilibrio',pe,BG,NAVY);
+  py+=20;
+
+  var kw2a=(CW-2)/2;
+  kpiCard(ML,py,kw2a,15,'Proyección Run Rate',proy,BG,BLUE);
+  kpiCard(ML+kw2a+2,py,kw2a,15,'Var. Interanual YoY',yoy,yoyNeg?RED_L:GREEN_L,yoyNeg?RED:GREEN);
+  py+=21;
+
+  sd(LINE); doc.setLineWidth(0.25); doc.line(ML,py,PW-ML,py);
+  fn(7); st(MUTED); doc.text('SurGestion | surgestionpm.cl',ML,py+6);
+  doc.text(hoy,PW-ML,py+6,{align:'right'});
+
+  // ══════════════════════════════════════════════════════════
+  // PÁGINA 2 — VENTAS
+  // ══════════════════════════════════════════════════════════
+  doc.addPage(); header('Ventas del Período');
+  var y=36;
+
+  // IVA F29 — 3 mini-cards
+  var kw3b=(CW-4)/3;
+  kpiCard(ML,y,kw3b,14,'IVA Débito',ivaD,BLUE_L,NAVY);
+  kpiCard(ML+kw3b+2,y,kw3b,14,'IVA Crédito',ivaC,BLUE_L,NAVY);
+  var ivaBad=ihP.indexOf('PAGAR')>=0;
+  kpiCard(ML+(kw3b+2)*2,y,kw3b,14,ihP,ivaP,ivaBad?RED_L:GREEN_L,ivaBad?RED:GREEN);
+  y+=19;
+
+  // Categorías + Formas de pago en 2 columnas
+  var col=CW/2-3;
+  y=sLabel('Ventas por Categoría',y);
+  var y1=autoT(['Categoría','Monto','%'],catRows,
+    {0:{cellWidth:col*0.58},1:{cellWidth:col*0.25,halign:'right'},2:{cellWidth:col*0.17,halign:'right'}},
+    y,null,{left:ML,right:ML+col+3+MR})+4;
+
+  y=sLabel('Formas de Pago',y-y1+y1); // reset y para columna derecha
+  var y2=autoT(['Forma de Pago','Monto','%'],pagRows,
+    {0:{cellWidth:col*0.58},1:{cellWidth:col*0.25,halign:'right'},2:{cellWidth:col*0.17,halign:'right'}},
+    36+19+5,null,{left:ML+col+3,right:MR})+4;
+
+  y=Math.max(y1,y2)+2;
+  // Turnos
+  y=sLabel('Comparativo por Turno',y);
+  var turHead=['Turno','Monto','% Vtas','Trans.','Ticket Prom.'];
+  var turCols={0:{cellWidth:38},1:{cellWidth:45,halign:'right'},2:{cellWidth:25,halign:'right'},
+               3:{cellWidth:22,halign:'right'},4:{cellWidth:CW-130,halign:'right'}};
+  y=autoT(turHead,turRows,turCols,y)+4;
+
+  footer();
+
+  // ══════════════════════════════════════════════════════════
+  // PÁGINA 3 — GASTOS
+  // ══════════════════════════════════════════════════════════
+  doc.addPage(); header('Gastos del Período');
+  y=36;
+
+  var kw4g=(CW-6)/4;
+  kpiCard(ML,y,kw4g,15,'Gastos Brutos',gb,BG,NAVY);
+  kpiCard(ML+kw4g+2,y,kw4g,15,'Gastos Netos',gn,BG,NAVY);
+  kpiCard(ML+(kw4g+2)*2,y,kw4g,15,'Costos Fijos',cf,BG,BLUE);
+  kpiCard(ML+(kw4g+2)*3,y,kw4g,15,'Costos Variables',cv,BG,BLUE);
+  y+=20;
+
+  // Familias de gasto
+  y=sLabel('Gastos por Familia',y);
+  y=autoT(['Familia','Gasto Neto','% Gasto','% V.Neta'],famRows,
+    {0:{cellWidth:CW*0.42},1:{cellWidth:CW*0.22,halign:'right'},
+     2:{cellWidth:CW*0.18,halign:'right'},3:{cellWidth:CW*0.18,halign:'right'}},y)+4;
+
+  // Tipo documento en 2 col con familias
+  y=sLabel('Tipo de Documento (SII)',y);
+  y=autoT(['Tipo Documento','Monto','%'],tdocRows,
+    {0:{cellWidth:CW*0.6},1:{cellWidth:CW*0.25,halign:'right'},2:{cellWidth:CW*0.15,halign:'right'}},y)+4;
+
+  footer();
+
+  // ══════════════════════════════════════════════════════════
+  // PÁGINA 4 — COMPARATIVO ANUAL
+  // ══════════════════════════════════════════════════════════
+  doc.addPage(); header('Comparativo Anual de Ventas Brutas');
+  y=36;
+  fn(7.5); st(MUTED); doc.text('Ventas brutas históricas por mes y año · Última columna: variación vs año anterior',ML,y); y+=7;
+
+  if(compAnualHead.length && compAnualRows.length){
+    var nc=compAnualHead.length;
+    var cw={0:{cellWidth:36}};
+    var rw=(CW-36)/(nc-1);
+    for(var ci=1;ci<nc;ci++) cw[ci]={cellWidth:rw,halign:'right'};
+    y=autoT(compAnualHead,compAnualRows,cw,y,function(d){
+      if(d.column.index===compAnualHead.length-1 && d.section==='body'){
+        var v=String(d.cell.raw||'');
+        if(v.indexOf('-')>=0 && v.indexOf('%')>=0){
+          d.cell.styles.textColor=RED; d.cell.styles.fontStyle='bold';
+        } else if(v.indexOf('%')>=0){
+          d.cell.styles.textColor=GREEN; d.cell.styles.fontStyle='bold';
         }
-
-        eerrBIHtml += '<tr style="background:#f8fafc"><td colspan="'+(u6.length+2)+'" style="padding:4px 8px;font-size:7pt;font-weight:700;color:#0f172a;text-transform:uppercase;letter-spacing:.5px">▸ INGRESOS</td></tr>';
-        eerrBIHtml += biRow('Ventas brutas',u6.map(function(p){return dat[p].vb;}),false,false);
-        eerrBIHtml += biRow('Ventas netas',u6.map(function(p){return dat[p].vn;}),false,false);
-        eerrBIHtml += '<tr style="background:#f8fafc"><td colspan="'+(u6.length+2)+'" style="padding:4px 8px;font-size:7pt;font-weight:700;color:#0f172a;text-transform:uppercase;letter-spacing:.5px">▸ GASTOS</td></tr>';
-        eerrBIHtml += biRow('Total gastos netos',u6.map(function(p){return dat[p].gn;}),false,true);
-        todasFams.slice(0,5).forEach(function(fam){
-          var vals=u6.map(function(p){return dat[p].fams[fam]||0;});
-          if(!vals.reduce(function(s,v){return s+v;},0)) return;
-          eerrBIHtml += biRow('  '+fam,vals,false,true);
-        });
-        eerrBIHtml += '<tr style="background:#f8fafc"><td colspan="'+(u6.length+2)+'" style="padding:4px 8px;font-size:7pt;font-weight:700;color:#0f172a;text-transform:uppercase;letter-spacing:.5px">▸ RESULTADO</td></tr>';
-        eerrBIHtml += biRow('Resultado operacional',u6.map(function(p){return dat[p].res;}),true,false);
-        eerrBIHtml += '</tbody></table>';
-      } else {
-        eerrBIHtml += '<div style="color:#94a3b8;font-size:8pt;padding:12px">Sin datos históricos disponibles.</div>';
       }
-      eerrBIHtml += '</div>';
-
-      var catTableBI='<table style="width:100%;border-collapse:collapse;font-size:7.5pt"><thead><tr style="border-bottom:2px solid #e2e8f0"><th style="padding:5px 6px;text-align:left;color:#64748b;font-weight:600">CATEGORÍA</th><th style="padding:5px 6px;text-align:right;color:#64748b;font-weight:600">MONTO</th><th style="padding:5px 6px;text-align:right;color:#64748b;font-weight:600">%</th></tr></thead><tbody>'+catRows.map(function(r,i){return '<tr style="background:'+(i%2?'#f8fafc':'#fff')+';border-bottom:1px solid #f1f5f9"><td style="padding:5px 6px">'+r[0]+'</td><td style="padding:5px 6px;text-align:right;font-weight:600">'+r[1]+'</td><td style="padding:5px 6px;text-align:right;color:#64748b">'+r[2]+'</td></tr>';}).join('')+'</tbody></table>';
-      var famTableBI='<table style="width:100%;border-collapse:collapse;font-size:7.5pt"><thead><tr style="border-bottom:2px solid #e2e8f0"><th style="padding:5px 6px;text-align:left;color:#64748b;font-weight:600">FAMILIA</th><th style="padding:5px 6px;text-align:right;color:#64748b;font-weight:600">GASTO</th><th style="padding:5px 6px;text-align:right;color:#64748b;font-weight:600">%</th></tr></thead><tbody>'+famRows.map(function(r,i){return '<tr style="background:'+(i%2?'#f8fafc':'#fff')+';border-bottom:1px solid #f1f5f9"><td style="padding:5px 6px">'+r[0]+'</td><td style="padding:5px 6px;text-align:right;font-weight:600">'+r[1]+'</td><td style="padding:5px 6px;text-align:right;color:#64748b">'+r[2]+'</td></tr>';}).join('')+'</tbody></table>';
-
-      var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>'
-        +'*{box-sizing:border-box;margin:0;padding:0}'
-        +'body{font-family:"Helvetica Neue",Arial,sans-serif;font-size:9pt;color:#1e293b;background:#f1f5f9;padding:10mm}'
-        +'@page{size:A4 landscape;margin:10mm}'
-        +'.slide{min-height:185mm;page-break-after:always}'
-        +'.slide:last-child{page-break-after:auto}'
-        +'.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}'
-        +'.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}'
-        +'.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}'
-        +'.g5{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}'
-        +'.lbl{font-size:7.5pt;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}'
-        +'</style></head><body>'
-        // SLIDE 1
-        +'<div class="slide">'
-        +biHead(1,'Dashboard Financiero de Proyecciones')
-        +'<div class="g5" style="margin-bottom:10px">'
-        +biCard(biKpi('Ventas Brutas',vb,'#0f172a',true),'text-align:center')
-        +biCard(biKpi('Ventas Netas',vn,'#1e40af',true),'text-align:center')
-        +biCard(biKpi('Gastos Netos',gn,'#0f172a',true),'text-align:center')
-        +biCard(biKpi('Costos Fijos',cf,'#7c3aed',true),'text-align:center')
-        +biCard('<div style="text-align:center"><div class="lbl">Resultado</div><div style="font-size:18pt;font-weight:800;color:'+(resNeg?'#991b1b':'#166534')+'">'+res+'</div></div>','')
-        +'</div>'
-        +'<div class="g3" style="margin-bottom:10px">'
-        +biCard('<div class="lbl">Proyección Run Rate</div><div style="font-size:22pt;font-weight:800;color:#1e40af;margin-bottom:6px">'+proy+'</div><div style="font-size:7.5pt;color:#64748b">Estimación ritmo diario del período</div>','')
-        +biCard('<div class="lbl">Variación Interanual (YoY)</div><div style="font-size:22pt;font-weight:800;color:'+(yoyNeg?'#991b1b':'#166534')+';margin-bottom:6px">'+yoy+'</div><div style="font-size:7.5pt;color:#64748b">Vs mismo mes año anterior</div>','')
-        +biCard('<div class="lbl">Indicadores clave</div>'
-          +'<div style="display:flex;flex-direction:column;gap:7px">'
-          +[['Margen bruto',mb],['Margen neto',mn],['Punto equilibrio',pe],['IVA F29 estimado',ivaP]].map(function(k){
-            return '<div style="display:flex;justify-content:space-between;align-items:center">'
-              +'<span style="font-size:7.5pt;color:#64748b">'+k[0]+'</span>'
-              +'<span style="font-size:8.5pt;font-weight:700;color:#0f172a">'+k[1]+'</span></div>';
-          }).join('')
-          +'</div>','')
-        +'</div>'
-        +'<div class="g3">'
-        +biCard('<div class="lbl">IVA Débito (Ventas)</div><div style="font-size:14pt;font-weight:800;color:#1e293b">'+ivaD+'</div><div style="font-size:7pt;color:#94a3b8;margin-top:4px">Ventas brutas × 0.19/1.19</div>','')
-        +biCard('<div class="lbl">IVA Crédito (Facturas)</div><div style="font-size:14pt;font-weight:800;color:#1e293b">'+ivaC+'</div><div style="font-size:7pt;color:#94a3b8;margin-top:4px">(Facturas neto × 0.19) − (NC neto × 0.19)</div>','')
-        +biCard('<div class="lbl">IVA Estimado F29</div><div style="font-size:14pt;font-weight:800;color:'+(resNeg?'#991b1b':'#166534')+'">'+ivaP+'</div><div style="font-size:7pt;color:#94a3b8;margin-top:4px">Débito − Crédito (Aproximado)</div>','')
-        +'</div>'
-        +'</div>'
-        // SLIDE 2
-        +'<div class="slide">'
-        +biHead(2,'Análisis de Gastos Operacionales')
-        +'<div class="g4" style="margin-bottom:10px">'
-        +biCard(biKpi('Gastos Brutos',gb),'text-align:center')
-        +biCard(biKpi('Gastos Netos',gn),'text-align:center')
-        +biCard(biKpi('Costos Fijos',cf,'#1e40af'),'text-align:center')
-        +biCard(biKpi('Costos Variables',cv,'#7c3aed'),'text-align:center')
-        +'</div>'
-        +'<div class="g2">'
-        +biCard('<div class="lbl">Desglose tipo documento (SII)</div>'
-          +'<table style="width:100%;border-collapse:collapse;font-size:7.5pt"><thead><tr style="border-bottom:2px solid #e2e8f0"><th style="padding:5px;text-align:left;color:#64748b;font-weight:600">DOCUMENTO</th><th style="padding:5px;text-align:right;color:#64748b;font-weight:600">MONTO</th><th style="padding:5px;text-align:right;color:#64748b;font-weight:600">%</th></tr></thead><tbody>'
-          +tdRows.map(function(r,i){return '<tr style="background:'+(i%2?'#f8fafc':'#fff')+';border-bottom:1px solid #f1f5f9"><td style="padding:5px">'+r[0]+'</td><td style="padding:5px;text-align:right;font-weight:600">'+r[1]+'</td><td style="padding:5px;text-align:right;color:#64748b">'+r[2]+'</td></tr>';}).join('')
-          +'</tbody></table>','')
-        +biCard('<div class="lbl">Estructura fijos vs variables</div>'
-          +'<div style="display:flex;gap:8px;margin-bottom:10px">'
-          +'<div style="flex:1;background:#eff6ff;border-radius:6px;padding:10px;text-align:center"><div style="font-size:7pt;color:#1e40af;margin-bottom:4px">FIJOS</div><div style="font-size:15pt;font-weight:800;color:#1e40af">'+cf+'</div></div>'
-          +'<div style="flex:1;background:#f5f3ff;border-radius:6px;padding:10px;text-align:center"><div style="font-size:7pt;color:#7c3aed;margin-bottom:4px">VARIABLES</div><div style="font-size:15pt;font-weight:800;color:#7c3aed">'+cv+'</div></div>'
-          +'</div>'
-          +'<div style="background:#f1f5f9;border-radius:6px;padding:12px;text-align:center">'
-          +'<div style="font-size:7.5pt;color:#64748b;margin-bottom:4px">PUNTO DE EQUILIBRIO</div>'
-          +'<div style="font-size:20pt;font-weight:800;color:#0f172a">'+pe+'</div>'
-          +'<div style="font-size:7pt;color:#94a3b8;margin-top:4px">CF / (1 − CV/VN) · Prom. 3 meses</div>'
-          +'</div>','')
-        +'</div>'
-        +'</div>'
-        // SLIDE 3: EERR histórico expandido
-        +'<div class="slide">'
-        +biHead(3,'Cuadro de Control Evolutivo — Últimos 6 Meses')
-        +biCard('<div class="lbl" style="margin-bottom:10px">Estado de Resultados Comparativo con indicadores de tendencia mensual (▲▼ vs mes anterior)</div>'+eerrBIHtml,'')
-        +'<div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center">'
-        +'<div class="g2" style="gap:8px;flex:1;margin-right:12px">'
-        +biCard('<div class="lbl">Ventas por categoría</div>'+catTableBI,'')
-        +biCard('<div class="lbl">Gastos por familia</div>'+famTableBI,'')
-        +'</div></div>'
-        +'</div>'
-        +'</body></html>';
-
-      var opt={margin:10,filename:empresa+' - '+periodo+' (Modern BI).pdf',image:{type:'jpeg',quality:.98},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'a4',orientation:'landscape'}};
-      html2pdf().set(opt).from(html).save();
-    });
-    return;
+    })+8;
+  } else {
+    fn(9); st(MUTED); doc.text('Sin datos de comparativo anual disponibles.',ML,y+10);
   }
+
+  footer();
+
+  // ══════════════════════════════════════════════════════════
+  // PÁGINA 5 — EERR COMPARATIVO (últimos 6 meses)
+  // ══════════════════════════════════════════════════════════
+  var u6=_periodos.slice(0,6).slice().reverse();
+  if(!u6.length){
+    _finalizePages(doc); doc.save(empresa+' - '+periodo+'.pdf'); return;
+  }
+
+  var r6=_reportes.filter(function(r){return u6.indexOf(r.periodo)>=0;});
+  var ids6=r6.map(function(r){return r.id;});
+  var rm6={}; r6.forEach(function(r){rm6[r.id]=r.periodo;});
+
+  fetchByIds('costos',ids6).then(function(c6){
+    var d6={};
+    u6.forEach(function(p){d6[p]={vb:0,vn:0,gn:0,fams:{}};});
+    r6.forEach(function(r){
+      d6[r.periodo].vb=Number(r.ventas_brutas||0);
+      d6[r.periodo].vn=_aplicaIva?Number(r.ventas_netas||0):Number(r.ventas_brutas||0);
+    });
+    c6.forEach(function(c){
+      var p=rm6[c.reporte_id]; if(!p||!d6[p]) return;
+      if(/impuesto|iva|tribut/i.test(c.familia||c.categoria||'')) return;
+      var n=getNetoDoc(c); d6[p].gn+=n;
+      var f=c.familia||c.categoria||'Sin familia';
+      if(!d6[p].fams[f])d6[p].fams[f]=0; d6[p].fams[f]+=n;
+    });
+
+    var fams6=[];
+    u6.forEach(function(p){Object.keys(d6[p].fams).forEach(function(f){if(fams6.indexOf(f)<0)fams6.push(f);});});
+    fams6.sort(function(a,b){
+      return u6.reduce(function(s,p){return s+(d6[p].fams[b]||0);},0)
+            -u6.reduce(function(s,p){return s+(d6[p].fams[a]||0);},0);
+    });
+
+    function lm(p){var pt=p.split(' ');return pt[0].slice(0,3).charAt(0).toUpperCase()+pt[0].slice(1,3)+"'"+pt[1].slice(2);}
+    function fk(v){return v===0?'-':'$'+(v>=1000000?(v/1000000).toFixed(1)+'M':(v/1000).toFixed(0)+'K');}
+
+    doc.addPage(); header('Estado de Resultados Comparativo');
+    y=36;
+    fn(7.5); st(MUTED); doc.text('Últimos '+u6.length+' meses · K=miles, M=millones · Gastos en base neta SII',ML,y); y+=7;
+
+    var tvb=u6.reduce(function(s,p){return s+d6[p].vb;},0);
+    var tvn=u6.reduce(function(s,p){return s+d6[p].vn;},0);
+    var tgn=u6.reduce(function(s,p){return s+d6[p].gn;},0);
+    var tres=tvn-tgn;
+
+    var eH=[''].concat(u6.map(lm)).concat(['Total']);
+    var eR=[];
+    eR.push(['Ventas Brutas'].concat(u6.map(function(p){return fk(d6[p].vb);})).concat([fk(tvb)]));
+    eR.push(['Ventas Netas'].concat(u6.map(function(p){return fk(d6[p].vn);})).concat([fk(tvn)]));
+    eR.push(['— GASTOS —'].concat(u6.map(function(){return '';})).concat(['']));
+    fams6.forEach(function(f){
+      var tf=u6.reduce(function(s,p){return s+(d6[p].fams[f]||0);},0);
+      if(!tf) return;
+      eR.push([f].concat(u6.map(function(p){return fk(d6[p].fams[f]||0);})).concat([fk(tf)]));
+    });
+    eR.push(['Total Gastos Netos'].concat(u6.map(function(p){return fk(d6[p].gn);})).concat([fk(tgn)]));
+    eR.push(['RESULTADO OPERACIONAL'].concat(u6.map(function(p){return fk(d6[p].vn-d6[p].gn);})).concat([fk(tres)]));
+
+    var nc2=eH.length;
+    var cw2={0:{cellWidth:42,fontStyle:'bold'}};
+    var rw2=(CW-42)/(nc2-1);
+    for(var ci2=1;ci2<nc2;ci2++) cw2[ci2]={cellWidth:rw2,halign:'right'};
+
+    autoT(eH,eR,cw2,y,function(d){
+      var lb=String(d.cell.raw||'');
+      if(lb==='RESULTADO OPERACIONAL'){
+        d.cell.styles.fillColor=tres<0?RED_L:GREEN_L;
+        d.cell.styles.textColor=tres<0?RED:GREEN;
+        d.cell.styles.fontStyle='bold';
+      }
+      if(lb==='Total Gastos Netos'||lb.indexOf('GASTOS')>=0){
+        d.cell.styles.fillColor=BLUE_L; d.cell.styles.textColor=NAVY; d.cell.styles.fontStyle='bold';
+      }
+      if(lb==='Ventas Netas') d.cell.styles.fontStyle='bold';
+    });
+
+    footer();
+    // Aplicar footer a todas las páginas
+    var total=doc.internal.getNumberOfPages();
+    for(var pg=1;pg<=total;pg++){ doc.setPage(pg); if(pg>1) footer(); }
+    doc.save(empresa+' - '+periodo+' - Reporte.pdf');
+  });
 }
+
 
 // ── Helper buildTableHtml (compartido por todas las plantillas) ──
 function buildTableHtml(head,rows,rightCols,headBg){
