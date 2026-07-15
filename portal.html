@@ -646,172 +646,94 @@ function poblarMesesRango(){
 
 // ── Gráficos SVG propios (sin Chart.js) ──────────────────────
 
-var BAR_COLORS = [
-  '#E74C3C','#3A8FD1','#27AE60','#F39C12','#9B59B6',
-  '#1ABC9C','#E67E22','#2980B9','#C0392B','#16A085'
-];
+var BAR_COLORS = ['#E74C3C','#3A8FD1','#27AE60','#F39C12','#9B59B6','#1ABC9C','#E67E22','#2980B9','#C0392B','#16A085'];
 
-function fmtFull(v){
-  // Formato completo: $1.234.567
-  return '$'+Math.round(v).toLocaleString('es-CL');
-}
+function fmtFull(v){ return '$'+Math.round(v).toLocaleString('es-CL'); }
 
-function renderBarras(containerId, datos, colors){
-  var cont = document.getElementById(containerId);
+function renderBarras(containerId, datos){
+  var cont=document.getElementById(containerId);
   if(!cont||!datos||!datos.length) return;
-  var total = datos.reduce(function(s,d){return s+d.value;},0);
+  var total=datos.reduce(function(s,d){return s+d.value;},0);
   if(!total){cont.innerHTML='<div style="padding:16px;font-size:12px;color:var(--muted)">Sin datos</div>';return;}
-
-  var items  = datos.slice(0,10);
-  var maxV   = items.reduce(function(mx,d){return Math.max(mx,d.value);},0);
-  var LABEL_W = 160; // px para etiqueta izquierda
-  var VAL_W   = 105; // px para valor derecha
-  var PCT_W   = 46;  // px para porcentaje
-  var ROW_H   = 34;
-  var PAD     = 10;
-  var TOOLTIP_ID = containerId+'-tip';
-
-  // Tooltip HTML flotante
-  if(!document.getElementById(TOOLTIP_ID)){
-    var tip = document.createElement('div');
-    tip.id  = TOOLTIP_ID;
-    tip.style.cssText = 'position:fixed;background:#1B3A5C;color:#fff;padding:6px 10px;border-radius:6px;font-size:11px;pointer-events:none;display:none;z-index:9999;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.25)';
-    document.body.appendChild(tip);
-  }
-
-  var svgH = PAD + items.length * ROW_H + PAD;
-  var rows = items.map(function(d, i){
-    var pct    = (d.value/total*100).toFixed(1);
-    var barPct = maxV > 0 ? (d.value/maxV*100).toFixed(1) : 0;
-    var color  = (colors||BAR_COLORS)[i % (colors||BAR_COLORS).length];
-    var y      = PAD + i*ROW_H;
-    var label  = d.label.length>22 ? d.label.slice(0,21)+'…' : d.label;
-    var tipTxt = d.label+': '+fmtFull(d.value)+' ('+pct+'%)';
-    // bar area starts after LABEL_W, ends before VAL_W+PCT_W
-    return [
-      // Label
-      '<text x="'+PAD+'" y="'+(y+15)+'" font-size="11" fill="var(--tx)" font-family="inherit" dominant-baseline="middle">'+label+'</text>',
-      // Barra + hover
-      '<g class="bar-g" data-tip="'+tipTxt+'" data-tid="'+TOOLTIP_ID+'" style="cursor:pointer">',
-      '  <rect x="'+(PAD+LABEL_W)+'" y="'+(y+5)+'" width="0" height="18" rx="4" fill="'+color+'" opacity="0.9">',
-      '    <animate attributeName="width" from="0" to="calc('+barPct+'% - '+(LABEL_W+VAL_W+PCT_W+PAD*2)+'px)" dur="0.5s" fill="freeze" begin="'+(i*0.05)+'s"/>',
-      '  </rect>',
-      // Hit area transparente para hover
-      '  <rect x="'+(PAD+LABEL_W)+'" y="'+y+'" width="100%" height="'+ROW_H+'" fill="transparent"/>',
-      '</g>',
-      // Porcentaje
-      '<text x="'+(100-VAL_W/4)+'%" y="'+(y+15)+'" font-size="10.5" fill="var(--muted)" text-anchor="end" font-family="inherit" dominant-baseline="middle">'+pct+'%</text>',
-      // Valor completo
-      '<text x="99%" y="'+(y+15)+'" font-size="11" fill="var(--navy)" text-anchor="end" font-weight="600" font-family="inherit" dominant-baseline="middle">'+fmtFull(d.value)+'</text>'
-    ].join('\n');
-  }).join('\n');
-
-  cont.innerHTML = '<div style="overflow:hidden"><svg width="100%" height="'+svgH+'" xmlns="http://www.w3.org/2000/svg" style="display:block;font-family:inherit">'+rows+'</svg></div>';
-
-  // Tooltip events
-  cont.querySelectorAll('.bar-g').forEach(function(g){
-    g.addEventListener('mouseenter', function(e){
-      var tip = document.getElementById(g.dataset.tid);
-      if(tip){tip.textContent=g.dataset.tip;tip.style.display='block';}
-    });
-    g.addEventListener('mousemove', function(e){
-      var tip = document.getElementById(g.dataset.tid);
-      if(tip){tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY-28)+'px';}
-    });
-    g.addEventListener('mouseleave', function(){
-      var tip = document.getElementById(g.dataset.tid);
-      if(tip) tip.style.display='none';
-    });
+  var items=datos.slice(0,10);
+  var maxV=items.reduce(function(mx,d){return Math.max(mx,d.value);},0);
+  var TID=containerId+'-tip';
+  if(!document.getElementById(TID)){var t=document.createElement('div');t.id=TID;t.style.cssText='position:fixed;background:#1B3A5C;color:#fff;padding:7px 12px;border-radius:7px;font-size:12px;pointer-events:none;display:none;z-index:9999;white-space:nowrap;box-shadow:0 3px 12px rgba(0,0,0,.3)';document.body.appendChild(t);}
+  var ROW_H=38,PAD_V=8,LABEL_W=150;
+  var svgH=PAD_V+items.length*ROW_H+PAD_V;
+  var rows=items.map(function(d,i){
+    var pct=total>0?(d.value/total*100).toFixed(1):0;
+    var barPct=maxV>0?(d.value/maxV*100).toFixed(1):0;
+    var color=BAR_COLORS[i%BAR_COLORS.length];
+    var y=PAD_V+i*ROW_H;
+    var label=d.label.length>20?d.label.slice(0,19)+'\u2026':d.label;
+    var tipTxt=d.label+': '+fmtFull(d.value)+' ('+pct+'%)';
+    var barY=y+10,barH=18;
+    return '<text x="0" y="'+(y+ROW_H/2+4)+'" font-size="11" fill="var(--tx)" font-family="inherit">'+label+'</text>'
+      +'<g class="bg" data-tip="'+tipTxt+'" data-tid="'+TID+'" style="cursor:pointer">'
+      +'<rect x="'+LABEL_W+'" y="'+barY+'" width="0" height="'+barH+'" rx="5" fill="'+color+'" opacity="0.85">'
+      +'<animate attributeName="width" from="0" to="calc('+barPct+'% - '+(LABEL_W+2)+'px)" dur="0.55s" fill="freeze" begin="'+(i*0.06)+'s" calcMode="spline" keySplines="0.4 0 0.2 1" keyTimes="0;1"/>'
+      +'</rect>'
+      +'<rect x="'+LABEL_W+'" y="'+barY+'" width="100%" height="'+barH+'" fill="transparent"/>'
+      +'</g>';
+  }).join('');
+  cont.innerHTML='<div style="overflow:hidden;padding:8px 12px 10px"><svg width="100%" height="'+svgH+'" xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible;font-family:inherit">'+rows+'</svg></div>';
+  cont.querySelectorAll('.bg').forEach(function(g){
+    var bar=g.querySelector('rect');
+    g.addEventListener('mouseenter',function(e){var tip=document.getElementById(g.dataset.tid);if(tip){tip.textContent=g.dataset.tip;tip.style.display='block';}if(bar)bar.style.opacity='1';});
+    g.addEventListener('mousemove',function(e){var tip=document.getElementById(g.dataset.tid);if(tip){tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY-32)+'px';}});
+    g.addEventListener('mouseleave',function(){var tip=document.getElementById(g.dataset.tid);if(tip)tip.style.display='none';if(bar)bar.style.opacity='0.85';});
   });
 }
 
 function renderDonut(containerId, datos){
-  var cont = document.getElementById(containerId);
+  var cont=document.getElementById(containerId);
   if(!cont||!datos||!datos.length) return;
-  var total = datos.reduce(function(s,d){return s+d.value;},0);
+  var total=datos.reduce(function(s,d){return s+d.value;},0);
   if(!total){cont.innerHTML='<div style="padding:16px;font-size:12px;color:var(--muted)">Sin datos</div>';return;}
-
-  var TOOLTIP_ID = containerId+'-tip';
-  if(!document.getElementById(TOOLTIP_ID)){
-    var tip = document.createElement('div');
-    tip.id  = TOOLTIP_ID;
-    tip.style.cssText = 'position:fixed;background:#1B3A5C;color:#fff;padding:6px 10px;border-radius:6px;font-size:11px;pointer-events:none;display:none;z-index:9999;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.25)';
-    document.body.appendChild(tip);
-  }
-
-  // Donut layout: círculo a la izquierda, leyenda a la derecha
-  var CX=90, CY=90, R=72, ri=44;
-  var ang = -Math.PI/2;
-
-  var paths = datos.map(function(d,i){
-    var sweep = total>0 ? (d.value/total)*2*Math.PI : 0;
-    if(sweep<0.001) return '';
-    var x1=CX+R*Math.cos(ang), y1=CY+R*Math.sin(ang);
-    ang += sweep;
-    var x2=CX+R*Math.cos(ang), y2=CY+R*Math.sin(ang);
-    var xi1=CX+ri*Math.cos(ang-sweep), yi1=CY+ri*Math.sin(ang-sweep);
-    var xi2=CX+ri*Math.cos(ang),       yi2=CY+ri*Math.sin(ang);
-    var large = sweep>Math.PI?1:0;
+  var TID=containerId+'-tip';
+  if(!document.getElementById(TID)){var t=document.createElement('div');t.id=TID;t.style.cssText='position:fixed;background:#1B3A5C;color:#fff;padding:7px 12px;border-radius:7px;font-size:12px;pointer-events:none;display:none;z-index:9999;white-space:nowrap;box-shadow:0 3px 12px rgba(0,0,0,.3)';document.body.appendChild(t);}
+  var CX=90,CY=90,R=72,ri=44,ang=-Math.PI/2;
+  var paths=datos.map(function(d){
+    var sweep=total>0?(d.value/total)*2*Math.PI:0;
+    if(sweep<0.001)return '';
+    var x1=CX+R*Math.cos(ang),y1=CY+R*Math.sin(ang);
+    ang+=sweep;
+    var x2=CX+R*Math.cos(ang),y2=CY+R*Math.sin(ang);
+    var xi1=CX+ri*Math.cos(ang-sweep),yi1=CY+ri*Math.sin(ang-sweep);
+    var xi2=CX+ri*Math.cos(ang),yi2=CY+ri*Math.sin(ang);
+    var large=sweep>Math.PI?1:0;
     var pct=(d.value/total*100).toFixed(1);
     var tipTxt=d.label+': '+fmtFull(d.value)+' ('+pct+'%)';
-    return '<path d="M'+x1.toFixed(2)+' '+y1.toFixed(2)+' A'+R+' '+R+' 0 '+large+' 1 '+x2.toFixed(2)+' '+y2.toFixed(2)+
-           ' L'+xi2.toFixed(2)+' '+yi2.toFixed(2)+' A'+ri+' '+ri+' 0 '+large+' 0 '+xi1.toFixed(2)+' '+yi1.toFixed(2)+' Z"'+
-           ' fill="'+d.color+'" stroke="#fff" stroke-width="2.5" style="cursor:pointer" class="donut-seg"'+
-           ' data-tip="'+tipTxt+'" data-tid="'+TOOLTIP_ID+'"/>';
+    return '<path d="M'+x1.toFixed(2)+' '+y1.toFixed(2)+' A'+R+' '+R+' 0 '+large+' 1 '+x2.toFixed(2)+' '+y2.toFixed(2)+' L'+xi2.toFixed(2)+' '+yi2.toFixed(2)+' A'+ri+' '+ri+' 0 '+large+' 0 '+xi1.toFixed(2)+' '+yi1.toFixed(2)+' Z" fill="'+d.color+'" stroke="#fff" stroke-width="2.5" class="dseg" data-tip="'+tipTxt+'" data-tid="'+TID+'" style="cursor:pointer;transition:opacity .15s"/>';
   }).join('');
-
-  // Leyenda derecha
-  var legItems = datos.map(function(d,i){
+  var legItems=datos.map(function(d,i){
     var pct=(d.value/total*100).toFixed(1);
-    var y = 20 + i*36;
-    return '<rect x="200" y="'+(y-10)+'" width="12" height="12" rx="3" fill="'+d.color+'"/>'+
-           '<text x="218" y="'+y+'" font-size="11.5" fill="var(--navy)" font-weight="600" font-family="inherit">'+d.label+'</text>'+
-           '<text x="218" y="'+(y+15)+'" font-size="11" fill="var(--muted)" font-family="inherit">'+fmtFull(d.value)+' · '+pct+'%</text>';
+    var y=24+i*38;
+    return '<rect x="200" y="'+(y-11)+'" width="13" height="13" rx="3" fill="'+d.color+'"/>'
+      +'<text x="219" y="'+y+'" font-size="12" font-weight="600" fill="var(--navy)" font-family="inherit">'+d.label+'</text>'
+      +'<text x="219" y="'+(y+15)+'" font-size="11" fill="var(--muted)" font-family="inherit">'+fmtFull(d.value)+' \u00b7 '+pct+'%</text>';
   }).join('');
-
-  var legH = 20 + datos.length*36 + 10;
-  var svgH = Math.max(CY*2, legH);
-
-  // Total en centro del donut
-  var centro = '<text x="'+CX+'" y="'+(CY-6)+'" text-anchor="middle" font-size="10" fill="var(--muted)" font-family="inherit">Total</text>'+
-               '<text x="'+CX+'" y="'+(CY+10)+'" text-anchor="middle" font-size="12" font-weight="700" fill="var(--navy)" font-family="inherit">'+fmtFull(total)+'</text>';
-
-  cont.innerHTML = '<svg width="100%" viewBox="0 0 400 '+svgH+'" xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible">'+
-    paths+centro+legItems+'</svg>';
-
-  // Tooltip events
-  cont.querySelectorAll('.donut-seg').forEach(function(seg){
-    seg.addEventListener('mouseenter',function(e){
-      var tip=document.getElementById(seg.dataset.tid);
-      if(tip){tip.textContent=seg.dataset.tip;tip.style.display='block';}
-    });
-    seg.addEventListener('mousemove',function(e){
-      var tip=document.getElementById(seg.dataset.tid);
-      if(tip){tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY-28)+'px';}
-    });
-    seg.addEventListener('mouseleave',function(){
-      var tip=document.getElementById(seg.dataset.tid);
-      if(tip) tip.style.display='none';
-    });
+  var legH=24+datos.length*38+10;
+  var svgH=Math.max(CY*2+10,legH);
+  var centro='<text x="'+CX+'" y="'+(CY-6)+'" text-anchor="middle" font-size="10" fill="var(--muted)" font-family="inherit">Total</text>'
+    +'<text x="'+CX+'" y="'+(CY+11)+'" text-anchor="middle" font-size="12" font-weight="700" fill="var(--navy)" font-family="inherit">'+fmtFull(total)+'</text>';
+  cont.innerHTML='<div style="padding:8px 12px 10px"><svg width="100%" viewBox="0 0 400 '+svgH+'" xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible">'+paths+centro+legItems+'</svg></div>';
+  cont.querySelectorAll('.dseg').forEach(function(seg){
+    seg.addEventListener('mouseenter',function(e){var tip=document.getElementById(seg.dataset.tid);if(tip){tip.textContent=seg.dataset.tip;tip.style.display='block';}seg.style.opacity='0.75';});
+    seg.addEventListener('mousemove',function(e){var tip=document.getElementById(seg.dataset.tid);if(tip){tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY-32)+'px';}});
+    seg.addEventListener('mouseleave',function(){var tip=document.getElementById(seg.dataset.tid);if(tip)tip.style.display='none';seg.style.opacity='1';});
   });
 }
 
-var DONUT_COLORS = ['#1B3A5C','#3A8FD1','#27AE60','#E74C3C','#F39C12','#9B59B6'];
-
-function renderChartVcat(catArr, vb){
-  if(!catArr||!catArr.length) return;
-  renderBarras('chart-vcat', catArr.map(function(e){return {label:e[0],value:e[1]};}), BAR_COLORS);
-}
-function renderChartGfam(famArr){
-  if(!famArr||!famArr.length) return;
-  renderBarras('chart-gfam', famArr.map(function(e){return {label:e[0],value:e[1]};}), BAR_COLORS);
-}
-function renderChartFV(cf, cv){
+function renderChartVcat(catArr,vb){if(!catArr||!catArr.length)return;renderBarras('chart-vcat',catArr.map(function(e){return {label:e[0],value:e[1]};}));}
+function renderChartGfam(famArr){if(!famArr||!famArr.length)return;renderBarras('chart-gfam',famArr.map(function(e){return {label:e[0],value:e[1]};}));}
+function renderChartFV(cf,cv){
   var datos=[];
-  if(cf>0) datos.push({label:'Costos Fijos',   value:cf, color:'#1B3A5C'});
-  if(cv>0) datos.push({label:'Costos Variables',value:cv, color:'#3A8FD1'});
-  if(!datos.length && cf>0) datos=[{label:'Total Gastos',value:cf,color:'#1B3A5C'}];
-  renderDonut('chart-fv', datos);
+  if(cf>0)datos.push({label:'Costos Fijos',value:cf,color:'#1B3A5C'});
+  if(cv>0)datos.push({label:'Costos Variables',value:cv,color:'#3A8FD1'});
+  if(!datos.length&&cf>0)datos=[{label:'Total Gastos',value:cf,color:'#1B3A5C'}];
+  renderDonut('chart-fv',datos);
 }
 // ── Fin gráficos SVG ─────────────────────────────────────────
 
