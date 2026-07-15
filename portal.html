@@ -354,7 +354,7 @@ html { scroll-behavior: smooth; }
   </div>
 
   <div class="g2">
-    <div class="card"><div class="ch"><span class="ct">Ventas por categoria</span></div><div class="cb"><canvas id="c-vcat" height="260"></canvas></div></div>
+    <div class="card"><div class="ch"><span class="ct">Ventas por categoria</span></div><div class="cb"><canvas id="c-vcat" style="width:100%;display:block" height="260"></canvas></div></div>
     <div class="card" id="ventas-categoria"><div class="ch"><span class="ct">% por categoria sobre ventas</span></div><div class="cb" style="padding:0">
       <table class="t"><thead><tr><th>Categoria</th><th class="num">Monto</th><th class="pct">% Ventas</th></tr></thead><tbody id="tb-catv"></tbody></table>
     </div></div>
@@ -408,15 +408,15 @@ html { scroll-behavior: smooth; }
   </div>
 
   <div class="g2">
-    <div class="card"><div class="ch"><span class="ct">Gastos por familia (neto)</span></div><div class="cb"><canvas id="c-gfam" height="280"></canvas></div></div>
+    <div class="card"><div class="ch"><span class="ct">Gastos por familia (neto)</span></div><div class="cb"><canvas id="c-gfam" style="width:100%;display:block" height="280"></canvas></div></div>
     <div class="card"><div class="ch"><span class="ct">% familia / Venta neta y Gasto neto</span></div><div class="cb" style="padding:0">
       <table class="t"><thead><tr><th>Familia</th><th class="num">Gasto neto</th><th class="pct">% Gasto</th><th class="pct">% V.Neta</th></tr></thead><tbody id="tb-gfam"></tbody></table>
     </div></div>
   </div>
 
   <div class="g2" style="gap:12px">
-    <div class="card"><div class="ch"><span class="ct">Fijos vs Variables</span></div><div class="cb" style="padding:8px 12px 12px"><canvas id="c-fv" height="140"></canvas></div></div>
-    <div class="card"><div class="ch"><span class="ct">Evolución mensual (año en curso)</span></div><div class="cb" style="padding:8px 12px 12px"><canvas id="c-evo" height="140"></canvas></div></div>
+    <div class="card"><div class="ch"><span class="ct">Fijos vs Variables</span></div><div class="cb" style="padding:8px 12px 12px"><canvas id="c-fv" style="width:100%;display:block" height="140"></canvas></div></div>
+    <div class="card"><div class="ch"><span class="ct">Evolución mensual (año en curso)</span></div><div class="cb" style="padding:8px 12px 12px"><canvas id="c-evo" style="width:100%;display:block" height="140"></canvas></div></div>
   </div>
 
   <div class="card" style="margin-bottom:16px">
@@ -478,8 +478,16 @@ function safeChart(id, config){
   dc(id);
   var el = document.getElementById(id);
   if(!el) return;
-  try{ charts[id] = new Chart(el.getContext('2d'), config); }
-  catch(e){ console.warn('Chart error '+id, e); }
+  // Forzar dimensiones antes de crear el chart
+  var parent = el.parentElement;
+  var w = parent ? parent.clientWidth || 300 : 300;
+  if(w < 50) w = 300;
+  el.style.width = w + 'px';
+  try{
+    charts[id] = new Chart(el.getContext('2d'), config);
+    // Resize tras un frame para asegurar render correcto
+    setTimeout(function(){ if(charts[id]) charts[id].resize(); }, 60);
+  } catch(e){ console.warn('Chart error', id, e); }
 }
 
 // Calcula gasto neto: usa monto_neto si existe, sino divide monto/1.19
@@ -692,7 +700,7 @@ function cargarRango(){
   }
 
   document.getElementById('loading').style.display='flex';
-  document.getElementById('dashboard').style.display='none';
+  // NO ocultar dashboard si ya está visible (evita que charts pierdan dimensiones)
 
   // Usar funciones globales fetchById/fetchByIds
 
@@ -958,12 +966,59 @@ function cargarRango(){
     document.getElementById('loading').style.display='none';
     document.getElementById('dashboard').style.display='block';
 
+    // Resize de todos los charts tras render
+    setTimeout(function(){
+      Object.keys(charts).forEach(function(k){
+        try{ if(charts[k]) charts[k].resize(); }catch(e){}
+      });
+    }, 100);
 
     // Punto de equilibrio (siempre últimos 3 meses)
     calcularPuntoEquilibrio();
 
     // Tabla comparativa mensual
     renderCompMensual(productos, sel, repsIds, _reportes);
+  });
+}
+
+function calcularPuntoEquilibrio(){
+  // PE = Costos Fijos / (1 - Costos Variables / Ventas Netas)
+  // Usa los últimos 3 periodos disponibles
+  var MESES_ORD=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  var ultimos = _periodos.slice(0,3); // ya ordenados desc
+  if(!ultimos.length){ 
+    var el=document.getElementById('iv-pe');
+    if(el) el.textContent='--';
+    return;
+  }
+  var reps = _reportes.filter(function(r){return ultimos.indexOf(r.periodo)>=0;});
+  var ids  = reps.map(function(r){return r.id;});
+  if(!ids.length) return;
+
+  fetchByIds('costos', ids).then(function(costos){
+    var vn = _aplicaIva
+      ? reps.reduce(function(s,r){return s+Number(r.ventas_netas||0);},0)
+      : reps.reduce(function(s,r){return s+Number(r.ventas_brutas||0);},0);
+    var cf = costos.filter(function(c){return /fijo/i.test(c.tipo_gasto||'');})
+                   .reduce(function(s,c){return s+getNetoDoc(c);},0);
+    var cv = costos.filter(function(c){return /variable/i.test(c.tipo_gasto||'');})
+                   .reduce(function(s,c){return s+getNetoDoc(c);},0);
+    // Si no hay clasificación fijo/variable, usar total operacional como fijo
+    if(!cf && !cv){
+      cf = costos.filter(function(c){
+        return !/impuesto|iva|tribut/i.test(c.familia||c.categoria||'');
+      }).reduce(function(s,c){return s+getNetoDoc(c);},0);
+      cv = 0;
+    }
+    var pe = '--';
+    if(vn > 0 && (1 - cv/vn) > 0){
+      pe = fmt(Math.round(cf / (1 - cv/vn)));
+    }
+    var el=document.getElementById('iv-pe');
+    if(el) el.textContent = pe;
+  }).catch(function(){ 
+    var el=document.getElementById('iv-pe');
+    if(el) el.textContent='--';
   });
 }
 
