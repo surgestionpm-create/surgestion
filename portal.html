@@ -646,83 +646,86 @@ function poblarMesesRango(){
 
 // ── Gráficos SVG propios (sin Chart.js) ──────────────────────
 
-var BAR_COLORS=['#E74C3C','#3A8FD1','#27AE60','#F39C12','#9B59B6','#1ABC9C','#E67E22','#2980B9','#C0392B','#16A085'];
+var BAR_COLORS=['#1B3A5C','#2A5280','#3A6FA8','#3A8FD1','#5BAEE8','#7EC8F0','#A8D8F0','#0F2138','#1E4976','#4A90D9'];
 
 function fmtFull(v){return '$'+Math.round(v).toLocaleString('es-CL');}
 
 function mkTip(id){
-  if(document.getElementById(id)) return;
+  if(document.getElementById(id))return;
   var t=document.createElement('div');
   t.id=id;
-  t.style.cssText='position:fixed;background:#1B3A5C;color:#fff;padding:6px 11px;border-radius:7px;font-size:12px;pointer-events:none;display:none;z-index:9999;white-space:nowrap;box-shadow:0 3px 12px rgba(0,0,0,.3)';
+  t.style.cssText='position:fixed;background:#1B3A5C;color:#fff;padding:6px 12px;border-radius:7px;font-size:12px;pointer-events:none;display:none;z-index:9999;white-space:nowrap;box-shadow:0 3px 12px rgba(0,0,0,.25)';
   document.body.appendChild(t);
-}
-
-function bindTip(el, tid, txt){
-  el.addEventListener('mouseenter',function(e){var t=document.getElementById(tid);if(t){t.textContent=txt;t.style.display='block';}});
-  el.addEventListener('mousemove', function(e){var t=document.getElementById(tid);if(t){t.style.left=(e.clientX+14)+'px';t.style.top=(e.clientY-32)+'px';}});
-  el.addEventListener('mouseleave',function(){var t=document.getElementById(tid);if(t)t.style.display='none';});
 }
 
 function renderBarras(containerId, datos){
   var cont=document.getElementById(containerId);
-  if(!cont||!datos||!datos.length) return;
+  if(!cont||!datos||!datos.length)return;
   var total=datos.reduce(function(s,d){return s+d.value;},0);
   if(!total){cont.innerHTML='<div style="padding:14px;font-size:12px;color:var(--muted)">Sin datos</div>';return;}
-
   var items=datos.slice(0,10);
-  var maxV =items.reduce(function(mx,d){return Math.max(mx,d.value);},0);
-  var TID  =containerId+'-tip';
+  var maxV=items.reduce(function(mx,d){return Math.max(mx,d.value);},0);
+  var TID=containerId+'-tip';
   mkTip(TID);
 
-  // Necesitamos el ancho real del contenedor
-  var contW = cont.clientWidth||300;
-  var LABEL_W=148, PAD=10, GAP=4;
-  var BAR_AREA = contW - LABEL_W - PAD*2 - 4; // px disponibles para barras
-  var ROW_H=36, PAD_V=8;
-  var svgH=PAD_V + items.length*ROW_H + PAD_V;
+  var LABEL_W=148,PAD=10,ROW_H=36,PAD_V=8;
 
-  // Construir HTML con divs — más simple y sin bugs de SVG calc()
-  var rowsHtml = items.map(function(d,i){
-    var pct   = total>0?(d.value/total*100).toFixed(1):0;
-    var barW  = maxV>0?Math.round(d.value/maxV*BAR_AREA):0;
-    var color = BAR_COLORS[i%BAR_COLORS.length];
-    var label = d.label.length>22?d.label.slice(0,21)+'\u2026':d.label;
-    var tipTxt= d.label+': '+fmtFull(d.value)+' ('+pct+'%)';
-    return '<div class="br" style="display:flex;align-items:center;height:'+ROW_H+'px;gap:'+GAP+'px" data-tip="'+tipTxt+'" data-tid="'+TID+'">'
+  // Calcular ancho real del contenedor
+  var contW=cont.offsetWidth||400;
+  var BAR_AREA=contW-LABEL_W-PAD*2-8;
+
+  var rowsHtml=items.map(function(d,i){
+    var pct  =total>0?(d.value/total*100).toFixed(1):0;
+    var barW =maxV>0?Math.round(d.value/maxV*BAR_AREA):4;
+    var color=BAR_COLORS[i%BAR_COLORS.length];
+    var label=d.label.length>22?d.label.slice(0,21)+'\u2026':d.label;
+    var tip  =d.label+': '+fmtFull(d.value)+' ('+pct+'%)';
+    return '<div class="br" style="display:flex;align-items:center;height:'+ROW_H+'px;gap:8px"'
+      +' data-tip="'+tip+'" data-tid="'+TID+'">'
       +'<div style="width:'+LABEL_W+'px;font-size:11px;color:var(--tx);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;flex-shrink:0">'+label+'</div>'
-      +'<div style="height:18px;width:'+barW+'px;background:'+color+';border-radius:5px;flex-shrink:0;transition:width .5s cubic-bezier(.4,0,.2,1),opacity .15s" class="bar-rect"></div>'
+      +'<div class="bar-r" style="height:16px;width:0;background:'+color+';border-radius:4px;flex-shrink:0;transition:width .55s cubic-bezier(.4,0,.2,1)"></div>'
       +'</div>';
   }).join('');
 
   cont.innerHTML='<div style="padding:8px 12px 10px">'+rowsHtml+'</div>';
 
-  // Animación: arrancar desde 0 y animar a ancho real
-  var barEls=cont.querySelectorAll('.bar-rect');
-  barEls.forEach(function(b,i){
-    var finalW=b.style.width;
-    b.style.width='0px';
-    setTimeout(function(){b.style.width=finalW;},30+i*50);
+  // Animar barras tras primer frame
+  var finalWidths=items.map(function(d){return maxV>0?Math.round(d.value/maxV*BAR_AREA):4;});
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){
+      cont.querySelectorAll('.bar-r').forEach(function(b,i){
+        b.style.width=finalWidths[i]+'px';
+      });
+    });
   });
 
   // Tooltips + hover
   cont.querySelectorAll('.br').forEach(function(row){
-    var bar=row.querySelector('.bar-rect');
-    bindTip(row, row.dataset.tid, row.dataset.tip);
-    row.addEventListener('mouseenter',function(){if(bar)bar.style.opacity='0.75';});
-    row.addEventListener('mouseleave',function(){if(bar)bar.style.opacity='1';});
+    var bar=row.querySelector('.bar-r');
+    row.addEventListener('mouseenter',function(e){
+      var t=document.getElementById(row.dataset.tid);
+      if(t){t.textContent=row.dataset.tip;t.style.display='block';}
+      if(bar){bar.style.opacity='0.7';bar.style.transform='scaleY(1.15)';}
+    });
+    row.addEventListener('mousemove',function(e){
+      var t=document.getElementById(row.dataset.tid);
+      if(t){t.style.left=(e.clientX+14)+'px';t.style.top=(e.clientY-32)+'px';}
+    });
+    row.addEventListener('mouseleave',function(){
+      var t=document.getElementById(row.dataset.tid);
+      if(t)t.style.display='none';
+      if(bar){bar.style.opacity='1';bar.style.transform='scaleY(1)';}
+    });
   });
 }
 
 function renderDonut(containerId, datos){
   var cont=document.getElementById(containerId);
-  if(!cont||!datos||!datos.length) return;
+  if(!cont||!datos||!datos.length)return;
   var total=datos.reduce(function(s,d){return s+d.value;},0);
   if(!total){cont.innerHTML='<div style="padding:14px;font-size:12px;color:var(--muted)">Sin datos</div>';return;}
-
   var TID=containerId+'-tip';
   mkTip(TID);
-
   var CX=90,CY=90,R=72,ri=44,ang=-Math.PI/2;
   var paths=datos.map(function(d){
     var sweep=total>0?(d.value/total)*2*Math.PI:0;
@@ -734,14 +737,13 @@ function renderDonut(containerId, datos){
     var xi2=CX+ri*Math.cos(ang),yi2=CY+ri*Math.sin(ang);
     var large=sweep>Math.PI?1:0;
     var pct=(d.value/total*100).toFixed(1);
-    var tipTxt=d.label+': '+fmtFull(d.value)+' ('+pct+'%)';
+    var tip=d.label+': '+fmtFull(d.value)+' ('+pct+'%)';
     return '<path d="M'+x1.toFixed(2)+' '+y1.toFixed(2)+' A'+R+' '+R+' 0 '+large+' 1 '
       +x2.toFixed(2)+' '+y2.toFixed(2)+' L'+xi2.toFixed(2)+' '+yi2.toFixed(2)
       +' A'+ri+' '+ri+' 0 '+large+' 0 '+xi1.toFixed(2)+' '+yi1.toFixed(2)+' Z"'
       +' fill="'+d.color+'" stroke="#fff" stroke-width="2.5" class="dseg"'
-      +' data-tip="'+tipTxt+'" data-tid="'+TID+'" style="cursor:pointer;transition:opacity .15s"/>';
+      +' data-tip="'+tip+'" data-tid="'+TID+'" style="cursor:pointer;transition:opacity .15s"/>';
   }).join('');
-
   var legItems=datos.map(function(d,i){
     var pct=(d.value/total*100).toFixed(1);
     var y=24+i*38;
@@ -749,18 +751,26 @@ function renderDonut(containerId, datos){
       +'<text x="219" y="'+y+'" font-size="12" font-weight="600" fill="var(--navy)" font-family="inherit">'+d.label+'</text>'
       +'<text x="219" y="'+(y+15)+'" font-size="11" fill="var(--muted)" font-family="inherit">'+fmtFull(d.value)+' \u00b7 '+pct+'%</text>';
   }).join('');
-
   var legH=24+datos.length*38+10;
   var svgH=Math.max(CY*2+10,legH);
   var centro='<text x="'+CX+'" y="'+(CY-6)+'" text-anchor="middle" font-size="10" fill="var(--muted)" font-family="inherit">Total</text>'
     +'<text x="'+CX+'" y="'+(CY+11)+'" text-anchor="middle" font-size="12" font-weight="700" fill="var(--navy)" font-family="inherit">'+fmtFull(total)+'</text>';
-
   cont.innerHTML='<div style="padding:8px 12px 10px"><svg width="100%" viewBox="0 0 400 '+svgH+'" xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible">'+paths+centro+legItems+'</svg></div>';
-
   cont.querySelectorAll('.dseg').forEach(function(seg){
-    bindTip(seg, seg.dataset.tid, seg.dataset.tip);
-    seg.addEventListener('mouseenter',function(){seg.style.opacity='0.75';});
-    seg.addEventListener('mouseleave',function(){seg.style.opacity='1';});
+    seg.addEventListener('mouseenter',function(e){
+      var t=document.getElementById(seg.dataset.tid);
+      if(t){t.textContent=seg.dataset.tip;t.style.display='block';}
+      seg.style.opacity='0.75';
+    });
+    seg.addEventListener('mousemove',function(e){
+      var t=document.getElementById(seg.dataset.tid);
+      if(t){t.style.left=(e.clientX+14)+'px';t.style.top=(e.clientY-32)+'px';}
+    });
+    seg.addEventListener('mouseleave',function(){
+      var t=document.getElementById(seg.dataset.tid);
+      if(t)t.style.display='none';
+      seg.style.opacity='1';
+    });
   });
 }
 
