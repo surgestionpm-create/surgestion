@@ -475,17 +475,17 @@ function fmt(n){ if(n==null||isNaN(n)) return '--'; return '$'+Math.round(Number
 function pct(v,t){ return t>0?((v/t)*100).toFixed(1)+'%':'0.0%'; }
 function dc(id){ if(charts[id]){try{charts[id].destroy();}catch(e){} charts[id]=null;} }
 function safeChart(id, config){
-  // Garantizar que el canvas sea visible antes de crear el chart
-  var el = document.getElementById(id);
-  if(!el) return null;
   dc(id);
-  // Usar doble RAF para asegurar que el DOM haya pintado
   requestAnimationFrame(function(){
     requestAnimationFrame(function(){
-      var el2 = document.getElementById(id);
-      if(!el2) return;
+      var el = document.getElementById(id);
+      if(!el) return;
+      // Si el padre está oculto, forzar dimensiones mínimas
+      if(el.offsetParent === null){
+        el.style.minHeight = '10px';
+      }
       try{
-        charts[id] = new Chart(el2.getContext('2d'), config);
+        charts[id] = new Chart(el.getContext('2d'), config);
       } catch(e){ console.warn('Chart error '+id, e); }
     });
   });
@@ -694,7 +694,11 @@ function cargarRango(){
   // Obtener IDs de reportes del rango
   var repsIds = _reportes.filter(function(r){return sel.indexOf(r.periodo)>=0;}).map(function(r){return r.id;});
 
-  if(!repsIds.length) return;
+  if(!repsIds.length){
+    document.getElementById('loading').style.display='none';
+    document.getElementById('dashboard').style.display='block';
+    return;
+  }
 
   document.getElementById('loading').style.display='flex';
   document.getElementById('dashboard').style.display='none';
@@ -704,7 +708,12 @@ function cargarRango(){
   Promise.all([
     fetchByIds('costos', repsIds),
     fetchByIds('productos', repsIds)
-  ]).then(function(results){
+  ]).catch(function(err){
+    console.error('Error cargando datos:', err);
+    document.getElementById('loading').style.display='none';
+    document.getElementById('dashboard').style.display='block';
+  }).then(function(results){
+    if(!results) return;
     var costos    = results[0]||[];
     var productos = results[1]||[];
 
@@ -2006,7 +2015,8 @@ function iniciar(){
     var emailEl=document.getElementById('nav-email');
     if(emailEl) emailEl.textContent=user.email;
 
-    document.getElementById('btn-logout').onclick=function(){
+    var btnLogout=document.getElementById('btn-logout');
+    if(btnLogout) btnLogout.onclick=function(){
       sb_client.auth.signOut().then(function(){ window.location.href='login.html'; });
     };
 
