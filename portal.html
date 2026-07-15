@@ -974,65 +974,28 @@ function cargarRango(){
 }
 
 function calcularPuntoEquilibrio(vn, cf, cv, gnOp){
-  // El PE del período actual usa los últimos 3 meses CERRADOS (excluye el mes en curso)
   var el = document.getElementById('iv-pe');
   if(!el) return;
 
-  // Determinar mes en curso para excluirlo
-  var hoy = new Date();
-  var MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-  var mesActual = MESES[hoy.getMonth()]+' '+hoy.getFullYear();
+  // PE = promedio de gastos netos totales de los últimos 3 meses cerrados
+  var MESES = ['enero','febrero','marzo','abril','mayo','junio','julio',
+               'agosto','septiembre','octubre','noviembre','diciembre'];
+  var mesActual = MESES[new Date().getMonth()]+' '+new Date().getFullYear();
+  var cerrados  = _periodos.filter(function(p){ return p !== mesActual; }).slice(0,3);
 
-  // Tomar últimos 3 períodos excluyendo el mes actual
-  var cerrados = _periodos.filter(function(p){ return p !== mesActual; }).slice(0,3);
-  if(!cerrados.length){
-    el.textContent = '--';
-    return;
-  }
+  if(!cerrados.length){ el.textContent='--'; return; }
 
   var reps3 = _reportes.filter(function(r){ return cerrados.indexOf(r.periodo)>=0; });
   var ids3  = reps3.map(function(r){ return r.id; });
 
   fetchByIds('costos', ids3).then(function(costos3){
-    var vn3 = _aplicaIva
-      ? reps3.reduce(function(s,r){return s+Number(r.ventas_netas||0);},0)
-      : reps3.reduce(function(s,r){return s+Number(r.ventas_brutas||0);},0);
-
-    var hasTipo = costos3.some(function(c){return c.tipo_gasto&&c.tipo_gasto.trim()!=='';});
-    var cf3=0, cv3=0, gn3=0;
-
-    costos3.forEach(function(c){
-      if(/impuesto|iva|tribut/i.test(c.familia||c.categoria||'')) return;
-      var n = getNetoDoc(c);
-      gn3 += n;
-      if(hasTipo){
-        if(/fijo/i.test(c.tipo_gasto||''))    cf3 += n;
-        if(/variable/i.test(c.tipo_gasto||'')) cv3 += n;
-      }
-    });
-
-    var pe;
-    if(hasTipo && vn3>0 && (vn3-cv3)>0){
-      // PE = CF / Margen de contribución unitario
-      pe = Math.round(cf3 / ((vn3-cv3)/vn3));
-    } else if(vn3>0){
-      // Sin clasificación: PE = Promedio mensual de gastos netos
-      pe = Math.round(gn3 / cerrados.length);
-    } else {
-      pe = 0;
-    }
-
-    el.textContent = pe>0 ? fmt(pe) : '--';
-
-    // Actualizar label con los meses usados
-    var ih = document.querySelector('[id="iv-pe"] ~ .ih, .il ~ .iv#iv-pe ~ .ih');
-    // Buscar el .ih asociado
-    var allIh = document.querySelectorAll('.ih');
-    allIh.forEach(function(h){
-      if(h.textContent.indexOf('3 meses')>=0 || h.textContent.indexOf('equilibrio')>=0){
-        h.textContent = 'Prom. '+cerrados.length+' meses cerrados | CF / (1 - CV/VN)';
-      }
-    });
+    // Suma de gastos netos por período
+    var totalGN = costos3.reduce(function(s,c){
+      if(/impuesto|iva|tribut/i.test(c.familia||c.categoria||'')) return s;
+      return s + getNetoDoc(c);
+    }, 0);
+    var pe = cerrados.length > 0 ? Math.round(totalGN / cerrados.length) : 0;
+    el.textContent = pe > 0 ? fmt(pe) : '--';
   }).catch(function(){ el.textContent='--'; });
 }
 
