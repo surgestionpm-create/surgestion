@@ -474,6 +474,7 @@ var COLS = ['#3A8FD1','#1B3A5C','#27AE60','#E67E22','#8E44AD','#E74C3C','#16A085
 function fmt(n){ if(n==null||isNaN(n)) return '--'; return '$'+Math.round(Number(n)).toLocaleString('es-CL'); }
 function pct(v,t){ return t>0?((v/t)*100).toFixed(1)+'%':'0.0%'; }
 // charts eliminados y recreados como SVG
+function dc(id){ if(charts[id]){try{charts[id].destroy();}catch(e){} charts[id]=null;} }
 
 // Calcula gasto neto: usa monto_neto si existe, sino divide monto/1.19
 function getMontoProducto(p){
