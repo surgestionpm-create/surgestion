@@ -354,7 +354,7 @@ html { scroll-behavior: smooth; }
   </div>
 
   <div class="g2">
-    <div class="card"><div class="ch"><span class="ct">Ventas por categoria</span></div><div class="cb"><canvas id="c-vcat" style="width:100%;display:block" height="260"></canvas></div></div>
+    <div class="card"><div class="ch"><span class="ct">Ventas por categoria</span></div><div class="cb" style="position:relative;height:260px"><canvas id="c-vcat"></canvas></div></div>
     <div class="card" id="ventas-categoria"><div class="ch"><span class="ct">% por categoria sobre ventas</span></div><div class="cb" style="padding:0">
       <table class="t"><thead><tr><th>Categoria</th><th class="num">Monto</th><th class="pct">% Ventas</th></tr></thead><tbody id="tb-catv"></tbody></table>
     </div></div>
@@ -408,15 +408,15 @@ html { scroll-behavior: smooth; }
   </div>
 
   <div class="g2">
-    <div class="card"><div class="ch"><span class="ct">Gastos por familia (neto)</span></div><div class="cb"><canvas id="c-gfam" style="width:100%;display:block" height="280"></canvas></div></div>
+    <div class="card"><div class="ch"><span class="ct">Gastos por familia (neto)</span></div><div class="cb" style="position:relative;height:280px"><canvas id="c-gfam"></canvas></div></div>
     <div class="card"><div class="ch"><span class="ct">% familia / Venta neta y Gasto neto</span></div><div class="cb" style="padding:0">
       <table class="t"><thead><tr><th>Familia</th><th class="num">Gasto neto</th><th class="pct">% Gasto</th><th class="pct">% V.Neta</th></tr></thead><tbody id="tb-gfam"></tbody></table>
     </div></div>
   </div>
 
   <div class="g2" style="gap:12px">
-    <div class="card"><div class="ch"><span class="ct">Fijos vs Variables</span></div><div class="cb" style="padding:8px 12px 12px"><canvas id="c-fv" style="width:100%;display:block" height="140"></canvas></div></div>
-    <div class="card"><div class="ch"><span class="ct">Evolución mensual (año en curso)</span></div><div class="cb" style="padding:8px 12px 12px"><canvas id="c-evo" style="width:100%;display:block" height="140"></canvas></div></div>
+    <div class="card"><div class="ch"><span class="ct">Fijos vs Variables</span></div><div class="cb" style="padding:8px 12px 12px;position:relative;height:140px"><canvas id="c-fv"></canvas></div></div>
+    <div class="card"><div class="ch"><span class="ct">Evolución mensual (año en curso)</span></div><div class="cb" style="padding:8px 12px 12px;position:relative;height:140px"><canvas id="c-evo"></canvas></div></div>
   </div>
 
   <div class="card" style="margin-bottom:16px">
@@ -476,13 +476,10 @@ function pct(v,t){ return t>0?((v/t)*100).toFixed(1)+'%':'0.0%'; }
 function dc(id){ if(charts[id]){try{charts[id].destroy();}catch(e){} charts[id]=null;} }
 function safeChart(id, config){
   dc(id);
-  // Encolar creación para que el browser pinte el layout antes
-  setTimeout(function(){
-    var el = document.getElementById(id);
-    if(!el) return;
-    try{ charts[id] = new Chart(el.getContext('2d'), config); }
-    catch(e){ console.warn('Chart error', id, e); }
-  }, 80);
+  var el = document.getElementById(id);
+  if(!el) return;
+  try{ charts[id] = new Chart(el.getContext('2d'), config); }
+  catch(e){ console.warn('Chart error', id, e); }
 }
 
 // Calcula gasto neto: usa monto_neto si existe, sino divide monto/1.19
@@ -789,7 +786,7 @@ function cargarRango(){
     _catVData=catArr; _vdetVb=vb;
     safeChart('vcat',{
       type:'bar',data:{labels:catArr.map(function(e){return e[0];}),datasets:[{data:catArr.map(function(e){return e[1];}),backgroundColor:COLS,borderRadius:5,borderWidth:0}]},
-      options:{indexAxis:'y',responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#EBF5FB'},ticks:{font:{size:10},callback:function(v){return v>=1000000?'$'+(v/1000000).toFixed(1)+'M':'$'+(v/1000).toFixed(0)+'K';}}},y:{grid:{display:false},ticks:{font:{size:10}}}}}
+      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#EBF5FB'},ticks:{font:{size:10},callback:function(v){return v>=1000000?'$'+(v/1000000).toFixed(1)+'M':'$'+(v/1000).toFixed(0)+'K';}}},y:{grid:{display:false},ticks:{font:{size:10}}}}}
     });
     // Tabla % catV
     var tbCatv=document.getElementById('tb-catv');
@@ -896,7 +893,7 @@ function cargarRango(){
     var famArr=Object.entries(fams).sort(function(a,b){return b[1]-a[1];});
     safeChart('gfam',{
       type:'bar',data:{labels:famArr.map(function(e){return e[0];}),datasets:[{data:famArr.map(function(e){return e[1];}),backgroundColor:COLS,borderRadius:5,borderWidth:0}]},
-      options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#EBF5FB'},ticks:{font:{size:10},callback:function(v){return v>=1000000?'$'+(v/1000000).toFixed(1)+'M':'$'+(v/1000).toFixed(0)+'K';}}},y:{grid:{display:false},ticks:{font:{size:10}}}}}
+      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#EBF5FB'},ticks:{font:{size:10},callback:function(v){return v>=1000000?'$'+(v/1000000).toFixed(1)+'M':'$'+(v/1000).toFixed(0)+'K';}}},y:{grid:{display:false},ticks:{font:{size:10}}}}}
     });
     document.getElementById('tb-gfam').innerHTML=famArr.map(function(e){return '<tr><td style="padding:7px 10px;font-size:12px">'+e[0]+'</td><td class="num">'+fmt(e[1])+'</td><td class="pct">'+pct(e[1],gnOp)+'</td><td class="pct">'+pct(e[1],vn)+'</td></tr>';}).join('');
 
@@ -916,7 +913,7 @@ function cargarRango(){
           }]
         },
         options:{
-          responsive:true,
+          responsive:true,maintainAspectRatio:false,
           cutout:'68%',
           plugins:{
             legend:{
@@ -977,19 +974,66 @@ function cargarRango(){
 }
 
 function calcularPuntoEquilibrio(vn, cf, cv, gnOp){
+  // El PE del período actual usa los últimos 3 meses CERRADOS (excluye el mes en curso)
   var el = document.getElementById('iv-pe');
   if(!el) return;
-  // Si hay clasificación fijo/variable: PE = CF / (1 - CV/VN)
-  // Si no hay clasificación: PE = GN (punto donde ventas netas cubren gastos netos)
-  var pe;
-  if(cf > 0 || cv > 0){
-    var margenContrib = vn > 0 ? (vn - cv) / vn : 0;
-    pe = margenContrib > 0 ? Math.round(cf / margenContrib) : 0;
-  } else {
-    // Sin clasificación: PE = Gastos netos operacionales (ventas que necesito para cubrirlos)
-    pe = Math.round(gnOp);
+
+  // Determinar mes en curso para excluirlo
+  var hoy = new Date();
+  var MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  var mesActual = MESES[hoy.getMonth()]+' '+hoy.getFullYear();
+
+  // Tomar últimos 3 períodos excluyendo el mes actual
+  var cerrados = _periodos.filter(function(p){ return p !== mesActual; }).slice(0,3);
+  if(!cerrados.length){
+    el.textContent = '--';
+    return;
   }
-  el.textContent = pe > 0 ? fmt(pe) : '--';
+
+  var reps3 = _reportes.filter(function(r){ return cerrados.indexOf(r.periodo)>=0; });
+  var ids3  = reps3.map(function(r){ return r.id; });
+
+  fetchByIds('costos', ids3).then(function(costos3){
+    var vn3 = _aplicaIva
+      ? reps3.reduce(function(s,r){return s+Number(r.ventas_netas||0);},0)
+      : reps3.reduce(function(s,r){return s+Number(r.ventas_brutas||0);},0);
+
+    var hasTipo = costos3.some(function(c){return c.tipo_gasto&&c.tipo_gasto.trim()!=='';});
+    var cf3=0, cv3=0, gn3=0;
+
+    costos3.forEach(function(c){
+      if(/impuesto|iva|tribut/i.test(c.familia||c.categoria||'')) return;
+      var n = getNetoDoc(c);
+      gn3 += n;
+      if(hasTipo){
+        if(/fijo/i.test(c.tipo_gasto||''))    cf3 += n;
+        if(/variable/i.test(c.tipo_gasto||'')) cv3 += n;
+      }
+    });
+
+    var pe;
+    if(hasTipo && vn3>0 && (vn3-cv3)>0){
+      // PE = CF / Margen de contribución unitario
+      pe = Math.round(cf3 / ((vn3-cv3)/vn3));
+    } else if(vn3>0){
+      // Sin clasificación: PE = Promedio mensual de gastos netos
+      pe = Math.round(gn3 / cerrados.length);
+    } else {
+      pe = 0;
+    }
+
+    el.textContent = pe>0 ? fmt(pe) : '--';
+
+    // Actualizar label con los meses usados
+    var ih = document.querySelector('[id="iv-pe"] ~ .ih, .il ~ .iv#iv-pe ~ .ih');
+    // Buscar el .ih asociado
+    var allIh = document.querySelectorAll('.ih');
+    allIh.forEach(function(h){
+      if(h.textContent.indexOf('3 meses')>=0 || h.textContent.indexOf('equilibrio')>=0){
+        h.textContent = 'Prom. '+cerrados.length+' meses cerrados | CF / (1 - CV/VN)';
+      }
+    });
+  }).catch(function(){ el.textContent='--'; });
 }
 
 function actualizarMesesComp(){
@@ -1603,7 +1647,7 @@ function renderEvolucion(){
   try{ charts['evol']=new Chart(ctx.getContext('2d'),{
     type:'line',
     data:{labels:labels,datasets:datasets},
-    options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{position:'bottom',labels:{font:{size:10},padding:8,boxWidth:12}},tooltip:{callbacks:{label:function(c){return ' '+c.dataset.label+': '+fmt(c.raw);}}}},scales:{x:{grid:{display:false},ticks:{font:{size:9},maxRotation:0}},y:{grid:{color:'#EBF5FB'},border:{display:false},ticks:{font:{size:9},callback:function(v){return v>=1000000?'$'+(v/1000000).toFixed(1)+'M':'$'+(v/1000).toFixed(0)+'K';}}}}}
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10},padding:8,boxWidth:12}},tooltip:{callbacks:{label:function(c){return ' '+c.dataset.label+': '+fmt(c.raw);}}}},scales:{x:{grid:{display:false},ticks:{font:{size:9},maxRotation:0}},y:{grid:{color:'#EBF5FB'},border:{display:false},ticks:{font:{size:9},callback:function(v){return v>=1000000?'$'+(v/1000000).toFixed(1)+'M':'$'+(v/1000).toFixed(0)+'K';}}}}}
   }); } catch(e){ console.warn(e); }
 }
 
@@ -1963,10 +2007,10 @@ function renderCompMensual(productos, sel, repsIds, reportes){
 }
 
 function toggleCMC(catId){
-  var rows=document.querySelectorAll('.'+catId);
-  var ico=document.getElementById('ico-'+catId);
+  var rows=document.querySelectorAll('.cmc-'+catId);
+  var ico=document.getElementById('cmc-ico-'+catId);
   var hidden=rows.length>0&&rows[0].style.display==='none';
-  rows.forEach(function(r){r.style.display=hidden?'':'none';});
+  rows.forEach(function(r){r.style.display=hidden?'table-row':'none';});
   if(ico) ico.textContent=hidden?'▼':'▶';
 }
 
