@@ -476,18 +476,13 @@ function pct(v,t){ return t>0?((v/t)*100).toFixed(1)+'%':'0.0%'; }
 function dc(id){ if(charts[id]){try{charts[id].destroy();}catch(e){} charts[id]=null;} }
 function safeChart(id, config){
   dc(id);
-  var el = document.getElementById(id);
-  if(!el) return;
-  // Forzar dimensiones antes de crear el chart
-  var parent = el.parentElement;
-  var w = parent ? parent.clientWidth || 300 : 300;
-  if(w < 50) w = 300;
-  el.style.width = w + 'px';
-  try{
-    charts[id] = new Chart(el.getContext('2d'), config);
-    // Resize tras un frame para asegurar render correcto
-    setTimeout(function(){ if(charts[id]) charts[id].resize(); }, 60);
-  } catch(e){ console.warn('Chart error', id, e); }
+  // Encolar creación para que el browser pinte el layout antes
+  setTimeout(function(){
+    var el = document.getElementById(id);
+    if(!el) return;
+    try{ charts[id] = new Chart(el.getContext('2d'), config); }
+    catch(e){ console.warn('Chart error', id, e); }
+  }, 80);
 }
 
 // Calcula gasto neto: usa monto_neto si existe, sino divide monto/1.19
@@ -974,52 +969,27 @@ function cargarRango(){
     }, 100);
 
     // Punto de equilibrio (siempre últimos 3 meses)
-    calcularPuntoEquilibrio();
+    calcularPuntoEquilibrio(vn, cf, cv, gnOp);
 
     // Tabla comparativa mensual
     renderCompMensual(productos, sel, repsIds, _reportes);
   });
 }
 
-function calcularPuntoEquilibrio(){
-  // PE = Costos Fijos / (1 - Costos Variables / Ventas Netas)
-  // Usa los últimos 3 periodos disponibles
-  var MESES_ORD=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-  var ultimos = _periodos.slice(0,3); // ya ordenados desc
-  if(!ultimos.length){ 
-    var el=document.getElementById('iv-pe');
-    if(el) el.textContent='--';
-    return;
+function calcularPuntoEquilibrio(vn, cf, cv, gnOp){
+  var el = document.getElementById('iv-pe');
+  if(!el) return;
+  // Si hay clasificación fijo/variable: PE = CF / (1 - CV/VN)
+  // Si no hay clasificación: PE = GN (punto donde ventas netas cubren gastos netos)
+  var pe;
+  if(cf > 0 || cv > 0){
+    var margenContrib = vn > 0 ? (vn - cv) / vn : 0;
+    pe = margenContrib > 0 ? Math.round(cf / margenContrib) : 0;
+  } else {
+    // Sin clasificación: PE = Gastos netos operacionales (ventas que necesito para cubrirlos)
+    pe = Math.round(gnOp);
   }
-  var reps = _reportes.filter(function(r){return ultimos.indexOf(r.periodo)>=0;});
-  var ids  = reps.map(function(r){return r.id;});
-  if(!ids.length) return;
-
-  fetchByIds('costos', ids).then(function(costos){
-    var vn = _aplicaIva
-      ? reps.reduce(function(s,r){return s+Number(r.ventas_netas||0);},0)
-      : reps.reduce(function(s,r){return s+Number(r.ventas_brutas||0);},0);
-    var cf = costos.filter(function(c){return /fijo/i.test(c.tipo_gasto||'');})
-                   .reduce(function(s,c){return s+getNetoDoc(c);},0);
-    var cv = costos.filter(function(c){return /variable/i.test(c.tipo_gasto||'');})
-                   .reduce(function(s,c){return s+getNetoDoc(c);},0);
-    // Si no hay clasificación fijo/variable, usar total operacional como fijo
-    if(!cf && !cv){
-      cf = costos.filter(function(c){
-        return !/impuesto|iva|tribut/i.test(c.familia||c.categoria||'');
-      }).reduce(function(s,c){return s+getNetoDoc(c);},0);
-      cv = 0;
-    }
-    var pe = '--';
-    if(vn > 0 && (1 - cv/vn) > 0){
-      pe = fmt(Math.round(cf / (1 - cv/vn)));
-    }
-    var el=document.getElementById('iv-pe');
-    if(el) el.textContent = pe;
-  }).catch(function(){ 
-    var el=document.getElementById('iv-pe');
-    if(el) el.textContent='--';
-  });
+  el.textContent = pe > 0 ? fmt(pe) : '--';
 }
 
 function actualizarMesesComp(){
