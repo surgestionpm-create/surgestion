@@ -1940,7 +1940,7 @@ function renderCompMensual(productos, sel, repsIds, reportes){
 
     // Fila de categoría (colapsable)
     var catId='cmc-'+ci;
-    t+='<tr style="background:var(--bg);cursor:pointer;border-top:2px solid var(--brd)" onclick="toggleCMC(''+catId+'')">'
+    t+='<tr style="background:var(--bg);cursor:pointer;border-top:2px solid var(--brd)" data-cmc="'+catId+'" onclick="toggleCMC(this.dataset.cmc)">'
       +'<td style="padding:7px 14px;font-weight:700;color:var(--navy);font-size:12px">'
       +'<span id="ico-'+catId+'" style="margin-right:6px;font-size:10px;color:var(--blue)">▶</span>'+cat
       +'</td>'
