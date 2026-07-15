@@ -354,7 +354,7 @@ html { scroll-behavior: smooth; }
   </div>
 
   <div class="g2">
-    <div class="card"><div class="ch"><span class="ct">Ventas por categoria</span></div><div class="cb" style="position:relative;height:260px"><canvas id="c-vcat"></canvas></div></div>
+    <div class="card"><div class="ch"><span class="ct">Ventas por categoría</span></div><div class="cb" style="padding:0" id="chart-vcat"></div></div>
     <div class="card" id="ventas-categoria"><div class="ch"><span class="ct">% por categoria sobre ventas</span></div><div class="cb" style="padding:0">
       <table class="t"><thead><tr><th>Categoria</th><th class="num">Monto</th><th class="pct">% Ventas</th></tr></thead><tbody id="tb-catv"></tbody></table>
     </div></div>
@@ -408,14 +408,14 @@ html { scroll-behavior: smooth; }
   </div>
 
   <div class="g2">
-    <div class="card"><div class="ch"><span class="ct">Gastos por familia (neto)</span></div><div class="cb" style="position:relative;height:280px"><canvas id="c-gfam"></canvas></div></div>
+    <div class="card"><div class="ch"><span class="ct">Gastos por familia (neto)</span></div><div class="cb" style="padding:0" id="chart-gfam"></div></div>
     <div class="card"><div class="ch"><span class="ct">% familia / Venta neta y Gasto neto</span></div><div class="cb" style="padding:0">
       <table class="t"><thead><tr><th>Familia</th><th class="num">Gasto neto</th><th class="pct">% Gasto</th><th class="pct">% V.Neta</th></tr></thead><tbody id="tb-gfam"></tbody></table>
     </div></div>
   </div>
 
   <div class="g2" style="gap:12px">
-    <div class="card"><div class="ch"><span class="ct">Fijos vs Variables</span></div><div class="cb" style="padding:8px 12px 12px;position:relative;height:140px"><canvas id="c-fv"></canvas></div></div>
+    <div class="card"><div class="ch"><span class="ct">Fijos vs Variables</span></div><div class="cb" style="padding:0" id="chart-fv"></div></div>
     <div class="card"><div class="ch"><span class="ct">Evolución mensual (año en curso)</span></div><div class="cb" style="padding:8px 12px 12px;position:relative;height:140px"><canvas id="c-evo"></canvas></div></div>
   </div>
 
@@ -473,14 +473,7 @@ var COLS = ['#3A8FD1','#1B3A5C','#27AE60','#E67E22','#8E44AD','#E74C3C','#16A085
 
 function fmt(n){ if(n==null||isNaN(n)) return '--'; return '$'+Math.round(Number(n)).toLocaleString('es-CL'); }
 function pct(v,t){ return t>0?((v/t)*100).toFixed(1)+'%':'0.0%'; }
-function dc(id){ if(charts[id]){try{charts[id].destroy();}catch(e){} charts[id]=null;} }
-function safeChart(id, config){
-  dc(id);
-  var el = document.getElementById(id);
-  if(!el) return;
-  try{ charts[id] = new Chart(el.getContext('2d'), config); }
-  catch(e){ console.warn('Chart error', id, e); }
-}
+// charts eliminados y recreados como SVG
 
 // Calcula gasto neto: usa monto_neto si existe, sino divide monto/1.19
 function getMontoProducto(p){
@@ -650,6 +643,118 @@ function poblarMesesRango(){
   }).join('');
 }
 
+// ── Gráficos SVG propios (sin Chart.js) ──────────────────────
+
+function fmtK(v){
+  if(v>=1000000) return '$'+(v/1000000).toFixed(1)+'M';
+  if(v>=1000)    return '$'+(v/1000).toFixed(0)+'K';
+  return '$'+v;
+}
+
+function renderBarras(containerId, datos, colorFn){
+  // datos = [{label, value}]
+  var cont = document.getElementById(containerId);
+  if(!cont || !datos || !datos.length) return;
+  var total = datos.reduce(function(s,d){return s+d.value;},0);
+  if(!total){ cont.innerHTML='<div style="padding:16px;font-size:12px;color:var(--muted)">Sin datos</div>'; return; }
+
+  // Máximo 10 items
+  var items = datos.slice(0,10);
+  var maxV   = items.reduce(function(s,d){return Math.max(s,d.value);},0);
+  var ROW_H  = 32; // altura por fila
+  var BAR_MAX = 55; // % del ancho para las barras (deja espacio para label y valor)
+  var PAD    = 12;
+
+  var rows = items.map(function(d,i){
+    var pct   = total>0 ? (d.value/total*100).toFixed(1) : 0;
+    var barW  = maxV>0 ? (d.value/maxV*BAR_MAX).toFixed(1) : 0;
+    var color = colorFn ? colorFn(i) : '#3A8FD1';
+    var y     = PAD + i*ROW_H;
+    var label = d.label.length>22 ? d.label.slice(0,21)+'…' : d.label;
+    return [
+      // Label
+      '<text x="'+PAD+'" y="'+(y+14)+'" font-size="11" fill="var(--tx)" font-family="inherit">'+label+'</text>',
+      // Barra
+      '<rect x="'+PAD+'" y="'+(y+18)+'" width="0" height="9" rx="4" fill="'+color+'">',
+      '  <animate attributeName="width" from="0" to="'+barW+'%" dur="0.5s" fill="freeze" begin="'+(i*0.06)+'s"/>',
+      '</rect>',
+      // Porcentaje
+      '<text x="'+(BAR_MAX+PAD+4)+'%" y="'+(y+26)+'" font-size="10" fill="var(--muted)" font-family="inherit">'+pct+'%</text>',
+      // Valor
+      '<text x="99%" y="'+(y+26)+'" font-size="10" fill="var(--navy)" text-anchor="end" font-weight="600" font-family="inherit">'+fmtK(d.value)+'</text>'
+    ].join('');
+  }).join('');
+
+  var svgH = PAD*2 + items.length*ROW_H;
+  cont.innerHTML = '<svg width="100%" height="'+svgH+'" xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible">'+rows+'</svg>';
+}
+
+function renderDonut(containerId, datos){
+  // datos = [{label, value, color}]
+  var cont = document.getElementById(containerId);
+  if(!cont || !datos || !datos.length) return;
+  var total = datos.reduce(function(s,d){return s+d.value;},0);
+  if(!total){ cont.innerHTML='<div style="padding:16px;font-size:12px;color:var(--muted)">Sin datos</div>'; return; }
+
+  var CX=80, CY=80, R=60, r=36;
+  var ang = -Math.PI/2;
+  var paths = datos.map(function(d){
+    var sweep = (d.value/total)*2*Math.PI;
+    var x1=CX+R*Math.cos(ang), y1=CY+R*Math.sin(ang);
+    ang += sweep;
+    var x2=CX+R*Math.cos(ang), y2=CY+R*Math.sin(ang);
+    var large = sweep>Math.PI?1:0;
+    var xi1=CX+r*Math.cos(ang-sweep), yi1=CY+r*Math.sin(ang-sweep);
+    var xi2=CX+r*Math.cos(ang), yi2=CY+r*Math.sin(ang);
+    var pct=(d.value/total*100).toFixed(1)+'%';
+    return '<path d="M'+x1+','+y1+' A'+R+','+R+',0,'+large+',1,'+x2+','+y2+
+           ' L'+xi2+','+yi2+' A'+r+','+r+',0,'+large+',0,'+xi1+','+yi1+' Z"'+
+           ' fill="'+d.color+'" stroke="#fff" stroke-width="2">'+
+           '<title>'+d.label+': '+pct+'</title></path>';
+  }).join('');
+
+  // Leyenda
+  var legY = 20;
+  var leyenda = datos.map(function(d){
+    var pct=(d.value/total*100).toFixed(1);
+    var row = '<rect x="170" y="'+(legY-8)+'" width="10" height="10" rx="2" fill="'+d.color+'"/>'+
+              '<text x="184" y="'+legY+'" font-size="11" fill="var(--tx)" font-family="inherit">'+d.label+'</text>'+
+              '<text x="320" y="'+legY+'" font-size="11" fill="var(--navy)" text-anchor="end" font-weight="600" font-family="inherit">'+pct+'% — '+fmtK(d.value)+'</text>';
+    legY += 22;
+    return row;
+  }).join('');
+
+  cont.innerHTML = '<svg width="100%" viewBox="0 0 340 '+(Math.max(160,legY+10))+'" xmlns="http://www.w3.org/2000/svg" style="display:block">'+
+    paths+
+    '<text x="'+CX+'" y="'+(CY+5)+'" text-anchor="middle" font-size="10" fill="var(--muted)" font-family="inherit">Total</text>'+
+    '<text x="'+CX+'" y="'+(CY+18)+'" text-anchor="middle" font-size="11" font-weight="700" fill="var(--navy)" font-family="inherit">'+fmtK(total)+'</text>'+
+    leyenda+'</svg>';
+}
+
+// Colores para los gráficos de barras
+var CHART_COLORS = ['#1B3A5C','#3A8FD1','#5BAEE8','#2A5280','#7EC8F0','#0F2138','#4A90D9','#88C4F4','#1A4A72','#2D7BB8'];
+
+function renderChartVcat(catArr, vb){
+  if(!catArr || !catArr.length) return;
+  renderBarras('chart-vcat', catArr.map(function(e){return {label:e[0],value:e[1]};}),
+    function(i){return CHART_COLORS[i%CHART_COLORS.length];});
+}
+
+function renderChartGfam(famArr){
+  if(!famArr || !famArr.length) return;
+  renderBarras('chart-gfam', famArr.map(function(e){return {label:e[0],value:e[1]};}),
+    function(i){var cols=['#1B3A5C','#2A5280','#3A6FA8','#3A8FD1','#5BAEE8'];return cols[i%cols.length];});
+}
+
+function renderChartFV(cf, cv){
+  var datos = [];
+  if(cf>0) datos.push({label:'Costos Fijos',   value:cf, color:'#1B3A5C'});
+  if(cv>0) datos.push({label:'Costos Variables',value:cv, color:'#3A8FD1'});
+  if(!datos.length && cf>0) datos = [{label:'Sin clasificación',value:cf,color:'#1B3A5C'}];
+  renderDonut('chart-fv', datos);
+}
+// ── Fin gráficos SVG ─────────────────────────────────────────
+
 function cargarRango(){
   var anioD = document.getElementById('sel-anio-desde').value;
   var mesD  = document.getElementById('sel-mes-desde').value;
@@ -784,10 +889,7 @@ function cargarRango(){
     productos.forEach(function(p){var cat=p.categoria||'Sin categoria';catV[cat]=(catV[cat]||0)+getMontoProducto(p);});
     var catArr=Object.entries(catV).sort(function(a,b){return b[1]-a[1];});
     _catVData=catArr; _vdetVb=vb;
-    safeChart('vcat',{
-      type:'bar',data:{labels:catArr.map(function(e){return e[0];}),datasets:[{data:catArr.map(function(e){return e[1];}),backgroundColor:COLS,borderRadius:5,borderWidth:0}]},
-      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#EBF5FB'},ticks:{font:{size:10},callback:function(v){return v>=1000000?'$'+(v/1000000).toFixed(1)+'M':'$'+(v/1000).toFixed(0)+'K';}}},y:{grid:{display:false},ticks:{font:{size:10}}}}}
-    });
+    renderChartVcat(catArr, vb);
     // Tabla % catV
     var tbCatv=document.getElementById('tb-catv');
     if(tbCatv) tbCatv.innerHTML=catArr.map(function(e){return '<tr><td style="padding:7px 10px;font-size:12px">'+e[0]+'</td><td class="num">'+fmt(e[1])+'</td><td class="pct">'+pct(e[1],vb)+'</td></tr>';}).join('');
@@ -891,42 +993,13 @@ function cargarRango(){
     var fams={};
     costos.forEach(function(c){var fam=c.familia||c.categoria||'Sin familia';if(/impuesto|iva|tribut/i.test(fam))return;fams[fam]=(fams[fam]||0)+getNetoDoc(c);});
     var famArr=Object.entries(fams).sort(function(a,b){return b[1]-a[1];});
-    safeChart('gfam',{
-      type:'bar',data:{labels:famArr.map(function(e){return e[0];}),datasets:[{data:famArr.map(function(e){return e[1];}),backgroundColor:COLS,borderRadius:5,borderWidth:0}]},
-      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#EBF5FB'},ticks:{font:{size:10},callback:function(v){return v>=1000000?'$'+(v/1000000).toFixed(1)+'M':'$'+(v/1000).toFixed(0)+'K';}}},y:{grid:{display:false},ticks:{font:{size:10}}}}}
-    });
+    renderChartGfam(famArr);
     document.getElementById('tb-gfam').innerHTML=famArr.map(function(e){return '<tr><td style="padding:7px 10px;font-size:12px">'+e[0]+'</td><td class="num">'+fmt(e[1])+'</td><td class="pct">'+pct(e[1],gnOp)+'</td><td class="pct">'+pct(e[1],vn)+'</td></tr>';}).join('');
 
     // Fijos vs Variables
     dc('fv');
     if(cf>0||cv>0){
-      safeChart('fv',{
-        type:'doughnut',
-        data:{
-          labels:['Costos Fijos '+fmt(cf),'Costos Variables '+fmt(cv)],
-          datasets:[{
-            data:[cf,cv],
-            backgroundColor:['#1B3A5C','#3A8FD1'],
-            borderWidth:2,
-            borderColor:'#fff',
-            hoverOffset:4
-          }]
-        },
-        options:{
-          responsive:true,maintainAspectRatio:false,
-          cutout:'68%',
-          plugins:{
-            legend:{
-              position:'bottom',
-              labels:{font:{size:10},padding:10,boxWidth:12}
-            },
-            tooltip:{callbacks:{label:function(c){
-              var total=cf+cv;
-              return ' '+c.label.split(' ')[0]+' '+c.label.split(' ')[1]+': '+(total>0?((c.raw/total)*100).toFixed(1)+'%':'');
-            }}}
-          }
-        }
-      });
+      renderChartFV(cf, cv);
     }
 
     // Tipo documento
