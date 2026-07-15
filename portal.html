@@ -473,7 +473,23 @@ var COLS = ['#3A8FD1','#1B3A5C','#27AE60','#E67E22','#8E44AD','#E74C3C','#16A085
 
 function fmt(n){ if(n==null||isNaN(n)) return '--'; return '$'+Math.round(Number(n)).toLocaleString('es-CL'); }
 function pct(v,t){ return t>0?((v/t)*100).toFixed(1)+'%':'0.0%'; }
-function dc(id){ if(charts[id]){try{charts[id].destroy();}catch(e){}} }
+function dc(id){ if(charts[id]){try{charts[id].destroy();}catch(e){} charts[id]=null;} }
+function safeChart(id, config){
+  // Garantizar que el canvas sea visible antes de crear el chart
+  var el = document.getElementById(id);
+  if(!el) return null;
+  dc(id);
+  // Usar doble RAF para asegurar que el DOM haya pintado
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){
+      var el2 = document.getElementById(id);
+      if(!el2) return;
+      try{
+        charts[id] = new Chart(el2.getContext('2d'), config);
+      } catch(e){ console.warn('Chart error '+id, e); }
+    });
+  });
+}
 
 // Calcula gasto neto: usa monto_neto si existe, sino divide monto/1.19
 function getMontoProducto(p){
@@ -765,10 +781,9 @@ function cargarRango(){
     productos.forEach(function(p){var cat=p.categoria||'Sin categoria';catV[cat]=(catV[cat]||0)+getMontoProducto(p);});
     var catArr=Object.entries(catV).sort(function(a,b){return b[1]-a[1];});
     _catVData=catArr; _vdetVb=vb;
-    dc('vcat');
-    charts['vcat']=new Chart(document.getElementById('c-vcat').getContext('2d'),{
+    safeChart('vcat',{
       type:'bar',data:{labels:catArr.map(function(e){return e[0];}),datasets:[{data:catArr.map(function(e){return e[1];}),backgroundColor:COLS,borderRadius:5,borderWidth:0}]},
-      options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#EBF5FB'},ticks:{font:{size:10},callback:function(v){return v>=1000000?'$'+(v/1000000).toFixed(1)+'M':'$'+(v/1000).toFixed(0)+'K';}}},y:{grid:{display:false},ticks:{font:{size:10}}}}}
+      options:{indexAxis:'y',responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#EBF5FB'},ticks:{font:{size:10},callback:function(v){return v>=1000000?'$'+(v/1000000).toFixed(1)+'M':'$'+(v/1000).toFixed(0)+'K';}}},y:{grid:{display:false},ticks:{font:{size:10}}}}}
     });
     // Tabla % catV
     var tbCatv=document.getElementById('tb-catv');
@@ -873,8 +888,7 @@ function cargarRango(){
     var fams={};
     costos.forEach(function(c){var fam=c.familia||c.categoria||'Sin familia';if(/impuesto|iva|tribut/i.test(fam))return;fams[fam]=(fams[fam]||0)+getNetoDoc(c);});
     var famArr=Object.entries(fams).sort(function(a,b){return b[1]-a[1];});
-    dc('gfam');
-    charts['gfam']=new Chart(document.getElementById('c-gfam').getContext('2d'),{
+    safeChart('gfam',{
       type:'bar',data:{labels:famArr.map(function(e){return e[0];}),datasets:[{data:famArr.map(function(e){return e[1];}),backgroundColor:COLS,borderRadius:5,borderWidth:0}]},
       options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#EBF5FB'},ticks:{font:{size:10},callback:function(v){return v>=1000000?'$'+(v/1000000).toFixed(1)+'M':'$'+(v/1000).toFixed(0)+'K';}}},y:{grid:{display:false},ticks:{font:{size:10}}}}}
     });
@@ -883,8 +897,7 @@ function cargarRango(){
     // Fijos vs Variables
     dc('fv');
     if(cf>0||cv>0){
-      dc('fv');
-      charts['fv']=new Chart(document.getElementById('c-fv').getContext('2d'),{
+      safeChart('fv',{
         type:'doughnut',
         data:{
           labels:['Costos Fijos '+fmt(cf),'Costos Variables '+fmt(cv)],
@@ -1564,10 +1577,9 @@ function renderEvolucion(){
   var datasets=aniosList.map(function(anio,i){
     return {label:anio,data:orden.map(function(m){return anios[anio][m]||null;}),borderColor:colores[i],backgroundColor:colores[i]+'22',tension:.3,fill:false,pointRadius:3,borderWidth:2};
   });
-  dc('evol');
   var ctx=document.getElementById('c-evo');
   if(!ctx)return;
-  charts['evol']=new Chart(ctx.getContext('2d'),{
+  safeChart('evol',{
     type:'line',
     data:{labels:labels,datasets:datasets},
     options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{position:'bottom',labels:{font:{size:10},padding:8,boxWidth:12}},tooltip:{callbacks:{label:function(c){return ' '+c.dataset.label+': '+fmt(c.raw);}}}},scales:{x:{grid:{display:false},ticks:{font:{size:9},maxRotation:0}},y:{grid:{color:'#EBF5FB'},border:{display:false},ticks:{font:{size:9},callback:function(v){return v>=1000000?'$'+(v/1000000).toFixed(1)+'M':'$'+(v/1000).toFixed(0)+'K';}}}}}
@@ -1844,6 +1856,124 @@ function sbSetActive(el){
   }, {passive:true});
 })();
 // ────────────────────────────────────────────────────────
+
+function renderCompMensual(productos, sel, repsIds, reportes){
+  var container = document.getElementById('tabla-comp-mensual');
+  if(!container) return;
+  if(!productos||!productos.length||!sel||sel.length===0){
+    container.innerHTML='<div style="padding:16px;font-size:12px;color:var(--muted)">Sin datos para el período seleccionado.</div>';
+    return;
+  }
+
+  // Agrupar por periodo → categoría → producto → suma monto
+  var MESES_ORD=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  var periodos=sel.slice().sort(function(a,b){
+    var pa=a.split(' '),pb=b.split(' ');
+    var ya=parseInt(pa[1]||0),yb=parseInt(pb[1]||0);
+    if(ya!==yb)return ya-yb;
+    return MESES_ORD.indexOf(pa[0])-MESES_ORD.indexOf(pb[0]);
+  });
+
+  // Construir mapa reporte_id → periodo
+  var repMap={};
+  reportes.forEach(function(r){repMap[r.id]=r.periodo;});
+
+  // Acumular: cat → nombre → periodo → monto
+  var data={};
+  var cats=[];
+
+  productos.forEach(function(p){
+    var periodo=repMap[p.reporte_id];
+    if(!periodo||periodos.indexOf(periodo)<0) return;
+    var cat=p.categoria||'Sin categoría';
+    var nom=p.nombre||'Sin nombre';
+    var m=getMontoProducto(p);
+    if(!data[cat]) {data[cat]={};cats.push(cat);}
+    if(!data[cat][nom]) data[cat][nom]={};
+    data[cat][nom][periodo]=(data[cat][nom][periodo]||0)+m;
+  });
+
+  if(!cats.length){
+    container.innerHTML='<div style="padding:16px;font-size:12px;color:var(--muted)">Sin datos de productos para el período seleccionado.</div>';
+    return;
+  }
+
+  // Calcular totales por categoría × periodo
+  var catTotals={};
+  cats.forEach(function(cat){
+    catTotals[cat]={};
+    periodos.forEach(function(p){
+      catTotals[cat][p]=Object.values(data[cat]).reduce(function(s,prods){return s+(prods[p]||0);},0);
+    });
+    catTotals[cat].__total=periodos.reduce(function(s,p){return s+(catTotals[cat][p]||0);},0);
+  });
+
+  // Ordenar categorías por total desc
+  cats.sort(function(a,b){return catTotals[b].__total-catTotals[a].__total;});
+
+  // Abreviación de periodo para header
+  function lblPer(p){
+    var pt=p.split(' ');
+    return pt[0].charAt(0).toUpperCase()+pt[0].slice(1,3)+" '"+((pt[1]||'').slice(2));
+  }
+
+  // HTML
+  var t='<table style="width:100%;border-collapse:collapse;font-size:12px">'
+    +'<thead><tr style="background:var(--navy)">'
+    +'<th style="text-align:left;padding:8px 14px;font-size:11px;color:#fff;min-width:180px">Categoría / Producto</th>'
+    +periodos.map(function(p){return '<th style="text-align:right;padding:8px 10px;font-size:11px;color:rgba(255,255,255,.8);white-space:nowrap">'+lblPer(p)+'</th>';}).join('')
+    +'<th style="text-align:right;padding:8px 12px;font-size:11px;color:rgba(255,255,255,.8)">Total</th>'
+    +'</tr></thead><tbody>';
+
+  cats.forEach(function(cat,ci){
+    var catTot=catTotals[cat].__total;
+    if(!catTot) return;
+
+    // Fila de categoría (colapsable)
+    var catId='cmc-'+ci;
+    t+='<tr style="background:var(--bg);cursor:pointer;border-top:2px solid var(--brd)" onclick="toggleCMC(''+catId+'')">'
+      +'<td style="padding:7px 14px;font-weight:700;color:var(--navy);font-size:12px">'
+      +'<span id="ico-'+catId+'" style="margin-right:6px;font-size:10px;color:var(--blue)">▶</span>'+cat
+      +'</td>'
+      +periodos.map(function(p){
+        var v=catTotals[cat][p]||0;
+        return '<td style="text-align:right;padding:7px 10px;font-weight:700;color:var(--navy)">'+(v>0?fmt(v):'-')+'</td>';
+      }).join('')
+      +'<td style="text-align:right;padding:7px 12px;font-weight:700;color:var(--navy)">'+fmt(catTot)+'</td>'
+      +'</tr>';
+
+    // Filas de productos (ocultas inicialmente)
+    var prods=Object.keys(data[cat]).sort(function(a,b){
+      var ta=periodos.reduce(function(s,p){return s+(data[cat][a][p]||0);},0);
+      var tb=periodos.reduce(function(s,p){return s+(data[cat][b][p]||0);},0);
+      return tb-ta;
+    });
+
+    prods.forEach(function(nom){
+      var ptot=periodos.reduce(function(s,p){return s+(data[cat][nom][p]||0);},0);
+      if(!ptot) return;
+      t+='<tr class="cmc-row '+catId+'" style="display:none;border-bottom:1px solid var(--brd)">'
+        +'<td style="padding:6px 14px 6px 28px;font-size:11.5px;color:var(--tx)">'+nom+'</td>'
+        +periodos.map(function(p){
+          var v=data[cat][nom][p]||0;
+          return '<td style="text-align:right;padding:6px 10px;font-size:11.5px;color:var(--tx)">'+(v>0?fmt(v):'-')+'</td>';
+        }).join('')
+        +'<td style="text-align:right;padding:6px 12px;font-size:11.5px;color:var(--muted)">'+fmt(ptot)+'</td>'
+        +'</tr>';
+    });
+  });
+
+  t+='</tbody></table>';
+  container.innerHTML=t;
+}
+
+function toggleCMC(catId){
+  var rows=document.querySelectorAll('.'+catId);
+  var ico=document.getElementById('ico-'+catId);
+  var hidden=rows.length>0&&rows[0].style.display==='none';
+  rows.forEach(function(r){r.style.display=hidden?'':'none';});
+  if(ico) ico.textContent=hidden?'▼':'▶';
+}
 
 function iniciar(){
   // Si estamos en un iframe del admin, esperar el mensaje
