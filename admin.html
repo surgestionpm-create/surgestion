@@ -536,11 +536,12 @@ function procesarVentas(input){
         var mon=parseFloat(String(r[pagKey]||'0').replace(/[^0-9.-]/g,''))||0;
         var precioBase=parseFloat(String(r[precioBaseKey]||'0').replace(/[^0-9.-]/g,''))||0;
         var cat=String(r[catKey]||'Sin categoria').trim();
-        // Detectar devoluciones: descuento negativo que cubre el precio completo
+        // Detectar devoluciones reales: descuento negativo que iguala o supera el precio
         var descKey=keys.find(function(k){return /descuento/i.test(k);});
-        var desc=descKey?parseFloat(String(r[descKey]||'0').replace(/[^0-9.-]/g,''))||0:0;
-        // Si total a pagar es 0 y hay descuento, es devolución → ignorar
-        if(mon===0 && desc>0) return;
+        var descRaw=descKey?String(r[descKey]||'').trim():'';
+        var descNum=parseFloat(descRaw.replace(/[^0-9.-]/g,''))||0;
+        var esDevolucion=descRaw.indexOf('-')>=0 && descNum>0 && precioBase>0 && descNum>=precioBase;
+        if(esDevolucion) return;
         var fp=String(r[fpKey]||'').trim();
         var turno=String(r[turnoKey]||'').trim();
         var folio=String(r[folioKey]||'').trim();
