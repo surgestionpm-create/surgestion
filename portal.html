@@ -823,6 +823,7 @@ function cargarRango(){
 
   // Obtener IDs de reportes del rango
   var repsIds = _reportes.filter(function(r){return sel.indexOf(r.periodo)>=0;}).map(function(r){return r.id;});
+  console.log('[DBG2] sel=',sel,'repsIds=',repsIds,'_clienteId=',_clienteId);
 
   if(!repsIds.length){
     document.getElementById('loading').style.display='none';
@@ -856,6 +857,10 @@ function cargarRango(){
       diagCant[nom]=(diagCant[nom]||0)+Number(p.cantidad||0);
     });
     console.log('[DIAGNÓSTICO] Total productos recibidos:', productos.length);
+    // Ver qué reporte_ids llegaron realmente
+    var repIdsRecibidos={};
+    productos.forEach(function(p){repIdsRecibidos[p.reporte_id]=true;});
+    console.log('[DBG3] reporte_ids únicos en productos:', Object.keys(repIdsRecibidos).length, Object.keys(repIdsRecibidos).slice(0,10));
     console.log('[DIAGNÓSTICO] Unidades por producto:', JSON.stringify(diagCant));
     var totalUnDiag=Object.values(diagCant).reduce(function(s,v){return s+v;},0);
     console.log('[DIAGNÓSTICO] Total unidades:', totalUnDiag);
