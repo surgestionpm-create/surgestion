@@ -791,6 +791,10 @@ function cargarRango(){
   var anioH = document.getElementById('sel-anio-hasta').value;
   var mesH  = document.getElementById('sel-mes-hasta').value;
   console.log('cargarRango valores:',anioD,mesD,anioH,mesH,'reportes:',_reportes.length);
+  var _pd=mesD+' '+anioD, _ph=mesH+' '+anioH;
+  var _id=_periodos.indexOf(_pd), _ih=_periodos.indexOf(_ph);
+  console.log('[DBG] periodoD='+_pd+' idxD='+_id+' periodoH='+_ph+' idxH='+_ih);
+  console.log('[DBG] _periodos[0..4]=',_periodos.slice(0,5));
   if(!anioD||!mesD||!anioH||!mesH||!_reportes.length){
     console.log('cargarRango: retorno temprano - valores vacios o sin reportes');
     return;
