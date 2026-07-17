@@ -845,6 +845,16 @@ function cargarRango(){
     document.getElementById('dashboard').style.display='block';
     var costos    = results[0]||[];
     var productos = results[1]||[];
+    // DIAGNÓSTICO: contar unidades reales recibidas desde Supabase
+    var diagCant={};
+    productos.forEach(function(p){
+      var nom=p.nombre||'';
+      diagCant[nom]=(diagCant[nom]||0)+Number(p.cantidad||0);
+    });
+    console.log('[DIAGNÓSTICO] Total productos recibidos:', productos.length);
+    console.log('[DIAGNÓSTICO] Unidades por producto:', JSON.stringify(diagCant));
+    var totalUnDiag=Object.values(diagCant).reduce(function(s,v){return s+v;},0);
+    console.log('[DIAGNÓSTICO] Total unidades:', totalUnDiag);
 
     // Sumar ventas de todos los reportes del rango
     var repsRango = _reportes.filter(function(r){return sel.indexOf(r.periodo)>=0;});
