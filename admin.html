@@ -565,10 +565,16 @@ function procesarVentas(input){
     var html2='<div style="font-size:11px;color:#5E7A94;margin-bottom:8px">Formato detectado: <b>'+formato.toUpperCase()+'</b></div>';
     periodos.forEach(function(p){
       var prods=Array.isArray(ventasData[p])?ventasData[p]:Object.values(ventasData[p]||{});
-      var totalB=(prods||[]).reduce(function(s,v){
-        var pb=Number(v.precio_base||0),cant=Number(v.cantidad||0),mon=Number(v.monto||0);
-        return s+(mon>0?mon:(pb>0&&cant>0?pb*cant:0));
-      },0);
+      var _fm={},_sf=0;
+      (prods||[]).forEach(function(v){
+        var f=String(v.folio||'').trim();
+        var mon=Number(v.monto||0),pb=Number(v.precio_base||0),cant=Number(v.cantidad||0);
+        if(f&&f!==''&&f!=='(en blanco)'){
+          if(mon>0){if(!_fm[f]||mon>_fm[f])_fm[f]=mon;}
+          else if(!_fm[f]){_fm[f]=(pb>0&&cant>0?pb*cant:0);}
+        } else { _sf+=(pb>0&&cant>0?pb*cant:(mon>0?mon:0)); }
+      });
+      var totalB=Object.values(_fm).reduce(function(s,v){return s+v;},0)+_sf;
       html2+='<div style="font-weight:600;color:#1B3A5C;margin:10px 0 4px;font-size:13px">'+p.charAt(0).toUpperCase()+p.slice(1)+'</div>';
       (prods||[]).slice(0,5).forEach(function(e){
         html2+='<div class="pi"><span>'+e.nombre+'</span><span>'+e.cantidad+' · '+fmt(e.monto)+'</span></div>';
@@ -601,13 +607,31 @@ async function subirDatos(){
     var periodo=periodos[i];
     var gastPer=gastosData&&gastosData[periodo]?gastosData[periodo]:[];
     var ventPer=ventasData&&ventasData[periodo]?ventasData[periodo]:[];
-    var totalB=(ventPer||[]).reduce(function(s,v){
+    // Calcular ventas brutas:
+    // Si hay folio: sumar Total a Pagar una sola vez por folio único
+    // Si no hay folio o monto=0: usar precio_base × cantidad
+    var _folioMontos={};
+    var _sinFolioTotal=0;
+    (ventPer||[]).forEach(function(v){
+      var folio=String(v.folio||'').trim();
+      var mon=Number(v.monto||0);
       var pb=Number(v.precio_base||0);
       var cant=Number(v.cantidad||0);
-      var mon=Number(v.monto||0);
-      // Usar precio_base*cantidad si monto=0 (formato Azzurro donde total solo aparece en 1ra fila)
-      return s+(mon>0?mon:(pb>0&&cant>0?pb*cant:0));
-    },0);
+      if(folio && folio!=='' && folio!=='(en blanco)'){
+        // Tomar el monto máximo del folio (el Total a Pagar real)
+        if(mon>0){
+          if(!_folioMontos[folio]||mon>_folioMontos[folio])
+            _folioMontos[folio]=mon;
+        } else if(!_folioMontos[folio]){
+          // Sin monto en esta línea, usar pb×cant como fallback
+          _folioMontos[folio]=(_folioMontos[folio]||0)+(pb>0&&cant>0?pb*cant:0);
+        }
+      } else {
+        // Sin folio: sumar precio_base × cantidad directamente
+        _sinFolioTotal+=(pb>0&&cant>0?pb*cant:(mon>0?mon:0));
+      }
+    });
+    var totalB=Object.values(_folioMontos).reduce(function(s,v){return s+v;},0)+_sinFolioTotal;
     var totalN=Math.round(totalB/1.19);
     // Buscar reporte existente
     var repExist=await sb.from('reportes').select('*').eq('cliente_id',clienteId).eq('periodo',periodo).maybeSingle();
@@ -626,13 +650,20 @@ async function subirDatos(){
     }
     // Insertar/reemplazar costos solo si hay gastos nuevos
     if(gastPer&&gastPer.length>0){
-      await sb.from('costos').delete().eq('reporte_id',repId);
+      var delCostos=await sb.from('costos').delete().eq('reporte_id',repId);
+      if(delCostos.error){console.error('ERROR borrar costos:',JSON.stringify(delCostos.error));}
       var costosList=gastPer.map(function(x){return {reporte_id:repId,categoria:x.cat,familia:x.fam,proveedor:x.prov||null,monto:x.monto,monto_neto:x.montoNeto||x.monto,tipo_gasto:x.tipo||'',tipo_documento:x.tipoDoc||''};});
       await sb.from('costos').insert(costosList);
     }
     // Insertar/reemplazar productos solo si hay ventas nuevas
-    if(tieneVentas&&Object.keys(ventPer).length>0){
-      await sb.from('productos').delete().eq('reporte_id',repId);
+    if(tieneVentas&&ventPer.length>0){
+      var delRes=await sb.from('productos').delete().eq('reporte_id',repId);
+      if(delRes.error){
+        console.error('ERROR al borrar productos:',JSON.stringify(delRes.error));
+        errores.push(periodo+': error al limpiar productos anteriores - '+delRes.error.message);
+        continue;
+      }
+      console.log('Productos borrados para',periodo,'reporte',repId);
       var prodList=(ventPer||[]).map(function(p){
       return {reporte_id:repId,nombre:p.nombre,cantidad:p.cantidad,monto:p.monto,precio_base:p.precio_base||0,categoria:p.cat||'Sin categoria',forma_pago:p.fp||null,turno:p.turno||null,folio:p.folio||null};
     });
