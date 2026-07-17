@@ -540,7 +540,7 @@ function procesarVentas(input){
         var descKey=keys.find(function(k){return /descuento/i.test(k);});
         var descRaw=descKey?String(r[descKey]||'').trim():'';
         var descNum=parseFloat(descRaw.replace(/[^0-9.-]/g,''))||0;
-        var esDevolucion=descRaw.indexOf('-')>=0 && descNum>0 && precioBase>0 && descNum>=precioBase;
+        var esDevolucion=descNum<0 && precioBase>0 && Math.abs(descNum)>=precioBase;
         if(esDevolucion) return;
         var fp=String(r[fpKey]||'').trim();
         var turno=String(r[turnoKey]||'').trim();
