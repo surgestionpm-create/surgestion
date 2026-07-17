@@ -536,7 +536,11 @@ function procesarVentas(input){
         var mon=parseFloat(String(r[pagKey]||'0').replace(/[^0-9.-]/g,''))||0;
         var precioBase=parseFloat(String(r[precioBaseKey]||'0').replace(/[^0-9.-]/g,''))||0;
         var cat=String(r[catKey]||'Sin categoria').trim();
-        // No descartar filas con monto 0 si tienen precio_base
+        // Detectar devoluciones: descuento negativo que cubre el precio completo
+        var descKey=keys.find(function(k){return /descuento/i.test(k);});
+        var desc=descKey?parseFloat(String(r[descKey]||'0').replace(/[^0-9.-]/g,''))||0:0;
+        // Si total a pagar es 0 y hay descuento, es devolución → ignorar
+        if(mon===0 && desc>0) return;
         var fp=String(r[fpKey]||'').trim();
         var turno=String(r[turnoKey]||'').trim();
         var folio=String(r[folioKey]||'').trim();
