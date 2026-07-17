@@ -1099,7 +1099,7 @@ function calcularPuntoEquilibrio(vn, cf, cv, gnOp){
   var el = document.getElementById('iv-pe');
   if(!el) return;
 
-  // PE = promedio de gastos netos totales de los últimos 3 meses cerrados
+  // PE = CF / (1 - CV/VN), usando promedio de los últimos 3 meses cerrados
   var MESES = ['enero','febrero','marzo','abril','mayo','junio','julio',
                'agosto','septiembre','octubre','noviembre','diciembre'];
   var mesActual = MESES[new Date().getMonth()]+' '+new Date().getFullYear();
@@ -1111,12 +1111,27 @@ function calcularPuntoEquilibrio(vn, cf, cv, gnOp){
   var ids3  = reps3.map(function(r){ return r.id; });
 
   fetchByIds('costos', ids3).then(function(costos3){
-    // Suma de gastos netos por período
-    var totalGN = costos3.reduce(function(s,c){
-      if(/impuesto|iva|tribut/i.test(c.familia||c.categoria||'')) return s;
-      return s + getNetoDoc(c);
-    }, 0);
-    var pe = cerrados.length > 0 ? Math.round(totalGN / cerrados.length) : 0;
+    // Ventas netas promedio de los 3 meses cerrados
+    var vn3 = reps3.reduce(function(s,r){
+      return s + (_aplicaIva ? Number(r.ventas_netas||0) : Number(r.ventas_brutas||0));
+    }, 0) / cerrados.length;
+
+    // Gastos netos operacionales (excluye impuestos/IVA) de los 3 meses
+    var costosOp3 = costos3.filter(function(c){ return !/impuesto|iva|tribut/i.test(c.familia||c.categoria||''); });
+
+    // Costos fijos y variables (mismo criterio que el dashboard principal)
+    var hasTipo3 = costosOp3.some(function(c){ return c.tipo_gasto && c.tipo_gasto.trim()!==''; });
+    var cf3 = costosOp3.filter(function(c){ return /fijo/i.test(c.tipo_gasto||''); }).reduce(function(s,c){ return s+getNetoDoc(c); }, 0) / cerrados.length;
+    var cv3 = costosOp3.filter(function(c){ return /variable/i.test(c.tipo_gasto||''); }).reduce(function(s,c){ return s+getNetoDoc(c); }, 0) / cerrados.length;
+    if(!hasTipo3){
+      // Sin clasificación fijo/variable: tratar todo el gasto operacional como fijo (igual que el dashboard)
+      var gnOp3 = costosOp3.reduce(function(s,c){ return s+getNetoDoc(c); }, 0) / cerrados.length;
+      cf3 = gnOp3; cv3 = 0;
+    }
+
+    // PE = CF / (1 - CV/VN)
+    var margenContribucion = vn3 > 0 ? (vn3 - cv3) / vn3 : 0;
+    var pe = margenContribucion > 0 ? Math.round(cf3 / margenContribucion) : 0;
     el.textContent = pe > 0 ? fmt(pe) : '--';
   }).catch(function(){ el.textContent='--'; });
 }
