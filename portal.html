@@ -970,24 +970,22 @@ function cargarRango(){
     });
     document.getElementById('tb-vdet').innerHTML=rows;
 
-    // Formas de pago: cantidad x precio base
+    // Formas de pago: Total a Pagar - |Descuento| por línea (reconcilia con el total general)
     var pagos={};
     productos.forEach(function(p){
       var fp=p.forma_pago||'Sin datos';
-      var pb=Number(p.precio_base||0), cant=Number(p.cantidad||0);
-      var m=(pb>0&&cant>0)?pb*cant:Number(p.monto||0);
+      var m=Number(p.monto||0)-Math.abs(Number(p.descuento||0));
       pagos[fp]=(pagos[fp]||0)+m;
     });
     var pagArr=Object.entries(pagos).sort(function(a,b){return b[1]-a[1];});
     var tbPag=document.getElementById('tb-pagos');
     if(tbPag) tbPag.innerHTML=pagArr.map(function(e){return '<tr><td style="padding:7px 10px;font-size:12px">'+e[0]+'</td><td class="num">'+fmt(e[1])+'</td><td class="pct">'+pct(e[1],vb)+'</td></tr>';}).join('');
 
-    // Comparativo por turno: monto = cantidad x precio base; transacciones = folios únicos
+    // Comparativo por turno: Total a Pagar - |Descuento| por línea (reconcilia con el total general); transacciones = folios únicos
     var turnos={};
     productos.forEach(function(p){
       var t=p.turno&&p.turno.trim()!==''?p.turno.trim():'Sin turno';
-      var pb=Number(p.precio_base||0), cant=Number(p.cantidad||0);
-      var m=(pb>0&&cant>0)?pb*cant:Number(p.monto||0);
+      var m=Number(p.monto||0)-Math.abs(Number(p.descuento||0));
       if(!turnos[t])turnos[t]={monto:0,folios:{}};
       turnos[t].monto+=m;
       var folio=p.folio&&p.folio.trim()!==''?p.folio.trim():null;
