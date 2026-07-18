@@ -373,6 +373,7 @@ html { scroll-behavior: smooth; }
           <th>Turno</th>
           <th class="num">Monto</th>
           <th class="pct">% Ventas</th>
+          <th class="num">Unidades</th>
           <th class="num">Transacciones</th>
           <th class="num">Ticket prom.</th>
         </tr></thead>
@@ -432,8 +433,8 @@ html { scroll-behavior: smooth; }
   <p class="sec" id="sec-indicadores">Indicadores financieros</p>
   <div class="ind3" style="grid-template-columns:repeat(4,1fr)">
     <div class="ind"><div class="il">Resultado operacional</div><div class="iv" id="iv-res">--</div><div class="ih">= Vtas netas - Gastos netos (sin imp.)</div></div>
-    <div class="ind"><div class="il">Margen bruto</div><div class="iv" id="iv-mb">--</div><div class="ih">= Resultado / Vtas netas x 100</div></div>
-    <div class="ind"><div class="il">Margen neto</div><div class="iv" id="iv-mn">--</div><div class="ih">= Resultado / Vtas brutas x 100</div></div>
+    <div class="ind"><div class="il">Margen bruto</div><div class="iv" id="iv-mb">--</div><div class="ih">= Resultado / Vtas brutas x 100</div></div>
+    <div class="ind"><div class="il">Margen neto</div><div class="iv" id="iv-mn">--</div><div class="ih">= Resultado / Vtas netas x 100</div></div>
     <div class="ind" style="background:#2A4A6B"><div class="il">Punto de equilibrio</div><div class="iv" id="iv-pe">--</div><div class="ih">Prom. ultimos 3 meses | CF / (1 - CV/VN)</div></div>
   </div>
 
@@ -774,7 +775,7 @@ function renderDonut(containerId, datos){
   });
 }
 
-function renderChartVcat(catArr,vb){if(!catArr||!catArr.length)return;renderBarras('chart-vcat',catArr.map(function(e){return{label:e[0],value:e[1]};}));}
+function renderChartVcat(catArr,vb){if(!catArr||!catArr.length)return;renderBarras('chart-vcat',catArr.map(function(e){return{label:e[0],value:e[1].monto};}));}
 function renderChartGfam(famArr){if(!famArr||!famArr.length)return;renderBarras('chart-gfam',famArr.map(function(e){return{label:e[0],value:e[1]};}));}
 function renderChartFV(cf,cv){
   var datos=[];
@@ -887,8 +888,8 @@ function cargarRango(){
     var cv = costos.filter(function(c){return /variable/i.test(c.tipo_gasto||'');}).reduce(function(s,c){return s+getNetoDoc(c);},0);
     if(!hasTipo){cf=gnOp;cv=0;}
 
-    var mb = vn>0?((resultado/vn)*100).toFixed(1):0;
-    var mn = vb>0?((resultado/vb)*100).toFixed(1):0;
+    var mb = vb>0?((resultado/vb)*100).toFixed(1):0;
+    var mn = vn>0?((resultado/vn)*100).toFixed(1):0;
 
     // KPIs top
     document.getElementById('kv-vb').textContent = fmt(vb);
@@ -935,13 +936,13 @@ function cargarRango(){
 
     // Gráfico ventas por categoría
     var catV={};
-    productos.forEach(function(p){var cat=p.categoria||'Sin categoria';catV[cat]=(catV[cat]||0)+getMontoProducto(p);});
-    var catArr=Object.entries(catV).sort(function(a,b){return b[1]-a[1];});
+    productos.forEach(function(p){var cat=p.categoria||'Sin categoria';if(!catV[cat])catV[cat]={monto:0,cant:0};catV[cat].monto+=getMontoProducto(p);catV[cat].cant+=Number(p.cantidad||0);});
+    var catArr=Object.entries(catV).sort(function(a,b){return b[1].cant-a[1].cant;});
     _catVData=catArr; _vdetVb=vb;
     renderChartVcat(catArr, vb);
     // Tabla % catV
     var tbCatv=document.getElementById('tb-catv');
-    if(tbCatv) tbCatv.innerHTML=catArr.map(function(e){return '<tr><td style="padding:7px 10px;font-size:12px">'+e[0]+'</td><td class="num">'+fmt(e[1])+'</td><td class="pct">'+pct(e[1],vb)+'</td></tr>';}).join('');
+    if(tbCatv) tbCatv.innerHTML=catArr.map(function(e){return '<tr><td style="padding:7px 10px;font-size:12px">'+e[0]+'</td><td class="num">'+fmt(e[1].monto)+'</td><td class="pct">'+pct(e[1].monto,vb)+'</td></tr>';}).join('');
 
     // Tabla ventas
     var cats={};
@@ -961,9 +962,9 @@ function cargarRango(){
       cats[cat].cant+=Number(p.cantidad||0);
     });
     var rows='';
-    Object.entries(cats).sort(function(a,b){return b[1].total-a[1].total;}).forEach(function(e){
+    Object.entries(cats).sort(function(a,b){return b[1].cant-a[1].cant;}).forEach(function(e){
       rows+='<tr class="crow" onclick="toggleProd(this)"><td style="padding:8px 10px;font-size:13px">&#9658; '+e[0]+'</td><td class="num">'+e[1].cant+'</td><td class="num">'+fmt(e[1].total)+'</td><td class="pct">'+pct(e[1].total,vb)+'</td></tr>';
-      Object.values(e[1].prods).sort(function(a,b){return b.monto_pb-a.monto_pb;}).forEach(function(p){
+      Object.values(e[1].prods).sort(function(a,b){return b.cantidad-a.cantidad;}).forEach(function(p){
         var mp=p.monto_pb;
         rows+='<tr class="prow"><td style="padding:6px 10px 6px 26px;font-size:12px">'+p.nombre+'</td><td class="num">'+parseFloat((p.cantidad||0)).toFixed(3).replace(/\.?0+$/,'')+'</td><td class="num">'+fmt(mp)+'</td><td class="pct">'+pct(mp,vb)+'</td></tr>';
       });
@@ -975,50 +976,48 @@ function cargarRango(){
     productos.forEach(function(p){
       var fp=p.forma_pago||'Sin datos';
       var m=Number(p.monto||0)-Math.abs(Number(p.descuento||0));
-      pagos[fp]=(pagos[fp]||0)+m;
+      if(!pagos[fp])pagos[fp]={monto:0,cant:0};
+      pagos[fp].monto+=m;
+      pagos[fp].cant+=Number(p.cantidad||0);
     });
-    var pagArr=Object.entries(pagos).sort(function(a,b){return b[1]-a[1];});
+    var pagArr=Object.entries(pagos).sort(function(a,b){return b[1].cant-a[1].cant;});
     var tbPag=document.getElementById('tb-pagos');
-    if(tbPag) tbPag.innerHTML=pagArr.map(function(e){return '<tr><td style="padding:7px 10px;font-size:12px">'+e[0]+'</td><td class="num">'+fmt(e[1])+'</td><td class="pct">'+pct(e[1],vb)+'</td></tr>';}).join('');
+    if(tbPag) tbPag.innerHTML=pagArr.map(function(e){return '<tr><td style="padding:7px 10px;font-size:12px">'+e[0]+'</td><td class="num">'+fmt(e[1].monto)+'</td><td class="pct">'+pct(e[1].monto,vb)+'</td></tr>';}).join('');
 
     // Comparativo por turno: Total a Pagar - |Descuento| por línea (reconcilia con el total general); transacciones = folios únicos
     var turnos={};
     productos.forEach(function(p){
       var t=p.turno&&p.turno.trim()!==''?p.turno.trim():'Sin turno';
       var m=Number(p.monto||0)-Math.abs(Number(p.descuento||0));
-      if(!turnos[t])turnos[t]={monto:0,folios:{}};
+      if(!turnos[t])turnos[t]={monto:0,cant:0,folios:{}};
       turnos[t].monto+=m;
+      turnos[t].cant+=Number(p.cantidad||0);
       var folio=p.folio&&p.folio.trim()!==''?p.folio.trim():null;
       if(folio){ turnos[t].folios[folio]=1; }
       else { turnos[t].folios['__nofolio_'+Math.random()]=1; }
     });
-    var turnoArr=Object.entries(turnos).sort(function(a,b){
-      var orden=['Mañana','Manana','Tarde','Noche'];
-      var ia=orden.indexOf(a[0]); var ib=orden.indexOf(b[0]);
-      if(ia>=0&&ib>=0) return ia-ib;
-      return b[1].monto-a[1].monto;
-    });
+    var turnoArr=Object.entries(turnos).sort(function(a,b){return b[1].cant-a[1].cant;});
     var tbTurnos=document.getElementById('tb-turnos');
     if(tbTurnos){
-      var tieneTurnos=turnoArr.some(function(e){return e[0]!=='Sin turno'&&e[0]!==''&&e[0]!==null;});
-      if(tieneTurnos){
-        tbTurnos.innerHTML=turnoArr.filter(function(e){return e[0]!=='Sin turno'&&e[0]!==''&&e[0]!==null;}).map(function(e){
+      var turnoFiltrado=turnoArr.filter(function(e){return e[0]!=='Sin turno'&&e[0]!==''&&e[0]!==null;});
+      if(turnoFiltrado.length){
+        var totalTurnosMostrados=turnoFiltrado.reduce(function(s,x){return s+x[1].monto;},0);
+        tbTurnos.innerHTML=turnoFiltrado.map(function(e){
           var nTrans=Object.keys(e[1].folios).filter(function(f){return f.indexOf('__')<0;}).length;
           var ticket=nTrans>0?Math.round(e[1].monto/nTrans):0;
           // Color por turno - normalizar texto para comparar
           var tn=e[0].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
           var color=tn.indexOf('ma')===0?'#3A8FD1':tn.indexOf('ta')===0?'#E67E22':'#1B3A5C';
-          var totalTurnos=turnoArr.reduce(function(s,x){return s+x[1].monto;},0);
-          var baseTotal=vb>0?vb:totalTurnos; // usar ventas brutas del reporte como base
           return '<tr><td style="padding:7px 10px;font-size:12px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+color+';margin-right:6px"></span>'+e[0]+'</td>'
             +'<td class="num">'+fmt(e[1].monto)+'</td>'
-            +'<td class="pct">'+pct(e[1].monto,baseTotal)+'</td>'
+            +'<td class="pct">'+pct(e[1].monto,totalTurnosMostrados)+'</td>'
+            +'<td class="num">'+e[1].cant+'</td>'
             +'<td class="num">'+nTrans+'</td>'
             +'<td class="num">'+fmt(ticket)+'</td>'
             +'</tr>';
         }).join('');
       } else {
-        tbTurnos.innerHTML='<tr><td colspan="5" style="padding:12px;text-align:center;color:var(--muted);font-size:12px">Sin datos de turno. Vuelve a subir el Excel de ventas.</td></tr>';
+        tbTurnos.innerHTML='<tr><td colspan="6" style="padding:12px;text-align:center;color:var(--muted);font-size:12px">Sin datos de turno. Vuelve a subir el Excel de ventas.</td></tr>';
       }
     }
 
