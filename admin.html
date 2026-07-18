@@ -536,21 +536,16 @@ function procesarVentas(input){
         var mon=parseFloat(String(r[pagKey]||'0').replace(/[^0-9.-]/g,''))||0;
         var precioBase=parseFloat(String(r[precioBaseKey]||'0').replace(/[^0-9.-]/g,''))||0;
         var cat=String(r[catKey]||'Sin categoria').trim();
-        // Detectar devoluciones reales: descuento negativo que iguala o supera el precio
+        // Descuento de la línea (viene normalmente en negativo; se usa su valor absoluto al calcular montos)
         var descKey=keys.find(function(k){return /descuento/i.test(k);});
-        var descRaw=descKey?String(r[descKey]||'').trim():'';
-        var descNum=parseFloat(descRaw.replace(/[^0-9.-]/g,''))||0;
-        var esDevolucion=descNum<0 && precioBase>0 && Math.abs(descNum)>=precioBase;
-        if(esDevolucion) return;
+        var descNum=descKey?(parseFloat(String(r[descKey]||'0').replace(/[^0-9.-]/g,''))||0):0;
         var fp=String(r[fpKey]||'').trim();
         var turno=String(r[turnoKey]||'').trim();
         var folio=String(r[folioKey]||'').trim();
         if(!nom||!can)return; // saltar filas sin nombre o cantidad
 
-
-
         if(!ventasData[periodo])ventasData[periodo]=[];
-        ventasData[periodo].push({nombre:nom,cantidad:can,monto:mon,precio_base:precioBase,cat:cat,fp:fp,turno:turno,folio:folio});
+        ventasData[periodo].push({nombre:nom,cantidad:can,monto:mon,precio_base:precioBase,descuento:descNum,cat:cat,fp:fp,turno:turno,folio:folio});
       });
 
     var periodos=Object.keys(ventasData);
@@ -566,16 +561,10 @@ function procesarVentas(input){
     var html2='<div style="font-size:11px;color:#5E7A94;margin-bottom:8px">Formato detectado: <b>'+formato.toUpperCase()+'</b></div>';
     periodos.forEach(function(p){
       var prods=Array.isArray(ventasData[p])?ventasData[p]:Object.values(ventasData[p]||{});
-      var _fm={},_sf=0;
-      (prods||[]).forEach(function(v){
-        var f=String(v.folio||'').trim();
-        var mon=Number(v.monto||0),pb=Number(v.precio_base||0),cant=Number(v.cantidad||0);
-        if(f&&f!==''&&f!=='(en blanco)'){
-          if(mon>0){if(!_fm[f]||mon>_fm[f])_fm[f]=mon;}
-          else if(!_fm[f]){_fm[f]=(pb>0&&cant>0?pb*cant:0);}
-        } else { _sf+=(pb>0&&cant>0?pb*cant:(mon>0?mon:0)); }
-      });
-      var totalB=Object.values(_fm).reduce(function(s,v){return s+v;},0)+_sf;
+      // Total = suma(Total a Pagar) - suma(|Descuento|)
+      var totalB=(prods||[]).reduce(function(s,v){
+        return s + Number(v.monto||0) - Math.abs(Number(v.descuento||0));
+      },0);
       html2+='<div style="font-weight:600;color:#1B3A5C;margin:10px 0 4px;font-size:13px">'+p.charAt(0).toUpperCase()+p.slice(1)+'</div>';
       (prods||[]).slice(0,5).forEach(function(e){
         html2+='<div class="pi"><span>'+e.nombre+'</span><span>'+e.cantidad+' · '+fmt(e.monto)+'</span></div>';
@@ -583,7 +572,7 @@ function procesarVentas(input){
       html2+='<div class="pi" style="font-weight:600"><span>TOTAL</span><span>'+fmt(totalB)+'</span></div>';
     });
     items.innerHTML=html2;
-    document.getElementById('pv-b').textContent=fmt(Object.values(ventasData).reduce(function(s,arr){return s+(arr||[]).reduce(function(s2,v){return s2+Number(v.monto||0)*Number(v.cantidad||1);},0);},0));
+    document.getElementById('pv-b').textContent=fmt(Object.values(ventasData).reduce(function(s,arr){return s+(arr||[]).reduce(function(s2,v){return s2+Number(v.monto||0)-Math.abs(Number(v.descuento||0));},0);},0));
     document.getElementById('pv-n').textContent='Ver por período';
     box.style.display='block';
   };
@@ -608,31 +597,10 @@ async function subirDatos(){
     var periodo=periodos[i];
     var gastPer=gastosData&&gastosData[periodo]?gastosData[periodo]:[];
     var ventPer=ventasData&&ventasData[periodo]?ventasData[periodo]:[];
-    // Calcular ventas brutas:
-    // Si hay folio: sumar Total a Pagar una sola vez por folio único
-    // Si no hay folio o monto=0: usar precio_base × cantidad
-    var _folioMontos={};
-    var _sinFolioTotal=0;
-    (ventPer||[]).forEach(function(v){
-      var folio=String(v.folio||'').trim();
-      var mon=Number(v.monto||0);
-      var pb=Number(v.precio_base||0);
-      var cant=Number(v.cantidad||0);
-      if(folio && folio!=='' && folio!=='(en blanco)'){
-        // Tomar el monto máximo del folio (el Total a Pagar real)
-        if(mon>0){
-          if(!_folioMontos[folio]||mon>_folioMontos[folio])
-            _folioMontos[folio]=mon;
-        } else if(!_folioMontos[folio]){
-          // Sin monto en esta línea, usar pb×cant como fallback
-          _folioMontos[folio]=(_folioMontos[folio]||0)+(pb>0&&cant>0?pb*cant:0);
-        }
-      } else {
-        // Sin folio: sumar precio_base × cantidad directamente
-        _sinFolioTotal+=(pb>0&&cant>0?pb*cant:(mon>0?mon:0));
-      }
-    });
-    var totalB=Object.values(_folioMontos).reduce(function(s,v){return s+v;},0)+_sinFolioTotal;
+    // Ventas brutas = suma(Total a Pagar) - suma(|Descuento|) de todas las líneas del período
+    var totalB=(ventPer||[]).reduce(function(s,v){
+      return s + Number(v.monto||0) - Math.abs(Number(v.descuento||0));
+    },0);
     var totalN=Math.round(totalB/1.19);
     // Buscar reporte existente
     var repExist=await sb.from('reportes').select('*').eq('cliente_id',clienteId).eq('periodo',periodo).maybeSingle();
@@ -666,7 +634,7 @@ async function subirDatos(){
       }
       console.log('Productos borrados para',periodo,'reporte',repId);
       var prodList=(ventPer||[]).map(function(p){
-      return {reporte_id:repId,nombre:p.nombre,cantidad:p.cantidad,monto:p.monto,precio_base:p.precio_base||0,categoria:p.cat||'Sin categoria',forma_pago:p.fp||null,turno:p.turno||null,folio:p.folio||null};
+      return {reporte_id:repId,nombre:p.nombre,cantidad:p.cantidad,monto:p.monto,precio_base:p.precio_base||0,descuento:p.descuento||0,categoria:p.cat||'Sin categoria',forma_pago:p.fp||null,turno:p.turno||null,folio:p.folio||null};
     });
       // Insertar en lotes de 50 con reintento individual en caso de error
       var BATCH=50;
@@ -678,6 +646,7 @@ async function subirDatos(){
             cantidad:Math.round(Number(p.cantidad)||0),
             monto:Math.round(Number(p.monto)||0),
             precio_base:Math.round(Number(p.precio_base)||0),
+            descuento:Math.round(Number(p.descuento)||0),
             categoria:String(p.categoria||'').slice(0,100),
             forma_pago:String(p.forma_pago||'').slice(0,100),
             turno:String(p.turno||'').slice(0,50),

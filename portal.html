@@ -476,12 +476,12 @@ function pct(v,t){ return t>0?((v/t)*100).toFixed(1)+'%':'0.0%'; }
 // charts eliminados y recreados como SVG
 function dc(id){ if(charts[id]){try{charts[id].destroy();}catch(e){} charts[id]=null;} }
 
-// Calcula gasto neto: usa monto_neto si existe, sino divide monto/1.19
+// Calcula el monto real de venta de un producto: (Precio Base x Cantidad) - Descuento
 function getMontoProducto(p){
-  // monto = precio_base * cantidad
   var pb = Number(p.precio_base||0);
   var cant = Number(p.cantidad||0);
-  if(pb > 0 && cant > 0) return pb * cant;
+  var desc = Math.abs(Number(p.descuento||0));
+  if(pb > 0 && cant > 0) return (pb * cant) - desc;
   return Number(p.monto||0);
 }
 
@@ -953,10 +953,11 @@ function cargarRango(){
       if(!cats[cat].prods[nom])cats[cat].prods[nom]={nombre:nom,cantidad:0,monto:0,monto_pb:0,categoria:cat};
       var cant=Number(p.cantidad||0);
       var pb=Number(p.precio_base||0);
+      var m=getMontoProducto(p);
       cats[cat].prods[nom].cantidad+=cant;
       cats[cat].prods[nom].monto+=Number(p.monto||0);
-      cats[cat].prods[nom].monto_pb+=pb>0&&cant>0?pb*cant:Number(p.monto||0);
-      cats[cat].total+=pb>0&&cant>0?pb*cant:Number(p.monto||0);
+      cats[cat].prods[nom].monto_pb+=m;
+      cats[cat].total+=m;
       cats[cat].cant+=Number(p.cantidad||0);
     });
     var rows='';
@@ -969,44 +970,29 @@ function cargarRango(){
     });
     document.getElementById('tb-vdet').innerHTML=rows;
 
-    // Formas de pago
+    // Formas de pago: cantidad x precio base
     var pagos={};
-    productos.forEach(function(p){var fp=p.forma_pago||'Sin datos';pagos[fp]=(pagos[fp]||0)+getMontoProducto(p);});
+    productos.forEach(function(p){
+      var fp=p.forma_pago||'Sin datos';
+      var pb=Number(p.precio_base||0), cant=Number(p.cantidad||0);
+      var m=(pb>0&&cant>0)?pb*cant:Number(p.monto||0);
+      pagos[fp]=(pagos[fp]||0)+m;
+    });
     var pagArr=Object.entries(pagos).sort(function(a,b){return b[1]-a[1];});
     var tbPag=document.getElementById('tb-pagos');
     if(tbPag) tbPag.innerHTML=pagArr.map(function(e){return '<tr><td style="padding:7px 10px;font-size:12px">'+e[0]+'</td><td class="num">'+fmt(e[1])+'</td><td class="pct">'+pct(e[1],vb)+'</td></tr>';}).join('');
 
-    // Comparativo por turno - transacciones = folios únicos por turno
+    // Comparativo por turno: monto = cantidad x precio base; transacciones = folios únicos
     var turnos={};
-    // ── Deduplicar por folio único antes de sumar por turno ──────
-    // Paso 1: agrupar por folio → capturar turno y monto del folio
-    var foliosMap={};
     productos.forEach(function(p){
-      var folio=p.folio&&p.folio.trim()!==''?p.folio.trim():null;
       var t=p.turno&&p.turno.trim()!==''?p.turno.trim():'Sin turno';
-      var m=Number(p.monto||0); // monto total del folio (Total a Pagar)
-      if(folio){
-        if(!foliosMap[folio]){
-          foliosMap[folio]={turno:t, monto:m};
-        } else {
-          // Si el mismo folio aparece en múltiples filas, usar el monto máximo
-          // (el monto del folio está repetido en cada línea de producto)
-          if(m>foliosMap[folio].monto) foliosMap[folio].monto=m;
-          // El turno es el mismo para todas las filas del mismo folio
-        }
-      } else {
-        // Sin folio: cada línea es transacción independiente
-        var key='__nofolio_'+Math.random();
-        foliosMap[key]={turno:t, monto:m};
-      }
-    });
-    // Paso 2: acumular por turno sobre los folios únicos
-    Object.keys(foliosMap).forEach(function(folio){
-      var f=foliosMap[folio];
-      var t=f.turno;
+      var pb=Number(p.precio_base||0), cant=Number(p.cantidad||0);
+      var m=(pb>0&&cant>0)?pb*cant:Number(p.monto||0);
       if(!turnos[t])turnos[t]={monto:0,folios:{}};
-      turnos[t].monto+=f.monto;
-      turnos[t].folios[folio]=1;
+      turnos[t].monto+=m;
+      var folio=p.folio&&p.folio.trim()!==''?p.folio.trim():null;
+      if(folio){ turnos[t].folios[folio]=1; }
+      else { turnos[t].folios['__nofolio_'+Math.random()]=1; }
     });
     var turnoArr=Object.entries(turnos).sort(function(a,b){
       var orden=['Mañana','Manana','Tarde','Noche'];
