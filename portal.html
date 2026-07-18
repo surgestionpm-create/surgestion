@@ -1711,28 +1711,45 @@ function renderCompAnual(){
 function renderEvolucion(){
   if(!_reportes.length)return;
   var orden=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-  var anios={};
+  var porAnio={};
   _reportes.forEach(function(r){
     var parts=(r.periodo||'').split(' ');
     var mes=parts[0],anio=parts[1];
     if(!anio||!mes)return;
-    if(!anios[anio])anios[anio]={};
-    anios[anio][mes]=Number(r.ventas_brutas||0);
+    if(!porAnio[anio])porAnio[anio]={};
+    porAnio[anio][mes]=r;
   });
-  var aniosList=Object.keys(anios).sort().reverse().slice(0,3);
+  var aniosDisp=Object.keys(porAnio).sort().reverse();
+  if(!aniosDisp.length)return;
+  var anioActual=String(new Date().getFullYear());
+  var anio=porAnio[anioActual]?anioActual:aniosDisp[0];
+
+  var repsAnio=orden.map(function(m){return porAnio[anio][m]||null;});
+  var repIds=repsAnio.filter(Boolean).map(function(r){return r.id;});
   var labels=orden.map(function(m){return m.slice(0,3).charAt(0).toUpperCase()+m.slice(1,3);});
-  var colores=['#3A8FD1','#1B3A5C','#27AE60'];
-  var datasets=aniosList.map(function(anio,i){
-    return {label:anio,data:orden.map(function(m){return anios[anio][m]||null;}),borderColor:colores[i],backgroundColor:colores[i]+'22',tension:.3,fill:false,pointRadius:3,borderWidth:2};
-  });
-  var ctx=document.getElementById('c-evo');
-  if(!ctx)return;
-  dc('evol');
-  try{ charts['evol']=new Chart(ctx.getContext('2d'),{
-    type:'line',
-    data:{labels:labels,datasets:datasets},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10},padding:8,boxWidth:12}},tooltip:{callbacks:{label:function(c){return ' '+c.dataset.label+': '+fmt(c.raw);}}}},scales:{x:{grid:{display:false},ticks:{font:{size:9},maxRotation:0}},y:{grid:{color:'#EBF5FB'},border:{display:false},ticks:{font:{size:9},callback:function(v){return v>=1000000?'$'+(v/1000000).toFixed(1)+'M':'$'+(v/1000).toFixed(0)+'K';}}}}}
-  }); } catch(e){ console.warn(e); }
+  var ventasData=repsAnio.map(function(r){return r?Number(r.ventas_netas||0):null;});
+
+  fetchByIds('costos', repIds).then(function(costos){
+    var gastosPorReporte={};
+    (costos||[]).forEach(function(c){
+      var esImp=/impuesto|iva|tribut/i.test(c.familia||c.categoria||'');
+      if(esImp) return; // gastos netos = sin impuestos/IVA, igual que el resto del dashboard
+      gastosPorReporte[c.reporte_id]=(gastosPorReporte[c.reporte_id]||0)+getNetoDoc(c);
+    });
+    var gastosData=repsAnio.map(function(r){return r?(gastosPorReporte[r.id]||0):null;});
+
+    var ctx=document.getElementById('c-evo');
+    if(!ctx)return;
+    dc('evol');
+    try{ charts['evol']=new Chart(ctx.getContext('2d'),{
+      type:'line',
+      data:{labels:labels,datasets:[
+        {label:'Ventas netas '+anio,data:ventasData,borderColor:'#3A8FD1',backgroundColor:'#3A8FD122',tension:.3,fill:false,pointRadius:3,borderWidth:2},
+        {label:'Gastos netos '+anio,data:gastosData,borderColor:'#E67E22',backgroundColor:'#E67E2222',tension:.3,fill:false,pointRadius:3,borderWidth:2}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10},padding:8,boxWidth:12}},tooltip:{callbacks:{label:function(c){return ' '+c.dataset.label+': '+fmt(c.raw);}}}},scales:{x:{grid:{display:false},ticks:{font:{size:9},maxRotation:0}},y:{grid:{color:'#EBF5FB'},border:{display:false},ticks:{font:{size:9},callback:function(v){return v>=1000000?'$'+(v/1000000).toFixed(1)+'M':'$'+(v/1000).toFixed(0)+'K';}}}}}
+    }); } catch(e){ console.warn(e); }
+  }).catch(function(){});
 }
 
 // ── Arranque principal ─────────────────────────────────────────
