@@ -525,6 +525,17 @@ function procesarVentas(input){
       var fpKey=keys.find(function(k){return /forma.*pago/i.test(k)||/pago/i.test(k);})||'Forma de Pago';
       var turnoKey=keys.find(function(k){return /turno/i.test(k);})||'Turno';
       var folioKey=keys.find(function(k){return /folio/i.test(k)||/orden/i.test(k)||/n.*orden/i.test(k);})||'N Orden Folio';
+      var fechaKey=keys.find(function(k){return /fecha.*venta/i.test(k)||/^fecha$/i.test(k);})||'Fecha de Venta';
+      function parseFechaVenta(v){
+        if(!v) return null;
+        if(v instanceof Date && !isNaN(v)) return v.toISOString().slice(0,10);
+        var s=String(v).trim();
+        var m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/); // dd-mm-yyyy o dd/mm/yyyy
+        if(m) return m[3]+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[1]).slice(-2);
+        var d=new Date(s);
+        if(!isNaN(d)) return d.toISOString().slice(0,10);
+        return null;
+      }
       rows.forEach(function(r){
         var ano=String(r[anoKey]||'').trim();
         var mes=String(r[mesKey]||'').toLowerCase().trim();
@@ -542,10 +553,11 @@ function procesarVentas(input){
         var fp=String(r[fpKey]||'').trim();
         var turno=String(r[turnoKey]||'').trim();
         var folio=String(r[folioKey]||'').trim();
+        var fecha=parseFechaVenta(r[fechaKey]);
         if(!nom||!can)return; // saltar filas sin nombre o cantidad
 
         if(!ventasData[periodo])ventasData[periodo]=[];
-        ventasData[periodo].push({nombre:nom,cantidad:can,monto:mon,precio_base:precioBase,descuento:descNum,cat:cat,fp:fp,turno:turno,folio:folio});
+        ventasData[periodo].push({nombre:nom,cantidad:can,monto:mon,precio_base:precioBase,descuento:descNum,cat:cat,fp:fp,turno:turno,folio:folio,fecha:fecha});
       });
 
     var periodos=Object.keys(ventasData);
@@ -634,7 +646,7 @@ async function subirDatos(){
       }
       console.log('Productos borrados para',periodo,'reporte',repId);
       var prodList=(ventPer||[]).map(function(p){
-      return {reporte_id:repId,nombre:p.nombre,cantidad:p.cantidad,monto:p.monto,precio_base:p.precio_base||0,descuento:p.descuento||0,categoria:p.cat||'Sin categoria',forma_pago:p.fp||null,turno:p.turno||null,folio:p.folio||null};
+      return {reporte_id:repId,nombre:p.nombre,cantidad:p.cantidad,monto:p.monto,precio_base:p.precio_base||0,descuento:p.descuento||0,categoria:p.cat||'Sin categoria',forma_pago:p.fp||null,turno:p.turno||null,folio:p.folio||null,fecha:p.fecha||null};
     });
       // Insertar en lotes de 50 con reintento individual en caso de error
       var BATCH=50;
@@ -650,7 +662,8 @@ async function subirDatos(){
             categoria:String(p.categoria||'').slice(0,100),
             forma_pago:String(p.forma_pago||'').slice(0,100),
             turno:String(p.turno||'').slice(0,50),
-            folio:String(p.folio||'').slice(0,50)
+            folio:String(p.folio||'').slice(0,50),
+            fecha:p.fecha||null
           };
         });
         var resIns=await sb.from('productos').insert(lote);
