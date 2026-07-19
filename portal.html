@@ -360,7 +360,7 @@ html { scroll-behavior: smooth; }
         <div id="vd-subtitulo" style="font-size:11px;color:var(--muted);margin-bottom:10px">Cargando...</div>
         <div style="max-height:260px;overflow-y:auto">
           <table class="t" style="width:100%">
-            <thead><tr>
+            <thead><tr style="position:sticky;top:0;z-index:1">
               <th style="text-align:left">Día</th>
               <th class="num" id="vd-th-actual">--</th>
               <th class="num" id="vd-th-anterior">--</th>
@@ -1619,6 +1619,16 @@ function fetchByIds(table, ids){
       .order('id', {ascending:true})
       .range(os, os+PAGE-1)
       .then(function(r){
+        if(r.error){
+          if(!page._reintentos) page._reintentos={};
+          var n=(page._reintentos[os]||0)+1;
+          page._reintentos[os]=n;
+          if(n<=3){
+            return new Promise(function(res){ setTimeout(res,400*n); }).then(function(){ return page(os); });
+          }
+          console.error('fetchByIds: fallo definitivo en página',os,'de',table,r.error);
+          return all;
+        }
         var rows=r.data||[];
         all=all.concat(rows);
         if(rows.length===PAGE) return page(os+PAGE);
