@@ -791,13 +791,7 @@ function cargarRango(){
   var mesD  = document.getElementById('sel-mes-desde').value;
   var anioH = document.getElementById('sel-anio-hasta').value;
   var mesH  = document.getElementById('sel-mes-hasta').value;
-  console.log('cargarRango valores:',anioD,mesD,anioH,mesH,'reportes:',_reportes.length);
-  var _pd=mesD+' '+anioD, _ph=mesH+' '+anioH;
-  var _id=_periodos.indexOf(_pd), _ih=_periodos.indexOf(_ph);
-  console.log('[DBG] periodoD='+_pd+' idxD='+_id+' periodoH='+_ph+' idxH='+_ih);
-  console.log('[DBG] _periodos[0..4]=',_periodos.slice(0,5));
   if(!anioD||!mesD||!anioH||!mesH||!_reportes.length){
-    console.log('cargarRango: retorno temprano - valores vacios o sin reportes');
     return;
   }
 
@@ -824,7 +818,6 @@ function cargarRango(){
 
   // Obtener IDs de reportes del rango
   var repsIds = _reportes.filter(function(r){return sel.indexOf(r.periodo)>=0;}).map(function(r){return r.id;});
-  console.log('[DBG2] sel=',sel,'repsIds=',repsIds,'_clienteId=',_clienteId);
 
   if(!repsIds.length){
     document.getElementById('loading').style.display='none';
@@ -851,20 +844,6 @@ function cargarRango(){
     document.getElementById('dashboard').style.display='block';
     var costos    = results[0]||[];
     var productos = results[1]||[];
-    // DIAGNÓSTICO: contar unidades reales recibidas desde Supabase
-    var diagCant={};
-    productos.forEach(function(p){
-      var nom=p.nombre||'';
-      diagCant[nom]=(diagCant[nom]||0)+Number(p.cantidad||0);
-    });
-    console.log('[DIAGNÓSTICO] Total productos recibidos:', productos.length);
-    // Ver qué reporte_ids llegaron realmente
-    var repIdsRecibidos={};
-    productos.forEach(function(p){repIdsRecibidos[p.reporte_id]=true;});
-    console.log('[DBG3] reporte_ids únicos en productos:', Object.keys(repIdsRecibidos).length, Object.keys(repIdsRecibidos).slice(0,10));
-    console.log('[DIAGNÓSTICO] Unidades por producto:', JSON.stringify(diagCant));
-    var totalUnDiag=Object.values(diagCant).reduce(function(s,v){return s+v;},0);
-    console.log('[DIAGNÓSTICO] Total unidades:', totalUnDiag);
 
     // Sumar ventas de todos los reportes del rango
     var repsRango = _reportes.filter(function(r){return sel.indexOf(r.periodo)>=0;});
@@ -1616,6 +1595,7 @@ function fetchByIds(table, ids){
   function page(os){
     return sb_client.from(table).select('*')
       .in('reporte_id', ids)
+      .order('id', {ascending:true})
       .range(os, os+PAGE-1)
       .then(function(r){
         var rows=r.data||[];
