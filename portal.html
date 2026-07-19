@@ -322,7 +322,7 @@ html { scroll-behavior: smooth; }
     <select class="sel" id="sel-anio-hasta"></select>
     <select class="sel" id="sel-mes-hasta"></select>
     <span class="periodo-pill" id="periodo-pill">--</span>
-    <span id="ult-act" class="ult-act" style="display:none">Actualizado: <strong id="fecha-act">--</strong></span>
+    <span id="ult-act" class="ult-act" style="display:none">Última actualización: <strong id="fecha-act">--</strong></span>
   </div>
 
   <p class="sec" id="sec-ventas">Ventas del periodo</p>
@@ -971,24 +971,25 @@ function cargarRango(){
     });
     document.getElementById('tb-vdet').innerHTML=rows;
 
-    // Formas de pago: Total a Pagar - |Descuento| por línea (reconcilia con el total general)
+    // Formas de pago: suma de Total a Pagar por línea (cuadra exacto con el total general)
     var pagos={};
     productos.forEach(function(p){
       var fp=p.forma_pago||'Sin datos';
-      var m=Number(p.monto||0)-Math.abs(Number(p.descuento||0));
+      var cant=Number(p.cantidad||0);
+      var m=Number(p.monto||0);
       if(!pagos[fp])pagos[fp]={monto:0,cant:0};
       pagos[fp].monto+=m;
-      pagos[fp].cant+=Number(p.cantidad||0);
+      pagos[fp].cant+=cant;
     });
     var pagArr=Object.entries(pagos).sort(function(a,b){return b[1].cant-a[1].cant;});
     var tbPag=document.getElementById('tb-pagos');
     if(tbPag) tbPag.innerHTML=pagArr.map(function(e){return '<tr><td style="padding:7px 10px;font-size:12px">'+e[0]+'</td><td class="num">'+fmt(e[1].monto)+'</td><td class="pct">'+pct(e[1].monto,vb)+'</td></tr>';}).join('');
 
-    // Comparativo por turno: Total a Pagar - |Descuento| por línea (reconcilia con el total general); transacciones = folios únicos
+    // Comparativo por turno: suma de Total a Pagar por línea (cuadra exacto con el total general); transacciones = folios únicos
     var turnos={};
     productos.forEach(function(p){
       var t=p.turno&&p.turno.trim()!==''?p.turno.trim():'Sin turno';
-      var m=Number(p.monto||0)-Math.abs(Number(p.descuento||0));
+      var m=Number(p.monto||0);
       if(!turnos[t])turnos[t]={monto:0,cant:0,folios:{}};
       turnos[t].monto+=m;
       turnos[t].cant+=Number(p.cantidad||0);
@@ -1771,6 +1772,19 @@ function iniciarConCliente(cliente){
     .then(function(r2){
       _reportes=r2.data||[];
       _periodos=_reportes.map(function(r){return r.periodo;});
+
+      // Última actualización: la fecha más reciente entre updated_at/created_at de todos los reportes
+      var fechas=_reportes.map(function(r){return r.updated_at||r.created_at;}).filter(Boolean);
+      if(fechas.length){
+        var maxFecha=fechas.reduce(function(a,b){return new Date(a)>new Date(b)?a:b;});
+        var d=new Date(maxFecha);
+        var fmtFecha=('0'+d.getDate()).slice(-2)+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+d.getFullYear();
+        var elFecha=document.getElementById('fecha-act');
+        var elUlt=document.getElementById('ult-act');
+        if(elFecha) elFecha.textContent=fmtFecha;
+        if(elUlt) elUlt.style.display='inline-block';
+      }
+
       var MESES_ORD=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
       _periodos.sort(function(a,b){
         var pa=a.split(' '),pb=b.split(' ');

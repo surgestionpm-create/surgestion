@@ -561,9 +561,9 @@ function procesarVentas(input){
     var html2='<div style="font-size:11px;color:#5E7A94;margin-bottom:8px">Formato detectado: <b>'+formato.toUpperCase()+'</b></div>';
     periodos.forEach(function(p){
       var prods=Array.isArray(ventasData[p])?ventasData[p]:Object.values(ventasData[p]||{});
-      // Total = suma(Total a Pagar) - suma(|Descuento|)
+      // Total = suma(Total a Pagar), sin restar descuento
       var totalB=(prods||[]).reduce(function(s,v){
-        return s + Number(v.monto||0) - Math.abs(Number(v.descuento||0));
+        return s + Number(v.monto||0);
       },0);
       html2+='<div style="font-weight:600;color:#1B3A5C;margin:10px 0 4px;font-size:13px">'+p.charAt(0).toUpperCase()+p.slice(1)+'</div>';
       (prods||[]).slice(0,5).forEach(function(e){
@@ -572,7 +572,7 @@ function procesarVentas(input){
       html2+='<div class="pi" style="font-weight:600"><span>TOTAL</span><span>'+fmt(totalB)+'</span></div>';
     });
     items.innerHTML=html2;
-    document.getElementById('pv-b').textContent=fmt(Object.values(ventasData).reduce(function(s,arr){return s+(arr||[]).reduce(function(s2,v){return s2+Number(v.monto||0)-Math.abs(Number(v.descuento||0));},0);},0));
+    document.getElementById('pv-b').textContent=fmt(Object.values(ventasData).reduce(function(s,arr){return s+(arr||[]).reduce(function(s2,v){return s2+Number(v.monto||0);},0);},0));
     document.getElementById('pv-n').textContent='Ver por período';
     box.style.display='block';
   };
@@ -597,9 +597,9 @@ async function subirDatos(){
     var periodo=periodos[i];
     var gastPer=gastosData&&gastosData[periodo]?gastosData[periodo]:[];
     var ventPer=ventasData&&ventasData[periodo]?ventasData[periodo]:[];
-    // Ventas brutas = suma(Total a Pagar) - suma(|Descuento|) de todas las líneas del período
+    // Ventas brutas = suma(Total a Pagar) de todas las líneas del período
     var totalB=(ventPer||[]).reduce(function(s,v){
-      return s + Number(v.monto||0) - Math.abs(Number(v.descuento||0));
+      return s + Number(v.monto||0);
     },0);
     var totalN=Math.round(totalB/1.19);
     // Buscar reporte existente
