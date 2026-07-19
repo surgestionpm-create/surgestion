@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" href="/logo-abreviado.jpg">
 <title>Portal SurGestion</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4" onerror="this.dataset.retries=(+this.dataset.retries||0)+1; if(this.dataset.retries<=3){var s=document.createElement('script');s.src=this.src+'?retry='+this.dataset.retries;s.onerror=this.onerror;document.head.appendChild(s);}"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--navy:#1B3A5C;--blue:#3A8FD1;--blue-l:#EBF5FB;--text:#1E2D3D;--muted:#5E7A94;--white:#fff;--bg:#F5F9FC;--border:#C8DEF0;--green:#27AE60;--red:#E74C3C;--gl:#E9F7EF;--rl:#FDEDEC;--orange:#E67E22}
@@ -2156,7 +2156,13 @@ function iniciar(){
 
 // admin_view manejado dentro de iniciar()
 
-iniciar();
+function esperarChartJS(cb, intentos){
+  intentos = intentos || 0;
+  if(typeof Chart !== 'undefined'){ cb(); return; }
+  if(intentos > 50){ console.warn('Chart.js no cargó después de 10s, iniciando de todos modos (los gráficos podrían no mostrarse)'); cb(); return; }
+  setTimeout(function(){ esperarChartJS(cb, intentos+1); }, 200);
+}
+esperarChartJS(iniciar);
 
 </script>
   <script>
