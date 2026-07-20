@@ -1703,7 +1703,7 @@ function renderVentaDiaria(){
       var colVar=f.varPct==null?'':(f.varPct>=0?'style="color:var(--green)"':'style="color:var(--red)"');
       var signoVar=f.varPct==null?'-':(f.varPct>=0?'+':'')+f.varPct.toFixed(1)+'%';
       return '<tr'+(f.esHoy?' style="background:var(--bg)"':'')+(f.esFuturo?' style="opacity:.4"':'')+'>'
-        +'<td style="padding:5px 4px;font-size:12px">'+etiquetaDia+'</td>'
+        +'<td style="font-size:12px">'+etiquetaDia+'</td>'
         +'<td class="num">'+(f.montoActual!=null?fmt(f.montoActual):'-')+'</td>'
         +'<td class="num">'+(f.montoAnterior!=null?fmt(f.montoAnterior):'-')+'</td>'
         +'<td class="num" '+colVar+'>'+signoVar+'</td>'
