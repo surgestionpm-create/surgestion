@@ -362,8 +362,8 @@ html { scroll-behavior: smooth; }
           <table class="t" style="width:100%">
             <thead><tr style="position:sticky;top:0;z-index:1">
               <th style="text-align:left">Día</th>
-              <th class="num" id="vd-th-actual">--</th>
               <th class="num" id="vd-th-anterior">--</th>
+              <th class="num" id="vd-th-actual">--</th>
               <th class="num">Var.</th>
             </tr></thead>
             <tbody id="tb-venta-diaria"></tbody>
@@ -1704,8 +1704,8 @@ function renderVentaDiaria(){
       var signoVar=f.varPct==null?'-':(f.varPct>=0?'+':'')+f.varPct.toFixed(1)+'%';
       return '<tr'+(f.esHoy?' style="background:var(--bg)"':'')+(f.esFuturo?' style="opacity:.4"':'')+'>'
         +'<td style="font-size:12px">'+etiquetaDia+'</td>'
-        +'<td class="num">'+(f.montoActual!=null?fmt(f.montoActual):'-')+'</td>'
         +'<td class="num">'+(f.montoAnterior!=null?fmt(f.montoAnterior):'-')+'</td>'
+        +'<td class="num">'+(f.montoActual!=null?fmt(f.montoActual):'-')+'</td>'
         +'<td class="num" '+colVar+'>'+signoVar+'</td>'
         +'</tr>';
     }).join('');
