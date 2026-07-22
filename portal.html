@@ -2054,36 +2054,42 @@ function actualizarComp(){
       t+='<th style="text-align:right;padding:8px 10px;font-size:11px;color:rgba(255,255,255,.85);white-space:nowrap">'+lbl(p)+'</th>';
     });
     t+='<th style="text-align:right;padding:8px 10px;font-size:11px;color:rgba(255,255,255,.85)">Total</th>';
+    t+='<th style="text-align:right;padding:8px 10px;font-size:11px;color:rgba(255,255,255,.85)">% V.Neta</th>';
     t+='</tr></thead><tbody>';
 
-    function fila(nombre, vals, bold, bg, color){
+    // Total de Ventas Netas del rango completo (denominador para la columna %)
+    var vnTotalRango=periodos.reduce(function(s,p){return s+dat[p].vn;},0);
+
+    function fila(nombre, vals, bold, bg, color, mostrarPct){
       var tot=vals.reduce(function(s,v){return s+v;},0);
       var st='padding:6px 10px;font-size:12px;'+(bold?'font-weight:700;':'')+(color?'color:'+color+';':'');
       var bgs=bg?'background:'+bg+';':'';
+      var pctTxt=mostrarPct?(vnTotalRango>0?(tot/vnTotalRango*100).toFixed(1)+'%':'-'):'';
       return '<tr style="'+bgs+'border-bottom:1px solid var(--border)">'
         +'<td style="'+st+'padding-left:14px">'+nombre+'</td>'
         +vals.map(function(v){return '<td style="text-align:right;'+st+'">'+fmt(v)+'</td>';}).join('')
         +'<td style="text-align:right;'+st+'font-weight:700">'+fmt(tot)+'</td>'
+        +'<td style="text-align:right;'+st+'color:var(--muted)">'+pctTxt+'</td>'
         +'</tr>';
     }
 
     function seccion(nombre){
-      return '<tr style="background:var(--navy)22"><td colspan="'+(periodos.length+2)+'" style="padding:5px 14px;font-size:10px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.6px">'+nombre+'</td></tr>';
+      return '<tr style="background:var(--navy)22"><td colspan="'+(periodos.length+3)+'" style="padding:5px 14px;font-size:10px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.6px">'+nombre+'</td></tr>';
     }
 
     // Ventas
     t+=seccion('Ingresos');
-    t+=fila('Ventas brutas', periodos.map(function(p){return dat[p].vb;}), false, '', '');
-    t+=fila('Ventas netas (sin IVA)', periodos.map(function(p){return dat[p].vn;}), true, '', '');
+    t+=fila('Ventas brutas', periodos.map(function(p){return dat[p].vb;}), false, '', '', false);
+    t+=fila('Ventas netas (sin IVA)', periodos.map(function(p){return dat[p].vn;}), true, '', '', false);
 
     // Gastos
     t+=seccion('Gastos operacionales');
     fams.forEach(function(fam){
       var vals=periodos.map(function(p){return dat[p].fams[fam]||0;});
       if(!vals.reduce(function(s,v){return s+v;},0)) return;
-      t+=fila(fam, vals, false, '', '#475569');
+      t+=fila(fam, vals, false, '', '#475569', true);
     });
-    t+=fila('Total gastos netos', periodos.map(function(p){return dat[p].gn;}), true, 'var(--bg)', '');
+    t+=fila('Total gastos netos', periodos.map(function(p){return dat[p].gn;}), true, 'var(--bg)', '', true);
 
     // Resultado
     var resVals=periodos.map(function(p){return dat[p].vn-dat[p].gn;});
@@ -2093,7 +2099,8 @@ function actualizarComp(){
     t+=seccion('Resultado');
     t+='<tr style="background:'+resBg+'"><td style="padding:7px 14px;font-size:12px;font-weight:700;color:'+resColor+'">Resultado operacional</td>'
       +resVals.map(function(v){return '<td style="text-align:right;padding:7px 10px;font-size:12px;font-weight:700;color:'+(v>=0?'var(--green)':'var(--red)')+'">'+fmt(v)+'</td>';}).join('')
-      +'<td style="text-align:right;padding:7px 10px;font-size:12px;font-weight:700;color:'+resColor+'">'+fmt(resTot)+'</td></tr>';
+      +'<td style="text-align:right;padding:7px 10px;font-size:12px;font-weight:700;color:'+resColor+'">'+fmt(resTot)+'</td>'
+      +'<td style="text-align:right;padding:7px 10px;font-size:12px"></td></tr>';
 
     t+='</tbody></table>';
     if(cont) cont.innerHTML=t;
