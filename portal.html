@@ -2102,6 +2102,14 @@ function actualizarComp(){
       +'<td style="text-align:right;padding:7px 10px;font-size:12px;font-weight:700;color:'+resColor+'">'+fmt(resTot)+'</td>'
       +'<td style="text-align:right;padding:7px 10px;font-size:12px"></td></tr>';
 
+    // Margen neto (%) = Resultado operacional / Ventas netas x 100
+    var margenVals=periodos.map(function(p,i){return dat[p].vn>0?(resVals[i]/dat[p].vn*100):null;});
+    var margenTot=vnTotalRango>0?(resTot/vnTotalRango*100):null;
+    t+='<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 14px;font-size:12px;font-weight:700;color:var(--navy)">Margen neto</td>'
+      +margenVals.map(function(v){return '<td style="text-align:right;padding:6px 10px;font-size:12px;font-weight:700;color:'+(v==null?'var(--muted)':(v>=0?'var(--green)':'var(--red)'))+'">'+(v==null?'-':v.toFixed(1)+'%')+'</td>';}).join('')
+      +'<td style="text-align:right;padding:6px 10px;font-size:12px;font-weight:700;color:'+(margenTot==null?'var(--muted)':(margenTot>=0?'var(--green)':'var(--red)'))+'">'+(margenTot==null?'-':margenTot.toFixed(1)+'%')+'</td>'
+      +'<td style="text-align:right;padding:6px 10px;font-size:12px"></td></tr>';
+
     t+='</tbody></table>';
     if(cont) cont.innerHTML=t;
   });
