@@ -903,11 +903,12 @@ function cargarRango(){
     document.getElementById('kv-cf').textContent  = fmt(cf);
     document.getElementById('kv-cv').textContent  = fmt(cv);
 
-    // Resultado del mes (en este caso del rango)
+    // Resultado del mes (en este caso del rango) - debe coincidir con su propia etiqueta: Vtas netas - Gtos netos (el gn mostrado al lado, CON impuestos)
+    var resultadoMes = vn - gn;
     var resMes = document.getElementById('kv-res-mes');
     if(resMes){
-      resMes.textContent = (resultado>=0?'+':'')+fmt(Math.abs(resultado));
-      resMes.style.color = resultado>=0?'var(--green)':'var(--red)';
+      resMes.textContent = (resultadoMes>=0?'+':'')+fmt(Math.abs(resultadoMes));
+      resMes.style.color = resultadoMes>=0?'var(--green)':'var(--red)';
     }
 
     // Proyección Run Rate + YoY
