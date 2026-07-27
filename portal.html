@@ -873,19 +873,20 @@ function cargarRango(){
       ? repsRango.reduce(function(s,r){return s+Number(r.ventas_netas||0);},0)
       : vb;
 
-    // Gastos acumulados
-    var gb = costos.reduce(function(s,c){return s+Number(c.monto||0);},0);
-    var gn = costos.reduce(function(s,c){return s+getNetoDoc(c);},0);
+    // Gastos acumulados (Impuestos/IVA NUNCA se consideran gasto - se excluyen desde la base)
+    var costosOp = costos.filter(function(c){return !/impuesto|iva|tribut/i.test(c.familia||c.categoria||'');});
+    var gb = costosOp.reduce(function(s,c){return s+Number(c.monto||0);},0);
+    var gn = costosOp.reduce(function(s,c){return s+getNetoDoc(c);},0);
 
     var impBruto = costos.filter(function(c){return /impuesto|iva|tribut/i.test(c.familia||c.categoria||'');}).reduce(function(s,c){return s+Number(c.monto||0);},0);
     var impNeto  = costos.filter(function(c){return /impuesto|iva|tribut/i.test(c.familia||c.categoria||'');}).reduce(function(s,c){return s+getNetoDoc(c);},0);
-    var gbOp = gb-impBruto;
-    var gnOp = gn-impNeto;
+    var gbOp = gb; // ya excluye impuestos, se mantiene por compatibilidad con el resto del código
+    var gnOp = gn; // ya excluye impuestos, se mantiene por compatibilidad con el resto del código
     var resultado = vn-gnOp;
 
-    var hasTipo = costos.some(function(c){return c.tipo_gasto&&c.tipo_gasto.trim()!=='';});
-    var cf = costos.filter(function(c){return /fijo/i.test(c.tipo_gasto||'');}).reduce(function(s,c){return s+getNetoDoc(c);},0);
-    var cv = costos.filter(function(c){return /variable/i.test(c.tipo_gasto||'');}).reduce(function(s,c){return s+getNetoDoc(c);},0);
+    var hasTipo = costosOp.some(function(c){return c.tipo_gasto&&c.tipo_gasto.trim()!=='';});
+    var cf = costosOp.filter(function(c){return /fijo/i.test(c.tipo_gasto||'');}).reduce(function(s,c){return s+getNetoDoc(c);},0);
+    var cv = costosOp.filter(function(c){return /variable/i.test(c.tipo_gasto||'');}).reduce(function(s,c){return s+getNetoDoc(c);},0);
     if(!hasTipo){cf=gnOp;cv=0;}
 
     var mb = vb>0?((resultado/vb)*100).toFixed(1):0;
@@ -1036,9 +1037,9 @@ function cargarRango(){
       renderChartFV(cf, cv);
     }
 
-    // Tipo documento
+    // Tipo documento (excluye Impuestos/IVA, igual que el resto de los cálculos de gasto)
     var tiposDocs={};var totalTipoDoc=0;
-    costos.forEach(function(c){var td=c.tipo_documento||'Sin documento';tiposDocs[td]=(tiposDocs[td]||0)+getNetoDoc(c);totalTipoDoc+=getNetoDoc(c);});
+    costosOp.forEach(function(c){var td=c.tipo_documento||'Sin documento';tiposDocs[td]=(tiposDocs[td]||0)+getNetoDoc(c);totalTipoDoc+=getNetoDoc(c);});
     var tdArr=Object.entries(tiposDocs).sort(function(a,b){return b[1]-a[1];});
     var tbTD=document.getElementById('tb-tipo-doc');
     if(tbTD){if(tdArr.length&&tdArr[0][0]!=='Sin documento'){tbTD.innerHTML=tdArr.map(function(e){var esNeto=/factura.*elec|nota.*cr/i.test(e[0])||/nc.*elec/i.test(e[0]);var badge=esNeto?'<span style="font-size:9px;background:#EBF5FB;color:#3A8FD1;border-radius:4px;padding:1px 5px;margin-left:4px">Neto</span>':'<span style="font-size:9px;background:#F8F3EC;color:#E67E22;border-radius:4px;padding:1px 5px;margin-left:4px">Bruto</span>';return '<tr><td style="padding:7px 10px;font-size:12px">'+e[0]+badge+'</td><td class="num">'+fmt(e[1])+'</td><td class="pct">'+pct(e[1],totalTipoDoc)+'</td></tr>';}).join('');}else{tbTD.innerHTML='<tr><td colspan="3" style="padding:12px;text-align:center;color:var(--muted);font-size:12px">Vuelve a subir el Excel de gastos para ver tipo de documento.</td></tr>';}}
