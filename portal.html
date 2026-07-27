@@ -519,7 +519,7 @@ function getNetoDoc(c){
   var td = (c.tipo_documento||'').toLowerCase();
   var monto = Number(c.monto||0);
   var montoNeto = Number(c.monto_neto||0);
-  if(/factura electr/i.test(td) && !/no afecta|exenta/i.test(td)){
+  if(/factura/i.test(td) && !/no afecta|exenta/i.test(td)){
     return montoNeto !== 0 ? montoNeto : monto;
   } else if(/nota.*cr|nc.*electr/i.test(td)){
     return montoNeto !== 0 ? montoNeto : monto;
@@ -537,7 +537,7 @@ function getIvaCredito(c){
   var monto = Number(c.monto||0);
   var montoNeto = Number(c.monto_neto||0);
   var base = montoNeto !== 0 ? montoNeto : monto;
-  if(/factura electr/i.test(td) && !/no afecta|exenta/i.test(td)){
+  if(/factura/i.test(td) && !/no afecta|exenta/i.test(td)){
     return Math.round(base * 0.19);
   } else if(/nota.*cr|nc.*electr/i.test(td)){
     return Math.round(base * 0.19); // negativo si NC
