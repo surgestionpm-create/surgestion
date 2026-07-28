@@ -1665,8 +1665,16 @@ function ajustarAlturaVentaDiaria(){
   if(window.innerWidth <= 900){ scrollDiv.style.maxHeight='260px'; return; }
   var alturaObjetivo = cardIzq.offsetHeight;
   if(!alturaObjetivo) return;
-  var otrosElementos = cardDer.offsetHeight - scrollDiv.offsetHeight; // header + subtítulo + total + paddings
-  var nuevoAlto = alturaObjetivo - otrosElementos;
+  var header = cardDer.querySelector('.ch');
+  var subtitulo = document.getElementById('vd-subtitulo');
+  var cb = cardDer.querySelector('.cb');
+  if(!header || !subtitulo || !cb) return;
+  var cbStyle = window.getComputedStyle(cb);
+  var paddingVert = parseFloat(cbStyle.paddingTop||0)+parseFloat(cbStyle.paddingBottom||0);
+  var subEstilo = window.getComputedStyle(subtitulo);
+  var subMargen = parseFloat(subEstilo.marginBottom||0);
+  var otros = header.offsetHeight + subtitulo.offsetHeight + subMargen + paddingVert;
+  var nuevoAlto = alturaObjetivo - otros;
   if(nuevoAlto > 80) scrollDiv.style.maxHeight = nuevoAlto+'px';
 }
 window.addEventListener('resize', function(){
@@ -1746,7 +1754,8 @@ function renderVentaDiaria(){
     elVarTotal.textContent = signoVarTotal;
     elVarTotal.style.cssText = 'font-weight:700;'+colVarTotal;
     ajustarAlturaVentaDiaria();
-    setTimeout(ajustarAlturaVentaDiaria, 200); // respaldo por si el layout aún se está acomodando
+    setTimeout(ajustarAlturaVentaDiaria, 200);
+    setTimeout(ajustarAlturaVentaDiaria, 600);
   }).catch(function(e){ console.warn('renderVentaDiaria error',e); });
 }
 
