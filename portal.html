@@ -360,16 +360,21 @@ html { scroll-behavior: smooth; }
         <div id="vd-subtitulo" style="font-size:11px;color:var(--muted);margin-bottom:10px">Cargando...</div>
         <div id="vd-scroll" style="max-height:260px;overflow-y:auto">
           <table class="t" style="width:100%">
-            <thead><tr style="position:sticky;top:0;z-index:1">
+            <thead><tr style="position:sticky;top:0;z-index:2">
               <th style="text-align:left">Día</th>
               <th class="num" id="vd-th-anterior">--</th>
               <th class="num" id="vd-th-actual">--</th>
               <th class="num">Var.</th>
             </tr></thead>
             <tbody id="tb-venta-diaria"></tbody>
+            <tfoot><tr id="vd-total-row" style="position:sticky;bottom:0;z-index:2;background:var(--bg);border-top:2px solid var(--border)">
+              <td style="font-weight:700;color:var(--navy);font-size:12px" id="vd-total-label">Total</td>
+              <td class="num" style="font-weight:700" id="vd-total-anterior">-</td>
+              <td class="num" style="font-weight:700" id="vd-total-actual">-</td>
+              <td class="num" style="font-weight:700" id="vd-total-var">-</td>
+            </tr></tfoot>
           </table>
         </div>
-        <div id="vd-total" style="display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:8px;padding-top:8px;font-size:12px;font-weight:500;color:var(--navy)"></div>
       </div>
     </div>
   </div>
@@ -1700,7 +1705,7 @@ function renderVentaDiaria(){
     var ultimoDiaConDatos=Math.min(hoy.getDate(), diasEnMes);
     var mesStr=('0'+(mesIdx+1)).slice(-2);
     var filas=[];
-    var totalActual=0;
+    var totalActual=0, totalAnterior=0;
 
     for(var dia=1; dia<=diasEnMes; dia++){
       var fechaActual=anioAct+'-'+mesStr+'-'+('0'+dia).slice(-2);
@@ -1710,6 +1715,7 @@ function renderVentaDiaria(){
       var esFuturo=dia>ultimoDiaConDatos;
       var varPct=(montoActual!=null && montoAnterior)?((montoActual-montoAnterior)/montoAnterior*100):null;
       if(!esFuturo && montoActual!=null) totalActual+=montoActual;
+      if(!esFuturo && montoAnterior!=null) totalAnterior+=montoAnterior;
       filas.push({dia:dia,fechaActual:fechaActual,fechaAnterior:fechaAnterior,montoActual:montoActual,montoAnterior:montoAnterior,varPct:varPct,esFuturo:esFuturo,esHoy:dia===hoy.getDate()});
     }
 
@@ -1730,7 +1736,15 @@ function renderVentaDiaria(){
         +'</tr>';
     }).join('');
 
-    document.getElementById('vd-total').innerHTML='<span>Total al día '+ultimoDiaConDatos+'</span><span>'+fmt(totalActual)+'</span>';
+    var varTotalPct = (totalAnterior>0)?((totalActual-totalAnterior)/totalAnterior*100):null;
+    var colVarTotal = varTotalPct==null?'':(varTotalPct>=0?'color:var(--green)':'color:var(--red)');
+    var signoVarTotal = varTotalPct==null?'-':(varTotalPct>=0?'+':'')+varTotalPct.toFixed(1)+'%';
+    document.getElementById('vd-total-label').textContent = 'Total al día '+ultimoDiaConDatos;
+    document.getElementById('vd-total-anterior').textContent = fmt(totalAnterior);
+    document.getElementById('vd-total-actual').textContent = fmt(totalActual);
+    var elVarTotal = document.getElementById('vd-total-var');
+    elVarTotal.textContent = signoVarTotal;
+    elVarTotal.style.cssText = 'font-weight:700;'+colVarTotal;
     ajustarAlturaVentaDiaria();
     setTimeout(ajustarAlturaVentaDiaria, 200); // respaldo por si el layout aún se está acomodando
   }).catch(function(e){ console.warn('renderVentaDiaria error',e); });
