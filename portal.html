@@ -944,7 +944,7 @@ function cargarRango(){
     // Gráfico ventas por categoría
     var catV={};
     productos.forEach(function(p){var cat=p.categoria||'Sin categoria';if(!catV[cat])catV[cat]={monto:0,cant:0};catV[cat].monto+=getMontoProducto(p);catV[cat].cant+=Number(p.cantidad||0);});
-    var catArr=Object.entries(catV).sort(function(a,b){return b[1].cant-a[1].cant;});
+    var catArr=Object.entries(catV).sort(function(a,b){return b[1].monto-a[1].monto;});
     _catVData=catArr; _vdetVb=vb;
     renderChartVcat(catArr, vb);
     // Tabla % catV
@@ -1660,22 +1660,24 @@ function ajustarAlturaVentaDiaria(){
   var cardIzq = document.getElementById('sec-comp-anual');
   var cardDer = document.getElementById('sec-venta-diaria');
   var scrollDiv = document.getElementById('vd-scroll');
-  if(!cardIzq || !cardDer || !scrollDiv) return;
+  var cb = cardDer ? cardDer.querySelector('.cb') : null;
+  if(!cardIzq || !cardDer || !scrollDiv || !cb) return;
   // En pantallas angostas el grid pasa a 1 columna: no forzar altura ahí
   if(window.innerWidth <= 900){ scrollDiv.style.maxHeight='260px'; return; }
-  var alturaObjetivo = cardIzq.offsetHeight;
+
+  scrollDiv.style.maxHeight='none'; // reset temporal para medir posiciones reales sin influencia del valor anterior
+
+  var alturaObjetivo = cardIzq.getBoundingClientRect().height;
   if(!alturaObjetivo) return;
-  var header = cardDer.querySelector('.ch');
-  var subtitulo = document.getElementById('vd-subtitulo');
-  var cb = cardDer.querySelector('.cb');
-  if(!header || !subtitulo || !cb) return;
-  var cbStyle = window.getComputedStyle(cb);
-  var paddingVert = parseFloat(cbStyle.paddingTop||0)+parseFloat(cbStyle.paddingBottom||0);
-  var subEstilo = window.getComputedStyle(subtitulo);
-  var subMargen = parseFloat(subEstilo.marginBottom||0);
-  var otros = header.offsetHeight + subtitulo.offsetHeight + subMargen + paddingVert;
-  var nuevoAlto = alturaObjetivo - otros;
+
+  var topCard = cardDer.getBoundingClientRect().top;
+  var topScroll = scrollDiv.getBoundingClientRect().top;
+  var paddingInferior = parseFloat(window.getComputedStyle(cb).paddingBottom)||0;
+  var espacioArriba = topScroll - topCard; // todo lo que ocupa el header+subtítulo+padding, medido de forma real
+
+  var nuevoAlto = alturaObjetivo - espacioArriba - paddingInferior;
   if(nuevoAlto > 80) scrollDiv.style.maxHeight = nuevoAlto+'px';
+  else scrollDiv.style.maxHeight='260px';
 }
 window.addEventListener('resize', function(){
   clearTimeout(window._ajVDTimer);
