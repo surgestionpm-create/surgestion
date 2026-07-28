@@ -1656,34 +1656,6 @@ function mismoDiaSemanaAnioAnterior(fechaISO){
   return dPrev.toISOString().slice(0,10);
 }
 
-function ajustarAlturaVentaDiaria(){
-  var cardIzq = document.getElementById('sec-comp-anual');
-  var cardDer = document.getElementById('sec-venta-diaria');
-  var scrollDiv = document.getElementById('vd-scroll');
-  var cb = cardDer ? cardDer.querySelector('.cb') : null;
-  if(!cardIzq || !cardDer || !scrollDiv || !cb) return;
-  // En pantallas angostas el grid pasa a 1 columna: no forzar altura ahí
-  if(window.innerWidth <= 900){ scrollDiv.style.maxHeight='260px'; return; }
-
-  scrollDiv.style.maxHeight='none'; // reset temporal para medir posiciones reales sin influencia del valor anterior
-
-  var alturaObjetivo = cardIzq.getBoundingClientRect().height;
-  if(!alturaObjetivo) return;
-
-  var topCard = cardDer.getBoundingClientRect().top;
-  var topScroll = scrollDiv.getBoundingClientRect().top;
-  var paddingInferior = parseFloat(window.getComputedStyle(cb).paddingBottom)||0;
-  var espacioArriba = topScroll - topCard; // todo lo que ocupa el header+subtítulo+padding, medido de forma real
-
-  var nuevoAlto = alturaObjetivo - espacioArriba - paddingInferior;
-  if(nuevoAlto > 80) scrollDiv.style.maxHeight = nuevoAlto+'px';
-  else scrollDiv.style.maxHeight='260px';
-}
-window.addEventListener('resize', function(){
-  clearTimeout(window._ajVDTimer);
-  window._ajVDTimer = setTimeout(ajustarAlturaVentaDiaria, 150);
-});
-
 function renderVentaDiaria(){
   if(!_reportes.length) return;
   var mesesOrden=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -1755,9 +1727,6 @@ function renderVentaDiaria(){
     var elVarTotal = document.getElementById('vd-total-var');
     elVarTotal.textContent = signoVarTotal;
     elVarTotal.style.cssText = 'font-weight:700;'+colVarTotal;
-    ajustarAlturaVentaDiaria();
-    setTimeout(ajustarAlturaVentaDiaria, 200);
-    setTimeout(ajustarAlturaVentaDiaria, 600);
   }).catch(function(e){ console.warn('renderVentaDiaria error',e); });
 }
 
