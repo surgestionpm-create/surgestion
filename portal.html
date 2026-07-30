@@ -1099,8 +1099,8 @@ function cargarRango(){
     // Punto de equilibrio (siempre últimos 3 meses)
     calcularPuntoEquilibrio(vn, cf, cv, gnOp);
 
-    // Tabla comparativa mensual
-    renderCompMensual(productos, sel, repsIds, _reportes);
+    // Tabla comparativa mensual (siempre últimos 3 meses, incluyendo el actual)
+    renderCompMensual(_reportes);
   });
 }
 
@@ -1923,6 +1923,20 @@ function iniciarConCliente(cliente){
     .order('created_at',{ascending:false})
     .then(function(r2){
       _reportes=r2.data||[];
+
+      // Reordenar por fecha CALENDARIO real (mes/año del periodo), no por fecha de creación del registro.
+      // Muchos cálculos del portal asumen que _periodos[0] es el mes más reciente y que
+      // slice()/indexOf() reflejan orden cronológico - si los datos se subieron fuera de orden
+      // (ej. carga masiva de varios años), el orden por created_at NO coincide con el calendario.
+      var MESES_ORD_SORT=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+      function claveOrdenPeriodo(periodo){
+        var partes=(periodo||'').split(' ');
+        var mes=MESES_ORD_SORT.indexOf(partes[0]);
+        var anio=parseInt(partes[1],10)||0;
+        return anio*12+(mes>=0?mes:0);
+      }
+      _reportes.sort(function(a,b){ return claveOrdenPeriodo(b.periodo)-claveOrdenPeriodo(a.periodo); });
+
       _periodos=_reportes.map(function(r){return r.periodo;});
 
       // Última actualización: la fecha más reciente entre updated_at/created_at de todos los reportes
@@ -2198,19 +2212,31 @@ function sbSetActive(el){
 // ────────────────────────────────────────────────────────
 
 
-function renderCompMensual(productos, sel, repsIds, reportes){
+function renderCompMensual(reportes){
   var cont=document.getElementById('tabla-comp-mensual');
   if(!cont) return;
-  if(!productos||!productos.length||!sel||!sel.length){
+
+  var ORD=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  var hoy = new Date();
+  // Últimos 3 meses INCLUYENDO el actual, calculados por calendario real (no por orden de array)
+  var periodos = [0,1,2].map(function(i){
+    var d = new Date(hoy.getFullYear(), hoy.getMonth()-i, 1);
+    return ORD[d.getMonth()]+' '+d.getFullYear();
+  }).filter(function(p){ return _periodos.indexOf(p)>=0; }).reverse(); // orden cronológico ascendente
+
+  if(!periodos.length){
     cont.innerHTML='<div style="padding:14px;font-size:12px;color:var(--muted)">Sin datos para el período.</div>';
     return;
   }
-  var ORD=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-  var periodos=sel.slice().sort(function(a,b){
-    var pa=a.split(' '),pb=b.split(' ');
-    var d=parseInt(pa[1])-parseInt(pb[1]);
-    return d!==0?d:ORD.indexOf(pa[0])-ORD.indexOf(pb[0]);
-  });
+
+  var repsRango = reportes.filter(function(r){ return periodos.indexOf(r.periodo)>=0; });
+  var repIdsRango = repsRango.map(function(r){ return r.id; });
+
+  fetchByIds('productos', repIdsRango).then(function(productos){
+  if(!productos||!productos.length){
+    cont.innerHTML='<div style="padding:14px;font-size:12px;color:var(--muted)">Sin datos para el período.</div>';
+    return;
+  }
   // mapa reporte_id → periodo
   var rm={};
   reportes.forEach(function(r){rm[r.id]=r.periodo;});
@@ -2279,6 +2305,7 @@ function renderCompMensual(productos, sel, repsIds, reportes){
   });
   t+='</tbody></table>';
   cont.innerHTML=t;
+  }).catch(function(e){ console.warn('renderCompMensual error',e); cont.innerHTML='<div style="padding:14px;font-size:12px;color:var(--muted)">Error al cargar datos.</div>'; });
 }
 
 function toggleCMC(catId){
