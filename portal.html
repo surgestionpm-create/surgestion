@@ -2217,12 +2217,9 @@ function renderCompMensual(reportes){
   if(!cont) return;
 
   var ORD=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-  var hoy = new Date();
-  // Últimos 3 meses INCLUYENDO el actual, calculados por calendario real (no por orden de array)
-  var periodos = [0,1,2].map(function(i){
-    var d = new Date(hoy.getFullYear(), hoy.getMonth()-i, 1);
-    return ORD[d.getMonth()]+' '+d.getFullYear();
-  }).filter(function(p){ return _periodos.indexOf(p)>=0; }).reverse(); // orden cronológico ascendente
+  // Últimos 3 meses CON DATOS (los más recientes disponibles), en orden cronológico ascendente.
+  // _periodos ya viene ordenado de más reciente a más antiguo (ver fix de orden cronológico).
+  var periodos = _periodos.slice(0,3).slice().reverse();
 
   if(!periodos.length){
     cont.innerHTML='<div style="padding:14px;font-size:12px;color:var(--muted)">Sin datos para el período.</div>';
