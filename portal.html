@@ -1290,7 +1290,8 @@ function exportarPDF(estilo){
   var empresa  = (document.getElementById('empresa-nombre')||{}).textContent||'Empresa';
   var hoy      = new Date().toLocaleDateString('es-CL',{day:'2-digit',month:'long',year:'numeric'});
   var logoEl   = document.getElementById('nav-logo');
-  var logoSrc  = logoEl ? logoEl.src : '';
+  var logoOk   = !!(logoEl && logoEl.complete && logoEl.naturalWidth>0);
+  var logoFmt  = (logoEl && /\.png(\?|$)/i.test(logoEl.src)) ? 'PNG' : 'JPEG';
 
   var MESES_ORD_PDF=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
   function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
@@ -1432,8 +1433,8 @@ function exportarPDF(estilo){
 
   var X0=16, XR=PW-16, CWp=XR-X0;
 
-  if(logoSrc && logoSrc.indexOf('base64')>=0){
-    try{ doc.addImage(logoSrc,'PNG',X0,14,16,16); }catch(e){}
+  if(logoOk){
+    try{ doc.addImage(logoEl,logoFmt,X0,14,16,16); }catch(e){ console.warn('No se pudo incluir el logo en el PDF:',e); }
   }
   st(NAVY); fb(17); doc.text('INFORME DE RESULTADOS',X0+20,22);
   fn(11.5); st(NAVY); doc.text(periodoTxt,X0+20,29);
