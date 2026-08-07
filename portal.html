@@ -888,6 +888,10 @@ function cargarRango(){
     document.getElementById('dashboard').style.display='block';
     var costos    = results[0]||[];
     var productos = results[1]||[];
+    window._pdfSel = sel;
+    window._pdfProductos = productos;
+    window._pdfCostos = costos;
+    window._pdfRepsRango = _reportes.filter(function(r){return sel.indexOf(r.periodo)>=0;});
 
     // Sumar ventas de todos los reportes del rango
     var repsRango = _reportes.filter(function(r){return sel.indexOf(r.periodo)>=0;});
@@ -1282,60 +1286,75 @@ function exportarExcel(){
 }
 
 function exportarPDF(estilo){
-  var periodo  = (document.getElementById('periodo-pill')||{}).textContent||'periodo';
   var empresa  = (document.getElementById('empresa-nombre')||{}).textContent||'Empresa';
   var hoy      = new Date().toLocaleDateString('es-CL',{day:'2-digit',month:'long',year:'numeric'});
   var logoEl   = document.getElementById('nav-logo');
   var logoSrc  = logoEl ? logoEl.src : '';
 
-  // ── Leer valores del DOM ──────────────────────────────────
-  function gv(id){ var e=document.getElementById(id); return e?e.textContent.trim():'--'; }
-  var vb=gv('kv-vb'), vn=gv('kv-vn'), gn=gv('kv-gn'), gb=gv('kv-gb2')||gv('kv-gb');
-  var cf=gv('kv-cf'), cv=gv('kv-cv'), res=gv('iv-res'), mb=gv('iv-mb'), mn=gv('iv-mn');
-  var pe=gv('iv-pe'), proy=gv('kv-proyeccion'), yoy=gv('kv-yoy');
-  var ivaD=gv('iv-iva-debito'), ivaC=gv('iv-iva-credito'), ivaP=gv('iv-iva-pagar'), ihP=gv('ih-iva-pagar');
-  var resNeg = res.indexOf('-')>=0;
-  var yoyNeg = yoy.indexOf('-')>=0 || yoy.indexOf('▼')>=0;
+  var MESES_ORD_PDF=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+  function lm(p){var pt=p.split(' ');return pt[0].slice(0,3).charAt(0).toUpperCase()+pt[0].slice(1,3)+"'"+pt[1].slice(2);}
+  function fk(v){ v=v||0; var neg=v<0; v=Math.abs(v); var s= v>=1000000?'$'+(v/1000000).toFixed(1)+'M': v>=1000?'$'+Math.round(v/1000)+'K' : '$'+Math.round(v); return neg?'-'+s:s; }
+  function fk0(v){ v=v||0; return v>=1000000?(v/1000000).toFixed(1)+'M': v>=1000?Math.round(v/1000)+'K':Math.round(v); }
 
-  // ── Leer tablas DOM ───────────────────────────────────────
-  function domTable(id){
-    var rows=[];
-    var el=document.getElementById(id);
-    if(!el) return rows;
-    el.querySelectorAll('tr').forEach(function(tr){
-      var cells=tr.querySelectorAll('td');
-      if(cells.length) rows.push(Array.from(cells).map(function(c){return c.textContent.trim();}));
-    });
-    return rows;
-  }
-  var catRows   = domTable('tb-catv');
-  var famRows   = domTable('tb-gfam');
-  var pagRows   = domTable('tb-pagos');
-  var turRows   = domTable('tb-turnos');
-  var tdocRows  = domTable('tb-tipo-doc').map(function(r){
-    r[0]=r[0].replace(/Neto|Bruto/g,'').trim(); return r;
+  function gv(id){ var e=document.getElementById(id); return e?e.textContent.trim():'--'; }
+  var vb=gv('kv-vb'), vn=gv('kv-vn'), gn=gv('kv-gn'), res=gv('iv-res'), mb=gv('iv-mb'), mn=gv('iv-mn');
+  var resNeg = res.indexOf('-')>=0;
+
+  var sel = (window._pdfSel||[]).slice().reverse();
+  var productosSel = window._pdfProductos||[];
+  var costosSel = window._pdfCostos||[];
+  var repsRangoSel = window._pdfRepsRango||[];
+
+  if(!sel.length){ alert('Espera a que carguen los datos del período antes de exportar.'); return; }
+
+  var periodoTxt = sel.length===1
+    ? cap(sel[0])
+    : (sel[0].split(' ')[1]===sel[sel.length-1].split(' ')[1]
+        ? cap(sel[0].split(' ')[0])+' - '+cap(sel[sel.length-1].split(' ')[0])+' '+sel[0].split(' ')[1]
+        : cap(sel[0])+' - '+cap(sel[sel.length-1]));
+
+  var repMapSel={}; repsRangoSel.forEach(function(r){repMapSel[r.id]=r.periodo;});
+
+  var ventasPorMes={};
+  sel.forEach(function(p){ventasPorMes[p]=0;});
+  repsRangoSel.forEach(function(r){
+    ventasPorMes[r.periodo]=_aplicaIva?Number(r.ventas_netas||0):Number(r.ventas_brutas||0);
   });
-  var compAnualEl = document.getElementById('tabla-comp-anual');
-  var compAnualHead=[], compAnualRows=[];
-  if(compAnualEl){
-    compAnualEl.querySelectorAll('tr').forEach(function(tr,i){
-      var cells=tr.querySelectorAll('th,td');
-      var row=Array.from(cells).map(function(c){return c.textContent.replace(/[▲▶▼]/g,'').trim();});
-      if(i===0) compAnualHead=row;
-      else if(row[0]) compAnualRows.push(row);
-    });
-  }
+
+  var gastosPorMes={}, famTotales={};
+  sel.forEach(function(p){gastosPorMes[p]=0;});
+  costosSel.forEach(function(c){
+    var p=repMapSel[c.reporte_id]; if(!p||gastosPorMes[p]===undefined) return;
+    if(/impuesto|iva|tribut/i.test(c.familia||c.categoria||'')) return;
+    var n=getNetoDoc(c);
+    gastosPorMes[p]+=n;
+    var f=c.familia||c.categoria||'Sin familia';
+    famTotales[f]=(famTotales[f]||0)+n;
+  });
+  var vnTotalSel = Object.values(ventasPorMes).reduce(function(s,v){return s+v;},0);
+  var famArrPdf = Object.entries(famTotales).sort(function(a,b){return b[1]-a[1];});
+
+  var catPdf={};
+  productosSel.forEach(function(p){
+    var cat=p.categoria||'Sin categoria';
+    if(!catPdf[cat]) catPdf[cat]={monto:0,cant:0};
+    catPdf[cat].monto+=getMontoProducto(p);
+    catPdf[cat].cant+=Number(p.cantidad||0);
+  });
+  var catArrPdf = Object.entries(catPdf).sort(function(a,b){return b[1].cant-a[1].cant;}).slice(0,8);
 
   // ── jsPDF setup ───────────────────────────────────────────
   var doc = new jspdf.jsPDF('p','mm','a4');
   var PW=210, PH=297, ML=12, MR=12, CW=PW-ML-MR;
 
   // ── Paleta ────────────────────────────────────────────────
-  var NAVY=[27,58,92], BLUE=[52,100,160], BLUE_L=[220,232,245];
-  var BG=[247,249,252], TEXT=[32,44,58], MUTED=[110,130,150];
-  var WHITE=[255,255,255], LINE=[210,220,232];
+  var NAVY=[27,58,92], NAVY_DARK=[33,45,85], BLUE_SOFT=[163,178,235];
+  var LAV_BG=[226,231,251], BLUE=[52,100,160], BLUE_L=[220,232,245];
+  var BG=[247,249,252], TEXT=[32,44,58], MUTED=[120,135,158];
+  var WHITE=[255,255,255], LINE=[225,231,248], GRID=[238,241,250];
   var GREEN=[39,122,86], GREEN_L=[209,236,220];
-  var RED=[150,50,50],   RED_L=[242,218,218];
+  var RED=[178,60,60],   RED_L=[248,224,224];
   var GOLD=[160,130,50], GOLD_L=[250,244,215];
 
   function sf(c){doc.setFillColor(c[0],c[1],c[2]);}
@@ -1344,269 +1363,256 @@ function exportarPDF(estilo){
   function fb(size){doc.setFont('helvetica','bold');doc.setFontSize(size);}
   function fn(size){doc.setFont('helvetica','normal');doc.setFontSize(size);}
 
-  // ── Helpers ───────────────────────────────────────────────
-  function header(title){
-    sf(NAVY); doc.rect(0,0,PW,18,'F');
-    if(logoSrc && logoSrc.indexOf('base64')>=0){
-      try{ doc.addImage(logoSrc,'PNG',PW-20,1,16,16); }catch(e){}
+  function card(x,y,w,h,label){
+    sf(LAV_BG); doc.roundedRect(x,y,w,h,3,3,'F');
+    if(label){ st(NAVY); fb(9); doc.text(label,x+6,y+8); }
+  }
+
+  function lineChart(x,y,w,h,labels,values,color){
+    var maxV=Math.max.apply(null,values.concat([1]))*1.15;
+    var n=values.length;
+    var padL=12,padB=7,padT=3,padR=4;
+    var pw=w-padL-padR, ph=h-padT-padB;
+    fn(6); st(MUTED);
+    for(var g=0;g<=3;g++){
+      var gvv=maxV*g/3, gy=y+h-padB-ph*g/3;
+      doc.text(fk0(gvv),x+padL-2,gy+1,{align:'right'});
+      sd(GRID); doc.setLineWidth(0.15); doc.line(x+padL,gy,x+w-padR,gy);
     }
-    st(WHITE); fb(9); doc.text(empresa,ML,10);
-    fn(7); st([160,190,220]); doc.text(periodo,ML,15);
-    st([160,185,215]); doc.text('Pág.'+doc.internal.getNumberOfPages(),PW-22,15);
-    if(title){
-      st(NAVY); fb(13); doc.text(title,ML,29);
-      sf(BLUE); doc.rect(ML,31,doc.getTextWidth(title)+3,1.2,'F');
-    }
-  }
-
-  function footer(){
-    sd(LINE); doc.setLineWidth(0.25); doc.line(ML,PH-10,PW-ML,PH-10);
-    fn(7); st(MUTED);
-    doc.text('SurGestion | surgestionpm.cl',ML,PH-5);
-    doc.text(hoy,PW/2,PH-5,{align:'center'});
-    doc.text('Página '+doc.internal.getNumberOfPages(),PW-ML,PH-5,{align:'right'});
-  }
-
-  function kpiCard(x,y,w,h,label,val,bgC,valC,sub){
-    sf(bgC||BG); doc.roundedRect(x,y,w,h,2,2,'F');
-    sd(LINE); doc.setLineWidth(0.2); doc.roundedRect(x,y,w,h,2,2,'S');
-    fn(6.5); st(MUTED); doc.text(label.toUpperCase(),x+w/2,y+5,{align:'center'});
-    fb(10); st(valC||NAVY); doc.text(val,x+w/2,y+11.5,{align:'center'});
-    if(sub){ fn(6); st(MUTED); doc.text(sub,x+w/2,y+h-2.5,{align:'center'}); }
-  }
-
-  function sLabel(txt,y){
-    st(BLUE); fb(8); doc.text(txt,ML,y); return y+5;
-  }
-
-  function autoT(head,rows,colW,y0,parseFn,margin){
-    var m=margin||{left:ML,right:MR};
-    doc.autoTable({
-      startY:y0, head:[head], body:rows, theme:'plain',
-      headStyles:{fillColor:NAVY,textColor:WHITE,fontStyle:'bold',fontSize:7,
-                  cellPadding:{top:2.5,bottom:2.5,left:4,right:4}},
-      bodyStyles:{fontSize:7,cellPadding:{top:2,bottom:2,left:4,right:4},textColor:TEXT},
-      alternateRowStyles:{fillColor:BG},
-      columnStyles:colW||{},
-      didParseCell:parseFn||function(){},
-      tableLineColor:LINE, tableLineWidth:0.2,
-      margin:m
+    var pts=values.map(function(v,i){
+      var px=x+padL+(n>1?pw*i/(n-1):pw/2);
+      var py=y+h-padB-(maxV>0?ph*v/maxV:0);
+      return [px,py];
     });
-    return doc.lastAutoTable.finalY;
+    sd(color); doc.setLineWidth(0.7);
+    for(var i=0;i<pts.length-1;i++) doc.line(pts[i][0],pts[i][1],pts[i+1][0],pts[i+1][1]);
+    sf(color);
+    pts.forEach(function(p){doc.circle(p[0],p[1],1.1,'F');});
+    fn(6); st(MUTED);
+    labels.forEach(function(l,i){doc.text(l,pts[i][0],y+h-padB+5,{align:'center'});});
+  }
+
+  function barChart(x,y,w,h,labels,serA,serB,colA,colB){
+    var maxV=Math.max.apply(null,serA.concat(serB).concat([1]))*1.15;
+    var n=labels.length;
+    var padL=12,padB=7,padT=3,padR=4;
+    var pw=w-padL-padR, ph=h-padT-padB;
+    var gw=pw/n, bw=Math.min(gw*0.32,7);
+    fn(6); st(MUTED);
+    for(var g=0;g<=3;g++){
+      var gvv=maxV*g/3, gy=y+h-padB-ph*g/3;
+      doc.text(fk0(gvv),x+padL-2,gy+1,{align:'right'});
+      sd(GRID); doc.setLineWidth(0.15); doc.line(x+padL,gy,x+w-padR,gy);
+    }
+    labels.forEach(function(l,i){
+      var gx=x+padL+gw*i+gw/2;
+      var hA=maxV>0?ph*serA[i]/maxV:0, hB=maxV>0?ph*serB[i]/maxV:0;
+      sf(colA); doc.roundedRect(gx-bw-1,y+h-padB-hA,bw,hA,0.5,0.5,'F');
+      sf(colB); doc.roundedRect(gx+1,y+h-padB-hB,bw,hB,0.5,0.5,'F');
+      fn(6); st(MUTED); doc.text(l,gx,y+h-padB+5,{align:'center'});
+    });
+  }
+
+  function legend(x,y,items){
+    var lx=x;
+    items.forEach(function(it){
+      sf(it.c); doc.circle(lx+1,y-1,1,'F');
+      fn(6.5); st(MUTED); doc.text(it.l,lx+3.5,y);
+      lx+=3.5+doc.getTextWidth(it.l)+5;
+    });
   }
 
   // ══════════════════════════════════════════════════════════
-  // PÁGINA 1 — PORTADA EJECUTIVA
+  // PÁGINA 1 — Informe de Resultados
   // ══════════════════════════════════════════════════════════
-  sf(NAVY); doc.rect(0,0,PW,PH*0.46,'F');
-  sf(BLUE); doc.rect(0,PH*0.46-4,PW,4,'F');
+  sf(LAV_BG); doc.rect(0,0,PW,PH,'F');
+  sf(WHITE); doc.roundedRect(6,6,PW-12,PH-12,6,6,'F');
+
+  var X0=16, XR=PW-16, CWp=XR-X0;
 
   if(logoSrc && logoSrc.indexOf('base64')>=0){
-    try{ doc.addImage(logoSrc,'PNG',PW/2-22,24,44,44); }catch(e){}
+    try{ doc.addImage(logoSrc,'PNG',X0,14,16,16); }catch(e){}
   }
-  st(WHITE); fb(22); doc.text(empresa,PW/2,82,{align:'center'});
-  fn(10.5); st([160,195,230]); doc.text('Reporte Financiero Ejecutivo',PW/2,91,{align:'center'});
-  sf(BLUE); doc.roundedRect(PW/2-32,98,64,12,6,6,'F');
-  st(WHITE); fb(8.5); doc.text(periodo.charAt(0).toUpperCase()+periodo.slice(1),PW/2,106,{align:'center'});
+  st(NAVY); fb(17); doc.text('INFORME DE RESULTADOS',X0+20,22);
+  fn(11.5); st(NAVY); doc.text(periodoTxt,X0+20,29);
+  fn(7); st(MUTED); doc.text('S U R G E S T I Ó N',X0+20,35);
 
-  // Resumen en portada
-  var py=PH*0.46+14;
-  st(NAVY); fb(9); doc.text('RESUMEN EJECUTIVO',PW/2,py,{align:'center'}); py+=8;
+  var y=45;
 
-  var kw4=(CW-6)/4;
-  kpiCard(ML,py,kw4,17,'Ventas Brutas',vb,BG,NAVY,'Con IVA');
-  kpiCard(ML+kw4+2,py,kw4,17,'Ventas Netas',vn,BG,NAVY,'Sin IVA');
-  kpiCard(ML+(kw4+2)*2,py,kw4,17,'Gastos Netos',gn,BG,NAVY,'Operacional');
-  kpiCard(ML+(kw4+2)*3,py,kw4,17,'Resultado',res,resNeg?RED_L:GREEN_L,resNeg?RED:GREEN,'Operacional');
-  py+=22;
+  var kw=(CWp-8)/3;
+  [['Ventas',vn,NAVY],['Gastos',gn,NAVY],['Resultado',res,resNeg?RED:GREEN]].forEach(function(k,i){
+    var kx=X0+i*(kw+4);
+    card(kx,y,kw,20);
+    sf(WHITE); doc.circle(kx+9,y+10,5.5,'F');
+    st(NAVY); fb(9); doc.text('$',kx+9,y+11.7,{align:'center'});
+    st(MUTED); fn(7); doc.text(k[0],kx+17,y+8.5);
+    st(k[2]); fb(11.5); doc.text(k[1],kx+17,y+15.5);
+  });
+  y+=26;
 
-  var kw3=(CW-4)/3;
-  kpiCard(ML,py,kw3,15,'Margen Bruto',mb,BG,BLUE);
-  kpiCard(ML+kw3+2,py,kw3,15,'Margen Neto',mn,BG,BLUE);
-  kpiCard(ML+(kw3+2)*2,py,kw3,15,'Punto Equilibrio',pe,BG,NAVY);
-  py+=20;
+  var hEvo=48;
+  card(X0,y,CWp,hEvo,'Evolución de Ventas · '+periodoTxt);
+  lineChart(X0+2,y+11,CWp-4,hEvo-15,sel.map(lm),sel.map(function(p){return ventasPorMes[p]||0;}),NAVY_DARK);
+  y+=hEvo+6;
 
-  var kw2a=(CW-2)/2;
-  kpiCard(ML,py,kw2a,15,'Proyección Run Rate',proy,BG,BLUE);
-  kpiCard(ML+kw2a+2,py,kw2a,15,'Var. Interanual YoY',yoy,yoyNeg?RED_L:GREEN_L,yoyNeg?RED:GREEN);
-  py+=21;
+  var hRow=62;
+  var colW=(CWp-6)/2;
 
-  sd(LINE); doc.setLineWidth(0.25); doc.line(ML,py,PW-ML,py);
-  fn(7); st(MUTED); doc.text('SurGestion | surgestionpm.cl',ML,py+6);
-  doc.text(hoy,PW-ML,py+6,{align:'right'});
+  card(X0,y,colW,hRow,'Gasto x Familia (% s/ Venta Neta)');
+  var fy=y+13;
+  famArrPdf.slice(0,7).forEach(function(f){
+    var pct = vnTotalSel>0 ? (f[1]/vnTotalSel*100) : 0;
+    fn(7); st(TEXT); doc.text(f[0].length>22?f[0].slice(0,22)+'…':f[0],X0+6,fy);
+    fb(7); st(NAVY); doc.text(pct.toFixed(1)+'%',X0+colW-6,fy,{align:'right'});
+    fn(6.5); st(MUTED); doc.text(fk(f[1]),X0+colW-24,fy,{align:'right'});
+    fy+=6.6;
+  });
 
-  // ══════════════════════════════════════════════════════════
-  // PÁGINA 2 — VENTAS
-  // ══════════════════════════════════════════════════════════
-  doc.addPage(); header('Ventas del Período');
-  var y=36;
+  var x2=X0+colW+6;
+  card(x2,y,colW,hRow,'Venta x Categoría (Monto / Unidades)');
+  var fy2=y+13;
+  catArrPdf.forEach(function(c){
+    fn(7); st(TEXT); doc.text(c[0].length>16?c[0].slice(0,16)+'…':c[0],x2+6,fy2);
+    fb(7); st(NAVY); doc.text(fk(c[1].monto),x2+colW-6,fy2,{align:'right'});
+    fn(6.5); st(MUTED); doc.text(c[1].cant+' u.',x2+colW-30,fy2,{align:'right'});
+    fy2+=6.6;
+  });
+  y+=hRow+6;
 
-  // IVA F29 — 3 mini-cards
-  var kw3b=(CW-4)/3;
-  kpiCard(ML,y,kw3b,14,'IVA Débito',ivaD,BLUE_L,NAVY);
-  kpiCard(ML+kw3b+2,y,kw3b,14,'IVA Crédito',ivaC,BLUE_L,NAVY);
-  var ivaBad=ihP.indexOf('PAGAR')>=0;
-  kpiCard(ML+(kw3b+2)*2,y,kw3b,14,ihP,ivaP,ivaBad?RED_L:GREEN_L,ivaBad?RED:GREEN);
-  y+=19;
+  card(X0,y,colW,hRow,'Margen Bruto y Margen Neto');
+  fn(7); st(MUTED); doc.text('Calculado sobre '+periodoTxt,X0+6,y+15);
 
-  // Categorías + Formas de pago en 2 columnas
-  var col=CW/2-3;
-  y=sLabel('Ventas por Categoría',y);
-  var y1=autoT(['Categoría','Monto','%'],catRows,
-    {0:{cellWidth:col*0.58},1:{cellWidth:col*0.25,halign:'right'},2:{cellWidth:col*0.17,halign:'right'}},
-    y,null,{left:ML,right:ML+col+3+MR})+4;
+  fn(7.5); st(MUTED); doc.text('MARGEN BRUTO',X0+6,y+27);
+  fb(15); st(NAVY); doc.text(mb,X0+6,y+37);
+  fn(6.5); st(MUTED); doc.text('Resultado / Ventas Brutas',X0+6,y+43);
 
-  y=sLabel('Formas de Pago',y-y1+y1); // reset y para columna derecha
-  var y2=autoT(['Forma de Pago','Monto','%'],pagRows,
-    {0:{cellWidth:col*0.58},1:{cellWidth:col*0.25,halign:'right'},2:{cellWidth:col*0.17,halign:'right'}},
-    36+19+5,null,{left:ML+col+3,right:MR})+4;
+  fn(7.5); st(MUTED); doc.text('MARGEN NETO',X0+colW/2+4,y+27);
+  fb(15); st(NAVY); doc.text(mn,X0+colW/2+4,y+37);
+  fn(6.5); st(MUTED); doc.text('Resultado / Ventas Netas',X0+colW/2+4,y+43);
 
-  y=Math.max(y1,y2)+2;
-  // Turnos
-  y=sLabel('Comparativo por Turno',y);
-  var turHead=['Turno','Monto','% Vtas','Trans.','Ticket Prom.'];
-  var turCols={0:{cellWidth:38},1:{cellWidth:45,halign:'right'},2:{cellWidth:25,halign:'right'},
-               3:{cellWidth:22,halign:'right'},4:{cellWidth:CW-130,halign:'right'}};
-  y=autoT(turHead,turRows,turCols,y)+4;
+  card(x2,y,colW,hRow,'Evolución Mensual · Resultado Operacional');
+  legend(x2+6,y+13,[{c:NAVY_DARK,l:'Ventas'},{c:BLUE_SOFT,l:'Gastos'}]);
+  barChart(x2+2,y+16,colW-4,hRow-20,sel.map(lm),
+    sel.map(function(p){return ventasPorMes[p]||0;}),
+    sel.map(function(p){return gastosPorMes[p]||0;}), NAVY_DARK, BLUE_SOFT);
+  y+=hRow+8;
 
-  footer();
-
-  // ══════════════════════════════════════════════════════════
-  // PÁGINA 3 — GASTOS
-  // ══════════════════════════════════════════════════════════
-  doc.addPage(); header('Gastos del Período');
-  y=36;
-
-  var kw4g=(CW-6)/4;
-  kpiCard(ML,y,kw4g,15,'Gastos Brutos',gb,BG,NAVY);
-  kpiCard(ML+kw4g+2,y,kw4g,15,'Gastos Netos',gn,BG,NAVY);
-  kpiCard(ML+(kw4g+2)*2,y,kw4g,15,'Costos Fijos',cf,BG,BLUE);
-  kpiCard(ML+(kw4g+2)*3,y,kw4g,15,'Costos Variables',cv,BG,BLUE);
-  y+=20;
-
-  // Familias de gasto
-  y=sLabel('Gastos por Familia',y);
-  y=autoT(['Familia','Gasto Neto','% Gasto','% V.Neta'],famRows,
-    {0:{cellWidth:CW*0.42},1:{cellWidth:CW*0.22,halign:'right'},
-     2:{cellWidth:CW*0.18,halign:'right'},3:{cellWidth:CW*0.18,halign:'right'}},y)+4;
-
-  // Tipo documento en 2 col con familias
-  y=sLabel('Tipo de Documento (SII)',y);
-  y=autoT(['Tipo Documento','Monto','%'],tdocRows,
-    {0:{cellWidth:CW*0.6},1:{cellWidth:CW*0.25,halign:'right'},2:{cellWidth:CW*0.15,halign:'right'}},y)+4;
-
-  footer();
+  sd(LINE); doc.setLineWidth(0.25); doc.line(X0,y,XR,y); y+=5;
+  fn(7); st(MUTED);
+  doc.text(empresa+' · SurGestion | surgestionpm.cl',X0,y);
+  doc.text(hoy,XR,y,{align:'right'});
 
   // ══════════════════════════════════════════════════════════
-  // PÁGINA 4 — COMPARATIVO ANUAL
+  // PÁGINA 2 — EERR Comparativo (año en curso, meses cerrados) — horizontal
   // ══════════════════════════════════════════════════════════
-  doc.addPage(); header('Comparativo Anual de Ventas Brutas');
-  y=36;
-  fn(7.5); st(MUTED); doc.text('Ventas brutas históricas por mes y año · Última columna: variación vs año anterior',ML,y); y+=7;
+  var anioActualPdf=new Date().getFullYear();
+  var mesActualIdxPdf=new Date().getMonth();
+  var periodosP2 = MESES_ORD_PDF.slice(0,mesActualIdxPdf)
+    .map(function(m){return m+' '+anioActualPdf;})
+    .filter(function(p){return _periodos.indexOf(p)>=0;});
 
-  if(compAnualHead.length && compAnualRows.length){
-    var nc=compAnualHead.length;
-    var cw={0:{cellWidth:36}};
-    var rw=(CW-36)/(nc-1);
-    for(var ci=1;ci<nc;ci++) cw[ci]={cellWidth:rw,halign:'right'};
-    y=autoT(compAnualHead,compAnualRows,cw,y,function(d){
-      if(d.column.index===compAnualHead.length-1 && d.section==='body'){
-        var v=String(d.cell.raw||'');
-        if(v.indexOf('-')>=0 && v.indexOf('%')>=0){
-          d.cell.styles.textColor=RED; d.cell.styles.fontStyle='bold';
-        } else if(v.indexOf('%')>=0){
-          d.cell.styles.textColor=GREEN; d.cell.styles.fontStyle='bold';
-        }
-      }
-    })+8;
-  } else {
-    fn(9); st(MUTED); doc.text('Sin datos de comparativo anual disponibles.',ML,y+10);
-  }
-
-  footer();
-
-  // ══════════════════════════════════════════════════════════
-  // PÁGINA 5 — EERR COMPARATIVO (últimos 6 meses)
-  // ══════════════════════════════════════════════════════════
-  var u6=_periodos.slice(0,6).slice().reverse();
-  if(!u6.length){
-    _finalizePages(doc); doc.save(empresa+' - '+periodo+'.pdf'); return;
-  }
-
-  var r6=_reportes.filter(function(r){return u6.indexOf(r.periodo)>=0;});
-  var ids6=r6.map(function(r){return r.id;});
-  var rm6={}; r6.forEach(function(r){rm6[r.id]=r.periodo;});
-
-  fetchByIds('costos',ids6).then(function(c6){
-    var d6={};
-    u6.forEach(function(p){d6[p]={vb:0,vn:0,gn:0,fams:{}};});
-    r6.forEach(function(r){
-      d6[r.periodo].vb=Number(r.ventas_brutas||0);
-      d6[r.periodo].vn=_aplicaIva?Number(r.ventas_netas||0):Number(r.ventas_brutas||0);
-    });
-    c6.forEach(function(c){
-      var p=rm6[c.reporte_id]; if(!p||!d6[p]) return;
-      if(/impuesto|iva|tribut/i.test(c.familia||c.categoria||'')) return;
-      var n=getNetoDoc(c); d6[p].gn+=n;
-      var f=c.familia||c.categoria||'Sin familia';
-      if(!d6[p].fams[f])d6[p].fams[f]=0; d6[p].fams[f]+=n;
-    });
-
-    var fams6=[];
-    u6.forEach(function(p){Object.keys(d6[p].fams).forEach(function(f){if(fams6.indexOf(f)<0)fams6.push(f);});});
-    fams6.sort(function(a,b){
-      return u6.reduce(function(s,p){return s+(d6[p].fams[b]||0);},0)
-            -u6.reduce(function(s,p){return s+(d6[p].fams[a]||0);},0);
-    });
-
-    function lm(p){var pt=p.split(' ');return pt[0].slice(0,3).charAt(0).toUpperCase()+pt[0].slice(1,3)+"'"+pt[1].slice(2);}
-    function fk(v){return v===0?'-':'$'+(v>=1000000?(v/1000000).toFixed(1)+'M':(v/1000).toFixed(0)+'K');}
-
-    doc.addPage(); header('Estado de Resultados Comparativo');
-    y=36;
-    fn(7.5); st(MUTED); doc.text('Últimos '+u6.length+' meses · K=miles, M=millones · Gastos en base neta SII',ML,y); y+=7;
-
-    var tvb=u6.reduce(function(s,p){return s+d6[p].vb;},0);
-    var tvn=u6.reduce(function(s,p){return s+d6[p].vn;},0);
-    var tgn=u6.reduce(function(s,p){return s+d6[p].gn;},0);
-    var tres=tvn-tgn;
-
-    var eH=[''].concat(u6.map(lm)).concat(['Total']);
-    var eR=[];
-    eR.push(['Ventas Brutas'].concat(u6.map(function(p){return fk(d6[p].vb);})).concat([fk(tvb)]));
-    eR.push(['Ventas Netas'].concat(u6.map(function(p){return fk(d6[p].vn);})).concat([fk(tvn)]));
-    eR.push(['— GASTOS —'].concat(u6.map(function(){return '';})).concat(['']));
-    fams6.forEach(function(f){
-      var tf=u6.reduce(function(s,p){return s+(d6[p].fams[f]||0);},0);
-      if(!tf) return;
-      eR.push([f].concat(u6.map(function(p){return fk(d6[p].fams[f]||0);})).concat([fk(tf)]));
-    });
-    eR.push(['Total Gastos Netos'].concat(u6.map(function(p){return fk(d6[p].gn);})).concat([fk(tgn)]));
-    eR.push(['RESULTADO OPERACIONAL'].concat(u6.map(function(p){return fk(d6[p].vn-d6[p].gn);})).concat([fk(tres)]));
-
-    var nc2=eH.length;
-    var cw2={0:{cellWidth:42,fontStyle:'bold'}};
-    var rw2=(CW-42)/(nc2-1);
-    for(var ci2=1;ci2<nc2;ci2++) cw2[ci2]={cellWidth:rw2,halign:'right'};
-
-    autoT(eH,eR,cw2,y,function(d){
-      var lb=String(d.cell.raw||'');
-      if(lb==='RESULTADO OPERACIONAL'){
-        d.cell.styles.fillColor=tres<0?RED_L:GREEN_L;
-        d.cell.styles.textColor=tres<0?RED:GREEN;
-        d.cell.styles.fontStyle='bold';
-      }
-      if(lb==='Total Gastos Netos'||lb.indexOf('GASTOS')>=0){
-        d.cell.styles.fillColor=BLUE_L; d.cell.styles.textColor=NAVY; d.cell.styles.fontStyle='bold';
-      }
-      if(lb==='Ventas Netas') d.cell.styles.fontStyle='bold';
-    });
-
-    footer();
-    // Aplicar footer a todas las páginas
+  function finalizarYGuardar(){
     var total=doc.internal.getNumberOfPages();
-    for(var pg=1;pg<=total;pg++){ doc.setPage(pg); if(pg>1) footer(); }
-    doc.save(empresa+' - '+periodo+' - Reporte.pdf');
+    for(var pg=1;pg<=total;pg++){
+      doc.setPage(pg);
+      fn(7); st(MUTED);
+      doc.text('SurGestion | surgestionpm.cl',10,290);
+      doc.text('Página '+pg+' de '+total,doc.internal.pageSize.getWidth()-10,290,{align:'right'});
+    }
+    doc.save(empresa+' - '+periodoTxt+' - Informe.pdf');
+  }
+
+  if(!periodosP2.length){
+    doc.addPage('a4','l');
+    st(NAVY); fb(13); doc.text('EERR Comparativo '+anioActualPdf,14,20);
+    fn(9); st(MUTED); doc.text('Aún no hay meses cerrados en '+anioActualPdf+'.',14,30);
+    finalizarYGuardar();
+    return;
+  }
+
+  var repsP2=_reportes.filter(function(r){return periodosP2.indexOf(r.periodo)>=0;});
+  var idsP2=repsP2.map(function(r){return r.id;});
+  var repMapP2={}; repsP2.forEach(function(r){repMapP2[r.id]=r.periodo;});
+
+  fetchByIds('costos',idsP2).then(function(costosP2){
+    var dat={};
+    periodosP2.forEach(function(p){dat[p]={vb:0,vn:0,gn:0,fams:{}};});
+    repsP2.forEach(function(r){
+      dat[r.periodo].vb=Number(r.ventas_brutas||0);
+      dat[r.periodo].vn=_aplicaIva?Number(r.ventas_netas||0):Number(r.ventas_brutas||0);
+    });
+    costosP2.forEach(function(c){
+      var p=repMapP2[c.reporte_id]; if(!p||!dat[p]) return;
+      if(/impuesto|iva|tribut/i.test(c.familia||c.categoria||'')) return;
+      var n=getNetoDoc(c);
+      dat[p].gn+=n;
+      var f=c.familia||c.categoria||'Sin familia';
+      dat[p].fams[f]=(dat[p].fams[f]||0)+n;
+    });
+
+    var famsP2=[];
+    periodosP2.forEach(function(p){Object.keys(dat[p].fams).forEach(function(f){if(famsP2.indexOf(f)<0)famsP2.push(f);});});
+    famsP2.sort(function(a,b){
+      return periodosP2.reduce(function(s,p){return s+(dat[p].fams[b]||0);},0)
+            -periodosP2.reduce(function(s,p){return s+(dat[p].fams[a]||0);},0);
+    });
+
+    var tVbP2=periodosP2.reduce(function(s,p){return s+dat[p].vb;},0);
+    var tVnP2=periodosP2.reduce(function(s,p){return s+dat[p].vn;},0);
+    var tGnP2=periodosP2.reduce(function(s,p){return s+dat[p].gn;},0);
+    var tResP2=tVnP2-tGnP2;
+    var tMargenP2 = tVnP2>0 ? (tResP2/tVnP2*100) : null;
+
+    doc.addPage('a4','l');
+    var PWl=297, MLl=10, MRl=10, CWl=PWl-MLl-MRl;
+    sf(NAVY); doc.rect(0,0,PWl,16,'F');
+    st(WHITE); fb(11); doc.text('EERR Comparativo · '+empresa,MLl,10);
+    fn(7.5); st([180,200,225]); doc.text('Año '+anioActualPdf+' · Meses cerrados: '+lm(periodosP2[0])+' - '+lm(periodosP2[periodosP2.length-1])+' · Gastos en base neta SII, sin impuestos',MLl,14);
+
+    var head=['Concepto'].concat(periodosP2.map(lm)).concat(['Total','% V.Neta']);
+    var body=[];
+    body.push(['Ventas Brutas'].concat(periodosP2.map(function(p){return fk(dat[p].vb);})).concat([fk(tVbP2),'']));
+    body.push(['Ventas Netas'].concat(periodosP2.map(function(p){return fk(dat[p].vn);})).concat([fk(tVnP2),'']));
+    famsP2.forEach(function(f){
+      var tf=periodosP2.reduce(function(s,p){return s+(dat[p].fams[f]||0);},0);
+      if(!tf) return;
+      var pctVn = tVnP2>0 ? (tf/tVnP2*100).toFixed(1)+'%' : '-';
+      body.push([f].concat(periodosP2.map(function(p){return fk(dat[p].fams[f]||0);})).concat([fk(tf),pctVn]));
+    });
+    body.push(['Total Gastos Netos'].concat(periodosP2.map(function(p){return fk(dat[p].gn);})).concat([fk(tGnP2), tVnP2>0?(tGnP2/tVnP2*100).toFixed(1)+'%':'-']));
+    body.push(['RESULTADO OPERACIONAL'].concat(periodosP2.map(function(p){return fk(dat[p].vn-dat[p].gn);})).concat([fk(tResP2), tMargenP2==null?'-':tMargenP2.toFixed(1)+'%']));
+
+    var nc=head.length;
+    var cw={0:{cellWidth:40,fontStyle:'bold'}};
+    var rw=(CWl-40-30)/(nc-2);
+    for(var ci=1;ci<nc-1;ci++) cw[ci]={cellWidth:rw,halign:'right'};
+    cw[nc-1]={cellWidth:30,halign:'right'};
+
+    doc.autoTable({
+      startY:20, head:[head], body:body, theme:'plain',
+      headStyles:{fillColor:NAVY,textColor:WHITE,fontStyle:'bold',fontSize:7.5,cellPadding:{top:2.5,bottom:2.5,left:3,right:3}},
+      bodyStyles:{fontSize:7.5,cellPadding:{top:2,bottom:2,left:3,right:3},textColor:TEXT},
+      alternateRowStyles:{fillColor:LAV_BG},
+      columnStyles:cw,
+      didParseCell:function(d){
+        var lb=String(d.cell.raw||'');
+        if(lb==='RESULTADO OPERACIONAL'){ d.cell.styles.fillColor=tResP2<0?RED_L:GREEN_L; d.cell.styles.textColor=tResP2<0?RED:GREEN; d.cell.styles.fontStyle='bold'; }
+        if(lb==='Total Gastos Netos'){ d.cell.styles.fillColor=[210,220,248]; d.cell.styles.textColor=NAVY; d.cell.styles.fontStyle='bold'; }
+        if(lb==='Ventas Netas') d.cell.styles.fontStyle='bold';
+      },
+      tableLineColor:LINE, tableLineWidth:0.2,
+      margin:{left:MLl,right:MRl}
+    });
+
+    var finalY=doc.lastAutoTable.finalY+6;
+    st(NAVY); fb(9); doc.text('Margen Neto del período: ',MLl,finalY);
+    st(tMargenP2!=null && tMargenP2<0 ? RED : GREEN); fb(9);
+    doc.text(tMargenP2==null?'-':tMargenP2.toFixed(1)+'%', MLl+45, finalY);
+
+    finalizarYGuardar();
+  }).catch(function(err){
+    console.error('Error exportando PDF (EERR):',err);
+    finalizarYGuardar();
   });
 }
 
