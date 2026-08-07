@@ -1286,6 +1286,7 @@ function exportarExcel(){
 }
 
 function exportarPDF(estilo){
+ try{
   var empresa  = (document.getElementById('empresa-nombre')||{}).textContent||'Empresa';
   var hoy      = new Date().toLocaleDateString('es-CL',{day:'2-digit',month:'long',year:'numeric'});
   var logoEl   = document.getElementById('nav-logo');
@@ -1407,8 +1408,9 @@ function exportarPDF(estilo){
     labels.forEach(function(l,i){
       var gx=x+padL+gw*i+gw/2;
       var hA=maxV>0?ph*serA[i]/maxV:0, hB=maxV>0?ph*serB[i]/maxV:0;
-      sf(colA); doc.roundedRect(gx-bw-1,y+h-padB-hA,bw,hA,0.5,0.5,'F');
-      sf(colB); doc.roundedRect(gx+1,y+h-padB-hB,bw,hB,0.5,0.5,'F');
+      var rad=0.5;
+      sf(colA); if(hA>rad*2){ doc.roundedRect(gx-bw-1,y+h-padB-hA,bw,hA,rad,rad,'F'); } else if(hA>0){ doc.rect(gx-bw-1,y+h-padB-hA,bw,hA,'F'); }
+      sf(colB); if(hB>rad*2){ doc.roundedRect(gx+1,y+h-padB-hB,bw,hB,rad,rad,'F'); } else if(hB>0){ doc.rect(gx+1,y+h-padB-hB,bw,hB,'F'); }
       fn(6); st(MUTED); doc.text(l,gx,y+h-padB+5,{align:'center'});
     });
   }
@@ -1533,6 +1535,12 @@ function exportarPDF(estilo){
   var repsP2=_reportes.filter(function(r){return periodosP2.indexOf(r.periodo)>=0;});
   var idsP2=repsP2.map(function(r){return r.id;});
   var repMapP2={}; repsP2.forEach(function(r){repMapP2[r.id]=r.periodo;});
+
+ }catch(errSync){
+  console.error('Error generando el PDF (página 1):', errSync);
+  alert('Ocurrió un error generando el PDF: '+errSync.message+'\n\nRevisa la consola (F12) para más detalles.');
+  return;
+ }
 
   fetchByIds('costos',idsP2).then(function(costosP2){
     var dat={};
