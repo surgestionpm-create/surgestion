@@ -1296,7 +1296,7 @@ function exportarPDF(estilo){
   function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
   function lm(p){var pt=p.split(' ');return pt[0].slice(0,3).charAt(0).toUpperCase()+pt[0].slice(1,3)+"'"+pt[1].slice(2);}
   function fk(v){ v=v||0; var neg=v<0; v=Math.abs(v); var s= v>=1000000?'$'+(v/1000000).toFixed(1)+'M': v>=1000?'$'+Math.round(v/1000)+'K' : '$'+Math.round(v); return neg?'-'+s:s; }
-  function fk0(v){ v=v||0; return v>=1000000?(v/1000000).toFixed(1)+'M': v>=1000?Math.round(v/1000)+'K':Math.round(v); }
+  function fk0(v){ v=v||0; return v>=1000000?(v/1000000).toFixed(1)+'M': v>=1000?Math.round(v/1000)+'K':String(Math.round(v)); }
 
   function gv(id){ var e=document.getElementById(id); return e?e.textContent.trim():'--'; }
   var vb=gv('kv-vb'), vn=gv('kv-vn'), gn=gv('kv-gn'), res=gv('iv-res'), mb=gv('iv-mb'), mn=gv('iv-mn');
