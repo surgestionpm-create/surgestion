@@ -1494,6 +1494,26 @@ function exportarPDF(estilo){
       return '<tr><td>'+cap(m)+'</td>'+(hayAnioAnteriorComp?'<td>'+(a?fmtN(a):'-')+'</td>':'')+'<td>'+(b!=null?fmtN(b):'-')+'</td>'+(hayAnioAnteriorComp?'<td class="'+cls+'">'+varTxt+'</td>':'')+'</tr>';
     }).join('');
 
+    // Fila de Total: suma completa de cada año + variación "a la fecha" excluyendo el mes en curso
+    var hoyAnualPdf = new Date();
+    var mesEnCursoAnualPdf = (String(anioMasReciente)===String(hoyAnualPdf.getFullYear())) ? MESES_ORD_PDF[hoyAnualPdf.getMonth()] : null;
+    var mesesConDatosAnioActPdf = MESES_ORD_PDF.filter(function(m){
+      return datosAnual[anioMasReciente] && datosAnual[anioMasReciente][m] > 0 && m !== mesEnCursoAnualPdf;
+    });
+    var totalActAnioPdf = MESES_ORD_PDF.reduce(function(s,m){ return s+((datosAnual[anioMasReciente]&&datosAnual[anioMasReciente][m])||0); },0);
+    var totalAntAnioPdf = hayAnioAnteriorComp ? MESES_ORD_PDF.reduce(function(s,m){ return s+((datosAnual[anioAnteriorComp]&&datosAnual[anioAnteriorComp][m])||0); },0) : null;
+    var totalActFechaPdf = mesesConDatosAnioActPdf.reduce(function(s,m){ return s+((datosAnual[anioMasReciente]&&datosAnual[anioMasReciente][m])||0); },0);
+    var totalAntFechaPdf = hayAnioAnteriorComp ? mesesConDatosAnioActPdf.reduce(function(s,m){ return s+((datosAnual[anioAnteriorComp]&&datosAnual[anioAnteriorComp][m])||0); },0) : 0;
+
+    if(hayAnioAnteriorComp){
+      var pctTotalPdf = (totalAntFechaPdf>0 && totalActFechaPdf>0) ? ((totalActFechaPdf-totalAntFechaPdf)/totalAntFechaPdf*100) : null;
+      var clsTotalPdf = pctTotalPdf!=null ? (pctTotalPdf>=0?'pos':'neg') : '';
+      var varTotalTxtPdf = pctTotalPdf!=null ? (pctTotalPdf>=0?'▲ +':'▼ ')+Math.abs(pctTotalPdf).toFixed(1)+'%' : '-';
+      filasAnualHtml += '<tr class="tot"><td>Total</td><td>'+fmtN(totalAntAnioPdf)+'</td><td>'+fmtN(totalActAnioPdf)+'</td><td class="'+clsTotalPdf+'">'+varTotalTxtPdf+'</td></tr>';
+    } else {
+      filasAnualHtml += '<tr class="tot"><td>Total</td><td>'+fmtN(totalActAnioPdf)+'</td></tr>';
+    }
+
     var headAnualHtml = hayAnioAnteriorComp
       ? '<tr><th>Mes</th><th>'+anioAnteriorComp+'</th><th>'+anioMasReciente+'</th><th>Var.</th></tr>'
       : '<tr><th>Mes</th><th>'+anioMasReciente+'</th></tr>';
@@ -1582,7 +1602,8 @@ function exportarPDF(estilo){
     +'#pdf-render-root tr.tot td{font-weight:700;background:#D9E0F7}'
     +'#pdf-render-root tr.res td{font-weight:700}'
     +'#pdf-render-root tr.fam-row td{font-weight:700;background:#EEF1FB}'
-    +'#pdf-render-root tr.cat-row td:first-child{padding-left:18px;color:#78879E}'
+    +'#pdf-render-root tr.cat-row td{color:#C9971A}'
+    +'#pdf-render-root tr.cat-row td:first-child{padding-left:18px}'
     +'#pdf-render-root .pos{color:#277A56} #pdf-render-root .neg{color:#B23C3C}'
     +'#pdf-render-root .chartwrap{background:#fff;border-radius:8px;padding:8px;height:230px}'
     +'#pdf-render-root .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}'
