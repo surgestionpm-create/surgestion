@@ -1835,10 +1835,14 @@ function renderCompAnual(){
 
   t+='</tbody>';
 
-  // ── Fila de Total por año, con variación "a la fecha" (mismos meses en ambos años) ──
+  // ── Fila de Total por año, con variación "a la fecha" (mismos meses en ambos años, EXCLUYENDO el mes en curso) ──
   var anioAct = anios[anios.length-1];
   var anioAnt = anios.length>=2 ? anios[anios.length-2] : null;
-  var mesesConDatosAnioAct = mesesOrden.filter(function(mes){ return (datos[anioAct]&&datos[anioAct][mes])>0; });
+  var hoyComp = new Date();
+  var mesEnCursoComp = (String(anioAct)===String(hoyComp.getFullYear())) ? mesesOrden[hoyComp.getMonth()] : null;
+  var mesesConDatosAnioAct = mesesOrden.filter(function(mes){
+    return (datos[anioAct]&&datos[anioAct][mes])>0 && mes!==mesEnCursoComp;
+  });
 
   t+='<tfoot><tr style="background:var(--navy);border-top:2px solid var(--navy)">';
   t+='<td style="padding:9px 14px;font-size:12px;font-weight:700;color:#fff">Total</td>';
