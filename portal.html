@@ -1599,13 +1599,21 @@ function exportarPDF(estilo){
   // ══════════════════════════════════════════════════════════
   var X0=16, XR=PW-16, CWp=XR-X0;
 
-  function pageLavender(titulo, subtitulo){
+  function pageLavenderBg(){
     sf(LAV_BG); doc.rect(0,0,PW,PH,'F');
     sf(WHITE); doc.roundedRect(6,6,PW-12,PH-12,6,6,'F');
+  }
+  function pageLavenderHeaderOnly(titulo, subtitulo){
     if(logoOk){ try{ doc.addImage(logoEl,logoFmt,X0,12,13,13); }catch(e){} }
     st(NAVY); fb(13); doc.text(titulo, logoOk?X0+17:X0, 19);
     fn(7.5); st(MUTED); doc.text(subtitulo||periodoTxt, logoOk?X0+17:X0, 25);
-    _currentPageHeaderFn=function(){ pageLavender(titulo,subtitulo); };
+  }
+  function pageLavender(titulo, subtitulo){
+    pageLavenderBg();
+    pageLavenderHeaderOnly(titulo, subtitulo);
+    // IMPORTANTE: en didDrawPage NUNCA se debe repintar el fondo completo (pageLavenderBg),
+    // solo el encabezado — de lo contrario se tapa el contenido de la tabla ya dibujado en esa página.
+    _currentPageHeaderFn=function(){ pageLavenderHeaderOnly(titulo,subtitulo); };
     return 34;
   }
 
