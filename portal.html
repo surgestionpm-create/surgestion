@@ -1515,12 +1515,14 @@ function exportarPDF(estilo){
     _currentPageHeaderFn=function(){ pageHeader(titulo,subtitulo); };
   }
 
-  function autoT(head,body,colWidths,startY,didParseCell,tableWidth){
+  function autoT(head,body,colWidths,startY,didParseCell,tableWidth,fontSize){
+    fontSize=fontSize||7.5;
     doc.autoTable({
       startY:startY, head:[head], body:body, theme:'plain',
       tableWidth: tableWidth||'auto',
-      headStyles:{fillColor:NAVY,textColor:WHITE,fontStyle:'bold',fontSize:7.5,cellPadding:{top:2.5,bottom:2.5,left:3,right:3}},
-      bodyStyles:{fontSize:7.5,cellPadding:{top:2,bottom:2,left:3,right:3},textColor:TEXT},
+      styles:{overflow:'linebreak',cellWidth:'wrap'},
+      headStyles:{fillColor:NAVY,textColor:WHITE,fontStyle:'bold',fontSize:fontSize,cellPadding:{top:2.2,bottom:2.2,left:2,right:2}},
+      bodyStyles:{fontSize:fontSize,cellPadding:{top:1.8,bottom:1.8,left:2,right:2},textColor:TEXT},
       alternateRowStyles:{fillColor:LAV_BG},
       columnStyles:colWidths||{},
       didParseCell:didParseCell||function(){},
@@ -1695,17 +1697,17 @@ function exportarPDF(estilo){
   })).concat([fmtFull(resTotalSel), vnTotalSel>0?(resTotalSel/vnTotalSel*100).toFixed(1)+'%':'-']));
 
   var ncE=headEerr.length;
-  var cwE={0:{cellWidth:34,fontStyle:'bold'}};
-  var rwE=(CWp-34-20)/(ncE-2);
+  var cwE={0:{cellWidth:30,fontStyle:'bold'}};
+  var rwE=(CWp-30-18)/(ncE-2);
   for(var ciE=1;ciE<ncE-1;ciE++) cwE[ciE]={cellWidth:rwE,halign:'right'};
-  cwE[ncE-1]={cellWidth:20,halign:'right'};
+  cwE[ncE-1]={cellWidth:18,halign:'right'};
 
   autoT(headEerr,bodyEerr,cwE,yE,function(d){
     var lb=String(d.cell.raw||'');
     if(lb==='RESULTADO OPERACIONAL'){ d.cell.styles.fillColor=resTotalSel<0?RED_L:GREEN_L; d.cell.styles.textColor=resTotalSel<0?RED:GREEN; d.cell.styles.fontStyle='bold'; }
     if(lb==='Total Gastos Netos'){ d.cell.styles.fillColor=[210,220,248]; d.cell.styles.textColor=NAVY; d.cell.styles.fontStyle='bold'; }
     if(lb==='Ventas Netas (sin IVA)') d.cell.styles.fontStyle='bold';
-  }, CWp);
+  }, CWp, 6.3);
 
   // ══════════════════════════════════════════════════════════
   // PÁGINA 3 — Familia → Categoría (montos completos)
@@ -1717,7 +1719,7 @@ function exportarPDF(estilo){
   var bodyFC=[];
   famCatOrdenado.forEach(function(entry){
     var famNombre=entry[0], famData=entry[1];
-    bodyFC.push(['■ '+famNombre].concat(sel.map(function(p){
+    bodyFC.push([famNombre].concat(sel.map(function(p){
       var s=0; Object.keys(famData.cats).forEach(function(c){s+=famData.cats[c][p]||0;});
       return fmtFull(s);
     })).concat([fmtFull(famData._total)]));
@@ -1727,20 +1729,24 @@ function exportarPDF(estilo){
     });
   });
 
+  var nombresFamilia=famCatOrdenado.map(function(e){return e[0];});
+
   var ncFC=headFC.length;
-  var cwFC={0:{cellWidth:38}};
-  var rwFC=(CWp-38-20)/(ncFC-2);
+  var cwFC={0:{cellWidth:32}};
+  var rwFC=(CWp-32-18)/(ncFC-2);
   for(var ciFC=1;ciFC<ncFC-1;ciFC++) cwFC[ciFC]={cellWidth:rwFC,halign:'right'};
-  cwFC[ncFC-1]={cellWidth:20,halign:'right',fontStyle:'bold'};
+  cwFC[ncFC-1]={cellWidth:18,halign:'right',fontStyle:'bold'};
 
   doc.autoTable({
     startY:yFC, head:[headFC], body:bodyFC, theme:'plain',
-    headStyles:{fillColor:NAVY,textColor:WHITE,fontStyle:'bold',fontSize:6.3,cellPadding:{top:1.8,bottom:1.8,left:2,right:2}},
-    bodyStyles:{fontSize:6,cellPadding:{top:1.3,bottom:1.3,left:2,right:2},textColor:TEXT},
+    styles:{overflow:'linebreak',cellWidth:'wrap'},
+    headStyles:{fillColor:NAVY,textColor:WHITE,fontStyle:'bold',fontSize:6,cellPadding:{top:1.6,bottom:1.6,left:1.8,right:1.8}},
+    bodyStyles:{fontSize:5.3,cellPadding:{top:1.1,bottom:1.1,left:1.8,right:1.8},textColor:TEXT},
+    alternateRowStyles:{fillColor:LAV_BG},
     columnStyles:cwFC,
     didParseCell:function(d){
       var lb=String(d.cell.raw||'');
-      if(lb.indexOf('■')===0){ d.cell.styles.fillColor=[210,220,248]; d.cell.styles.textColor=NAVY; d.cell.styles.fontStyle='bold'; }
+      if(nombresFamilia.indexOf(lb)>=0){ d.cell.styles.fillColor=[210,220,248]; d.cell.styles.textColor=NAVY; d.cell.styles.fontStyle='bold'; }
     },
     didDrawPage:function(){ if(_currentPageHeaderFn) _currentPageHeaderFn(); },
     tableLineColor:LINE, tableLineWidth:0.15,
@@ -1855,15 +1861,15 @@ function exportarPDF(estilo){
   })).concat([fmtFull(totPagosSel)]));
 
   var ncP=headPagos.length;
-  var cwP={0:{cellWidth:34}};
-  var rwP=(CWp-34-20)/(ncP-2);
+  var cwP={0:{cellWidth:28}};
+  var rwP=(CWp-28-18)/(ncP-2);
   for(var ciP=1;ciP<ncP-1;ciP++) cwP[ciP]={cellWidth:rwP,halign:'right'};
-  cwP[ncP-1]={cellWidth:20,halign:'right'};
+  cwP[ncP-1]={cellWidth:18,halign:'right'};
 
   autoT(headPagos,bodyPagos,cwP,yP,function(d){
     var lb=String(d.cell.raw||'');
     if(lb==='Total'){ d.cell.styles.fillColor=[210,220,248]; d.cell.styles.textColor=NAVY; d.cell.styles.fontStyle='bold'; }
-  }, CWp);
+  }, CWp, 6.3);
 
   finalizarYGuardar();
    } catch(errAsync){
