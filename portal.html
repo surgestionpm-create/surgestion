@@ -1582,8 +1582,7 @@ function exportarPDF(estilo){
     +'#pdf-render-root tr.tot td{font-weight:700;background:#D9E0F7}'
     +'#pdf-render-root tr.res td{font-weight:700}'
     +'#pdf-render-root tr.fam-row td{font-weight:700;background:#EEF1FB}'
-    +'#pdf-render-root tr.cat-row td{color:#C9971A}'
-    +'#pdf-render-root tr.cat-row td:first-child{padding-left:18px}'
+    +'#pdf-render-root tr.cat-row td:first-child{padding-left:18px;color:#78879E}'
     +'#pdf-render-root .pos{color:#277A56} #pdf-render-root .neg{color:#B23C3C}'
     +'#pdf-render-root .chartwrap{background:#fff;border-radius:8px;padding:8px;height:230px}'
     +'#pdf-render-root .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}'
@@ -1704,7 +1703,7 @@ function exportarPDF(estilo){
         filename: empresa+' - '+periodoTxt+' - Informe.pdf',
         image:{type:'jpeg', quality:0.95},
         html2canvas:{scale:2, useCORS:true, backgroundColor:'#E2E7FB', scrollX:0, scrollY:0, windowWidth:820},
-        jsPDF:{unit:'mm', format:'a4', orientation:'portrait'},
+        jsPDF:{unit:'px', format:[820,1160], orientation:'portrait'},
         pagebreak:{mode:['css','legacy']}
       }).from(root).save().then(function(){
         document.body.removeChild(overlay);
