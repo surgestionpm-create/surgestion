@@ -1563,7 +1563,7 @@ function exportarPDF(estilo){
     // HTML completo del informe (mismo CSS del preview aprobado)
     // ══════════════════════════════════════════════════════════
     var htmlInforme = ''
-    +'<div id="pdf-render-root" style="position:fixed;top:0;left:0;width:820px;z-index:-9999;font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#20303A">'
+    +'<div id="pdf-render-root" style="position:relative;width:820px;margin:0 auto;font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#20303A">'
     +'<style>'
     +'#pdf-render-root *{box-sizing:border-box}'
     +'#pdf-render-root .pdf-page{background:#E2E7FB;padding:18px;page-break-after:always}'
@@ -1642,10 +1642,19 @@ function exportarPDF(estilo){
 
     +'</div>'; // fin pdf-render-root
 
-    // Inyectar en el DOM
+    // Inyectar en el DOM. El contenido va en flujo normal (sin trucos de position:fixed/z-index
+    // que tienen bugs conocidos en html2canvas) pero cubierto por un overlay a pantalla completa
+    // con mensaje de "generando", para que el usuario no vea el HTML crudo mientras se captura.
+    var overlay = document.createElement('div');
+    overlay.id = 'pdf-overlay-generando';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#1B3A5Ccc;z-index:99999;display:flex;align-items:center;justify-content:center;color:#fff;font-family:system-ui,sans-serif;font-size:15px';
+    overlay.innerHTML = 'Generando informe, un momento...';
+    document.body.appendChild(overlay);
+
     var contenedor = document.createElement('div');
+    contenedor.style.cssText = 'position:relative;z-index:100000;background:#E2E7FB;max-height:80vh;overflow:auto;margin:8vh auto;width:840px;border-radius:8px;padding:10px';
     contenedor.innerHTML = htmlInforme;
-    document.body.appendChild(contenedor);
+    overlay.appendChild(contenedor);
     var root = document.getElementById('pdf-render-root');
 
     // Renderizar gráficos Chart.js (sin animación, para que estén listos de inmediato)
@@ -1697,12 +1706,12 @@ function exportarPDF(estilo){
         jsPDF:{unit:'px', format:[820,1160], orientation:'portrait'},
         pagebreak:{mode:['css','legacy']}
       }).from(root).save().then(function(){
-        document.body.removeChild(contenedor);
+        document.body.removeChild(overlay);
         setBotonPDFCargando(false);
       }).catch(function(errPdf){
         console.error('Error generando el PDF (html2pdf):', errPdf);
         alert('Ocurrió un error generando el PDF: '+errPdf.message);
-        document.body.removeChild(contenedor);
+        document.body.removeChild(overlay);
         setBotonPDFCargando(false);
       });
     }, 350);
