@@ -1704,7 +1704,7 @@ function exportarPDF(estilo){
         filename: empresa+' - '+periodoTxt+' - Informe.pdf',
         image:{type:'jpeg', quality:0.95},
         html2canvas:{scale:2, useCORS:true, backgroundColor:'#E2E7FB', scrollX:0, scrollY:0, windowWidth:820},
-        jsPDF:{unit:'px', format:[820,1160], orientation:'portrait'},
+        jsPDF:{unit:'mm', format:'a4', orientation:'portrait'},
         pagebreak:{mode:['css','legacy']}
       }).from(root).save().then(function(){
         document.body.removeChild(overlay);
