@@ -1762,29 +1762,31 @@ function fetchById(table, id){
 function fetchByIds(table, ids){
   if(!ids||!ids.length) return Promise.resolve([]);
   var PAGE=1000, all=[];
-  function page(os){
-    return sb_client.from(table).select('*')
+  function page(lastId){
+    var q = sb_client.from(table).select('*')
       .in('reporte_id', ids)
       .order('id', {ascending:true})
-      .range(os, os+PAGE-1)
-      .then(function(r){
+      .limit(PAGE);
+    if(lastId!=null) q = q.gt('id', lastId);
+    return q.then(function(r){
         if(r.error){
           if(!page._reintentos) page._reintentos={};
-          var n=(page._reintentos[os]||0)+1;
-          page._reintentos[os]=n;
+          var clave = lastId==null?'inicio':lastId;
+          var n=(page._reintentos[clave]||0)+1;
+          page._reintentos[clave]=n;
           if(n<=3){
-            return new Promise(function(res){ setTimeout(res,400*n); }).then(function(){ return page(os); });
+            return new Promise(function(res){ setTimeout(res,400*n); }).then(function(){ return page(lastId); });
           }
-          console.error('fetchByIds: fallo definitivo en página',os,'de',table,r.error);
+          console.error('fetchByIds: fallo definitivo en',table,'después de id',lastId,r.error);
           return all;
         }
         var rows=r.data||[];
         all=all.concat(rows);
-        if(rows.length===PAGE) return page(os+PAGE);
+        if(rows.length===PAGE) return page(rows[rows.length-1].id);
         return all;
       });
   }
-  return page(0);
+  return page(null);
 }
 
 // ── Gráfico comparativo anual ──────────────────────────────────
