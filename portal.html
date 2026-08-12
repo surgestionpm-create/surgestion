@@ -1575,10 +1575,10 @@ function exportarPDF(estilo){
     +'#pdf-render-root .tag{font-size:9px;letter-spacing:2px;color:#78879E;margin-top:5px}'
     +'#pdf-render-root h2{font-size:14px;color:#1B3A5C;border-left:4px solid #A3B2EB;padding-left:9px;margin:20px 0 10px}'
     +'#pdf-render-root .card{background:#E2E7FB;border-radius:10px;padding:14px 16px;margin-bottom:12px}'
-    +'#pdf-render-root table{width:100%;border-collapse:collapse;font-size:9.5px;table-layout:fixed}'
-    +'#pdf-render-root th{background:#1B3A5C;color:#fff;text-align:right;padding:5px 4px;font-size:8px;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
-    +'#pdf-render-root th:first-child,#pdf-render-root td:first-child{text-align:left;width:20%}'
-    +'#pdf-render-root td{padding:4px 4px;text-align:right;border-bottom:1px solid #EEF1FB;overflow:hidden;text-overflow:clip;white-space:nowrap}'
+    +'#pdf-render-root table{width:100%;border-collapse:collapse;font-size:10px}'
+    +'#pdf-render-root th{background:#1B3A5C;color:#fff;text-align:right;padding:5px 6px;font-size:8.5px;text-transform:uppercase;white-space:nowrap}'
+    +'#pdf-render-root th:first-child,#pdf-render-root td:first-child{text-align:left}'
+    +'#pdf-render-root td{padding:4px 6px;text-align:right;border-bottom:1px solid #EEF1FB;white-space:nowrap}'
     +'#pdf-render-root tr.tot td{font-weight:700;background:#D9E0F7}'
     +'#pdf-render-root tr.res td{font-weight:700}'
     +'#pdf-render-root tr.fam-row td{font-weight:700;background:#EEF1FB}'
@@ -1704,7 +1704,7 @@ function exportarPDF(estilo){
         filename: empresa+' - '+periodoTxt+' - Informe.pdf',
         image:{type:'jpeg', quality:0.95},
         html2canvas:{scale:2, useCORS:true, backgroundColor:'#E2E7FB', scrollX:0, scrollY:0, windowWidth:820},
-        jsPDF:{unit:'mm', format:'a4', orientation:'portrait'},
+        jsPDF:{unit:'px', format:[820,1160], orientation:'portrait'},
         pagebreak:{mode:['css','legacy']}
       }).from(root).save().then(function(){
         document.body.removeChild(overlay);
