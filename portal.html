@@ -1565,7 +1565,7 @@ function exportarPDF(estilo){
     // HTML completo del informe (mismo CSS del preview aprobado)
     // ══════════════════════════════════════════════════════════
     var htmlInforme = ''
-    +'<div id="pdf-render-root" style="position:fixed;left:-9999px;top:0;width:820px;font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#20303A">'
+    +'<div id="pdf-render-root" style="position:fixed;top:0;left:0;width:820px;z-index:-9999;font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#20303A">'
     +'<style>'
     +'#pdf-render-root *{box-sizing:border-box}'
     +'#pdf-render-root .pdf-page{background:#E2E7FB;padding:18px;page-break-after:always}'
@@ -1690,11 +1690,12 @@ function exportarPDF(estilo){
 
     // Dar un instante a que los canvases terminen de pintar antes de capturar
     setTimeout(function(){
+      window.scrollTo(0,0);
       html2pdf().set({
         margin:0,
         filename: empresa+' - '+periodoTxt+' - Informe.pdf',
         image:{type:'jpeg', quality:0.95},
-        html2canvas:{scale:2, useCORS:true, backgroundColor:'#E2E7FB'},
+        html2canvas:{scale:2, useCORS:true, backgroundColor:'#E2E7FB', scrollX:0, scrollY:0, windowWidth:820},
         jsPDF:{unit:'px', format:[820,1160], orientation:'portrait'},
         pagebreak:{mode:['css','legacy']}
       }).from(root).save().then(function(){
