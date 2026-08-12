@@ -308,11 +308,13 @@ html { scroll-behavior: smooth; }
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
         Exportar Excel
       </button>
-      <button onclick="exportarPDF()" style="display:flex;align-items:center;gap:6px;background:#E74C3C;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-        Exportar PDF
+      <button id="btn-exportar-pdf" onclick="exportarPDF()" style="display:flex;align-items:center;gap:6px;background:#E74C3C;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit">
+        <svg id="pdf-icon-doc" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        <svg id="pdf-icon-spinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;animation:girar .8s linear infinite"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>
+        <span id="pdf-btn-texto">Exportar PDF</span>
       </button>
     </div>
+    <style>@keyframes girar{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}</style>
   </div>
   <div class="periodo-nav">
     <label>Desde:</label>
@@ -1285,7 +1287,22 @@ function exportarExcel(){
   }
 }
 
+function setBotonPDFCargando(cargando){
+  var btn=document.getElementById('btn-exportar-pdf');
+  var icoDoc=document.getElementById('pdf-icon-doc');
+  var icoSpin=document.getElementById('pdf-icon-spinner');
+  var txt=document.getElementById('pdf-btn-texto');
+  if(!btn) return;
+  btn.disabled=cargando;
+  btn.style.opacity=cargando?'.7':'1';
+  btn.style.cursor=cargando?'default':'pointer';
+  if(icoDoc) icoDoc.style.display=cargando?'none':'inline';
+  if(icoSpin) icoSpin.style.display=cargando?'inline':'none';
+  if(txt) txt.textContent=cargando?'Generando informe...':'Exportar PDF';
+}
+
 function exportarPDF(estilo){
+ setBotonPDFCargando(true);
  try{
   var empresa  = (document.getElementById('empresa-nombre')||{}).textContent||'Empresa';
   var hoy      = new Date().toLocaleDateString('es-CL',{day:'2-digit',month:'long',year:'numeric'});
@@ -1311,6 +1328,7 @@ function exportarPDF(estilo){
 
   if(!sel.length){
     alert('Aún no hay meses cerrados en '+anioInforme+' para generar el informe (recién comenzó el año).');
+    setBotonPDFCargando(false);
     return;
   }
 
@@ -1569,34 +1587,39 @@ function exportarPDF(estilo){
       doc.text('Página '+pg+' de '+total,doc.internal.pageSize.getWidth()-10,doc.internal.pageSize.getHeight()-7,{align:'right'});
     }
     doc.save(empresa+' - '+periodoTxt+' - Informe.pdf');
+    setBotonPDFCargando(false);
   }
 
   function generarPDFCompleto(filasSemanales, hayDatosSemanales){
    try{
 
   // ══════════════════════════════════════════════════════════
+  // Estilo unificado para TODAS las páginas: fondo lavanda + panel blanco + texto navy
+  // (idéntico al diseño aprobado en la vista previa — sin barra navy, sin KPIs extra)
+  // ══════════════════════════════════════════════════════════
+  var X0=16, XR=PW-16, CWp=XR-X0;
+
+  function pageLavender(titulo, subtitulo){
+    sf(LAV_BG); doc.rect(0,0,PW,PH,'F');
+    sf(WHITE); doc.roundedRect(6,6,PW-12,PH-12,6,6,'F');
+    if(logoOk){ try{ doc.addImage(logoEl,logoFmt,X0,12,13,13); }catch(e){} }
+    st(NAVY); fb(13); doc.text(titulo, logoOk?X0+17:X0, 19);
+    fn(7.5); st(MUTED); doc.text(subtitulo||periodoTxt, logoOk?X0+17:X0, 25);
+    _currentPageHeaderFn=function(){ pageLavender(titulo,subtitulo); };
+    return 34;
+  }
+
+  // ══════════════════════════════════════════════════════════
   // PÁGINA 1 — Portada + Comparativo Anual
   // ══════════════════════════════════════════════════════════
   sf(LAV_BG); doc.rect(0,0,PW,PH,'F');
   sf(WHITE); doc.roundedRect(6,6,PW-12,PH-12,6,6,'F');
-  var X0=16, XR=PW-16, CWp=XR-X0;
 
   if(logoOk){ try{ doc.addImage(logoEl,logoFmt,X0,14,16,16); }catch(e){} }
   st(NAVY); fb(17); doc.text('INFORME DE RESULTADOS',X0+20,22);
   fn(11.5); st(NAVY); doc.text(periodoTxt,X0+20,29);
   fn(7); st(MUTED); doc.text('S U R G E S T I Ó N',X0+20,35);
-  var y=45;
-
-  var kw=(CWp-8)/3;
-  [['Ventas',vn,NAVY],['Gastos',gn,NAVY],['Resultado',res,resNeg?RED:GREEN]].forEach(function(k,i){
-    var kx=X0+i*(kw+4);
-    card(kx,y,kw,20);
-    sf(WHITE); doc.circle(kx+9,y+10,5.5,'F');
-    st(NAVY); fb(9); doc.text('$',kx+9,y+11.7,{align:'center'});
-    st(MUTED); fn(7); doc.text(k[0],kx+17,y+8.5);
-    st(k[2]); fb(11.5); doc.text(k[1],kx+17,y+15.5);
-  });
-  y+=26;
+  var y=48;
 
   st(NAVY); fb(9); doc.text('1 · Comparativo Anual de Ventas Brutas',X0,y); y+=6;
 
@@ -1609,7 +1632,6 @@ function exportarPDF(estilo){
   if(hayAnioAnteriorComp){
     legend(X0+6,y+8,[{c:BLUE_SOFT,l:anioAnteriorComp},{c:NAVY_DARK,l:anioMasReciente}]);
     var ptsAnual=lineChart(X0+2,y+11,CWp-4,hChartAnual-15,mesesLabelsCortos,serieAct,NAVY_DARK,serieAnt,BLUE_SOFT);
-    // % de variación sobre cada punto
     fn(6); fb(6);
     MESES_ORD_PDF.forEach(function(m,i){
       var a=serieAnt&&serieAnt[i], b=serieAct[i];
@@ -1640,14 +1662,11 @@ function exportarPDF(estilo){
   var colWAnual=hayAnioAnteriorComp?{0:{cellWidth:35},3:{cellWidth:25}}:{0:{cellWidth:35}};
   autoT(headAnual,bodyAnual,colWAnual,y,function(d){}, CWp);
 
-  finalizarYGuardar_addFooterNote();
-  function finalizarYGuardar_addFooterNote(){} // placeholder no-op (footer se agrega al final con finalizarYGuardar)
-
   // ══════════════════════════════════════════════════════════
   // PÁGINA 2 — EERR por Familia (TODAS las familias, montos completos)
   // ══════════════════════════════════════════════════════════
   doc.addPage();
-  pageHeader('EERR por Familia · '+empresa, periodoTxt+' · Gastos en base neta SII, sin impuestos');
+  var yE=pageLavender('EERR por Familia', periodoTxt+' · Gastos en base neta SII, sin impuestos');
 
   var headEerr=['Concepto'].concat(sel.map(lm)).concat(['Total','%V.Neta']);
   var bodyEerr=[];
@@ -1668,30 +1687,23 @@ function exportarPDF(estilo){
   })).concat([fmtFull(resTotalSel), vnTotalSel>0?(resTotalSel/vnTotalSel*100).toFixed(1)+'%':'-']));
 
   var ncE=headEerr.length;
-  var cwE={0:{cellWidth:38,fontStyle:'bold'}};
-  var rwE=(CW-38-22)/(ncE-2);
+  var cwE={0:{cellWidth:34,fontStyle:'bold'}};
+  var rwE=(CWp-34-20)/(ncE-2);
   for(var ciE=1;ciE<ncE-1;ciE++) cwE[ciE]={cellWidth:rwE,halign:'right'};
-  cwE[ncE-1]={cellWidth:22,halign:'right'};
+  cwE[ncE-1]={cellWidth:20,halign:'right'};
 
-  autoT(headEerr,bodyEerr,cwE,20,function(d){
+  autoT(headEerr,bodyEerr,cwE,yE,function(d){
     var lb=String(d.cell.raw||'');
     if(lb==='RESULTADO OPERACIONAL'){ d.cell.styles.fillColor=resTotalSel<0?RED_L:GREEN_L; d.cell.styles.textColor=resTotalSel<0?RED:GREEN; d.cell.styles.fontStyle='bold'; }
     if(lb==='Total Gastos Netos'){ d.cell.styles.fillColor=[210,220,248]; d.cell.styles.textColor=NAVY; d.cell.styles.fontStyle='bold'; }
     if(lb==='Ventas Netas (sin IVA)') d.cell.styles.fontStyle='bold';
-  });
+  }, CWp);
 
   // ══════════════════════════════════════════════════════════
-  // PÁGINA 3 — Familia → Categoría (horizontal, montos completos)
+  // PÁGINA 3 — Familia → Categoría (montos completos)
   // ══════════════════════════════════════════════════════════
-  doc.addPage('a4','l');
-  var PWl=297, MLl=10, MRl=10, CWl=PWl-MLl-MRl;
-  function headerFamCat(){
-    sf(NAVY); doc.rect(0,0,PWl,16,'F');
-    if(logoOk){ try{ doc.addImage(logoEl,logoFmt,MLl,2,12,12); }catch(e){} }
-    st(WHITE); fb(11); doc.text('Desglose Familia → Categoría · '+empresa, logoOk?MLl+16:MLl, 9);
-    fn(7.5); st([180,200,225]); doc.text(periodoTxt+' · Gastos en base neta SII, sin impuestos', logoOk?MLl+16:MLl, 13.5);
-  }
-  headerFamCat();
+  doc.addPage();
+  var yFC=pageLavender('Desglose Familia → Categoría', periodoTxt+' · Gastos en base neta SII, sin impuestos');
 
   var headFC=['Familia / Categoría'].concat(sel.map(lm)).concat(['Total']);
   var bodyFC=[];
@@ -1708,51 +1720,45 @@ function exportarPDF(estilo){
   });
 
   var ncFC=headFC.length;
-  var cwFC={0:{cellWidth:48}};
-  var rwFC=(CWl-48-26)/(ncFC-2);
+  var cwFC={0:{cellWidth:38}};
+  var rwFC=(CWp-38-20)/(ncFC-2);
   for(var ciFC=1;ciFC<ncFC-1;ciFC++) cwFC[ciFC]={cellWidth:rwFC,halign:'right'};
-  cwFC[ncFC-1]={cellWidth:26,halign:'right',fontStyle:'bold'};
+  cwFC[ncFC-1]={cellWidth:20,halign:'right',fontStyle:'bold'};
 
   doc.autoTable({
-    startY:20, head:[headFC], body:bodyFC, theme:'plain',
-    headStyles:{fillColor:NAVY,textColor:WHITE,fontStyle:'bold',fontSize:7,cellPadding:{top:2,bottom:2,left:3,right:3}},
-    bodyStyles:{fontSize:6.8,cellPadding:{top:1.5,bottom:1.5,left:3,right:3},textColor:TEXT},
+    startY:yFC, head:[headFC], body:bodyFC, theme:'plain',
+    headStyles:{fillColor:NAVY,textColor:WHITE,fontStyle:'bold',fontSize:6.3,cellPadding:{top:1.8,bottom:1.8,left:2,right:2}},
+    bodyStyles:{fontSize:6,cellPadding:{top:1.3,bottom:1.3,left:2,right:2},textColor:TEXT},
     columnStyles:cwFC,
     didParseCell:function(d){
       var lb=String(d.cell.raw||'');
       if(lb.indexOf('■')===0){ d.cell.styles.fillColor=[210,220,248]; d.cell.styles.textColor=NAVY; d.cell.styles.fontStyle='bold'; }
     },
-    didDrawPage:function(){ headerFamCat(); },
+    didDrawPage:function(){ if(_currentPageHeaderFn) _currentPageHeaderFn(); },
     tableLineColor:LINE, tableLineWidth:0.15,
-    margin:{left:MLl,right:MRl,top:20}
+    margin:{left:ML,right:MR,top:20},
+    tableWidth:CWp
   });
 
   // ══════════════════════════════════════════════════════════
-  // PÁGINA 4 — Comparativo Semanal (Lunes–Domingo, horizontal)
+  // PÁGINA 4 — Comparativo Semanal (Lunes–Domingo)
   // ══════════════════════════════════════════════════════════
-  doc.addPage('a4','l');
-  function headerSemanal(){
-    sf(NAVY); doc.rect(0,0,PWl,16,'F');
-    if(logoOk){ try{ doc.addImage(logoEl,logoFmt,MLl,2,12,12); }catch(e){} }
-    st(WHITE); fb(11); doc.text('Comparativo Semanal (Lunes–Domingo) · '+empresa, logoOk?MLl+16:MLl, 9);
-    fn(7.5); st([180,200,225]); doc.text(periodoTxt+(hayDatosSemanales?'':' · Sin datos de fecha suficientes para este cálculo'), logoOk?MLl+16:MLl, 13.5);
-  }
-  headerSemanal();
+  doc.addPage();
+  var yW=pageLavender('Comparativo Semanal (Lunes–Domingo)', periodoTxt+(hayDatosSemanales?'':' · Sin datos de fecha suficientes'));
 
-  var yW=20;
   if(hayDatosSemanales && filasSemanales.length){
     var hChartSem=52;
-    sf(LAV_BG); doc.roundedRect(MLl,yW,CWl,hChartSem,3,3,'F');
+    card(X0,yW,CWp,hChartSem);
     var labelsSem=filasSemanales.map(function(f,i){return String(i+1);});
     var serieSemAct=filasSemanales.map(function(f){return f.montoActual;});
     var hayAnteriorSem=filasSemanales.some(function(f){return f.montoAnterior!=null;});
     if(hayAnteriorSem){
-      legend(MLl+6,yW+8,[{c:BLUE_SOFT,l:'Año anterior'},{c:NAVY_DARK,l:'Año actual'}]);
+      legend(X0+6,yW+8,[{c:BLUE_SOFT,l:'Año anterior'},{c:NAVY_DARK,l:'Año actual'}]);
       var serieSemAnt=filasSemanales.map(function(f){return f.montoAnterior;});
-      lineChart(MLl+2,yW+11,CWl-4,hChartSem-15,labelsSem,serieSemAct,NAVY_DARK,serieSemAnt,BLUE_SOFT);
+      lineChart(X0+2,yW+11,CWp-4,hChartSem-15,labelsSem,serieSemAct,NAVY_DARK,serieSemAnt,BLUE_SOFT);
     } else {
-      fn(7); st(MUTED); doc.text('Sin datos del año anterior para comparar.',MLl+6,yW+9);
-      lineChart(MLl+2,yW+12,CWl-4,hChartSem-16,labelsSem,serieSemAct,NAVY_DARK);
+      fn(7); st(MUTED); doc.text('Sin datos del año anterior para comparar.',X0+6,yW+9);
+      lineChart(X0+2,yW+12,CWp-4,hChartSem-16,labelsSem,serieSemAct,NAVY_DARK);
     }
     yW+=hChartSem+6;
 
@@ -1769,38 +1775,37 @@ function exportarPDF(estilo){
       }
       return row;
     });
-    var cwSem={0:{cellWidth:18},1:{cellWidth:38}};
+    var cwSem={0:{cellWidth:16},1:{cellWidth:32}};
     var ncSem=headSem.length;
-    var rwSem=(CWl-18-38)/(ncSem-2);
+    var rwSem=(CWp-16-32)/(ncSem-2);
     for(var ciSem=2;ciSem<ncSem;ciSem++) cwSem[ciSem]={cellWidth:rwSem,halign:'right'};
     doc.autoTable({
       startY:yW, head:[headSem], body:bodySem, theme:'plain',
-      headStyles:{fillColor:NAVY,textColor:WHITE,fontStyle:'bold',fontSize:7.5,cellPadding:{top:2.5,bottom:2.5,left:3,right:3}},
-      bodyStyles:{fontSize:7.5,cellPadding:{top:2,bottom:2,left:3,right:3},textColor:TEXT},
+      headStyles:{fillColor:NAVY,textColor:WHITE,fontStyle:'bold',fontSize:7,cellPadding:{top:2,bottom:2,left:2.5,right:2.5}},
+      bodyStyles:{fontSize:6.8,cellPadding:{top:1.5,bottom:1.5,left:2.5,right:2.5},textColor:TEXT},
       alternateRowStyles:{fillColor:LAV_BG},
       columnStyles:cwSem,
-      didDrawPage:function(){ headerSemanal(); },
+      didDrawPage:function(){ if(_currentPageHeaderFn) _currentPageHeaderFn(); },
       tableLineColor:LINE, tableLineWidth:0.2,
-      margin:{left:MLl,right:MRl,top:20}
+      margin:{left:ML,right:MR,top:20},
+      tableWidth:CWp
     });
   } else {
-    fn(9); st(MUTED); doc.text('No hay suficientes datos con fecha para calcular el comparativo semanal de este período.',MLl,yW+10);
+    fn(9); st(MUTED); doc.text('No hay suficientes datos con fecha para calcular el comparativo semanal de este período.',X0,yW+10);
   }
 
   // ══════════════════════════════════════════════════════════
   // PÁGINA 5 — Formas de Pago (mensual, montos completos)
   // ══════════════════════════════════════════════════════════
   doc.addPage();
-  pageHeader('Formas de Pago · '+empresa, periodoTxt);
-
-  var yP=22;
-  st(NAVY); fb(9); doc.text('Distribución por medio de pago',ML,yP); yP+=4;
+  var yP=pageLavender('Formas de Pago', periodoTxt);
+  yP+=2;
 
   var hDona=50;
-  var colWp=(CW-6)/2;
+  var colWp=(CWp-6)/2;
   var coloresDonut=[[27,58,92],[58,90,140],[95,125,176],[138,160,208],[163,178,235],[195,205,242],[217,224,247],[232,236,250]];
-  card(ML,yP,colWp,hDona,'Distribución (barra proporcional)');
-  var barX=ML+6, barY=yP+15, barW=colWp-12, barH=10;
+  card(X0,yP,colWp,hDona,'Distribución (barra proporcional)');
+  var barX=X0+6, barY=yP+15, barW=colWp-12, barH=10;
   var accX=barX;
   pagosOrdenados.slice(0,8).forEach(function(p,i){
     var frac=p[1]/totPagosSel;
@@ -1815,18 +1820,18 @@ function exportarPDF(estilo){
 
   var lyLeg=barY+barH+8;
   pagosOrdenados.slice(0,8).forEach(function(p,i){
-    sf(coloresDonut[i%coloresDonut.length]); doc.rect(ML+6,lyLeg-3,3,3,'F');
-    fn(6.5); st(TEXT); doc.text(p[0].length>18?p[0].slice(0,18)+'…':p[0], ML+11, lyLeg);
-    fb(6.5); st(NAVY); doc.text((p[1]/totPagosSel*100).toFixed(1)+'%', ML+colWp-6, lyLeg, {align:'right'});
+    sf(coloresDonut[i%coloresDonut.length]); doc.rect(X0+6,lyLeg-3,3,3,'F');
+    fn(6.5); st(TEXT); doc.text(p[0].length>18?p[0].slice(0,18)+'…':p[0], X0+11, lyLeg);
+    fb(6.5); st(NAVY); doc.text((p[1]/totPagosSel*100).toFixed(1)+'%', X0+colWp-6, lyLeg, {align:'right'});
     lyLeg+=5;
   });
 
-  card(ML+colWp+6,yP,colWp,hDona,'Ranking por monto');
+  card(X0+colWp+6,yP,colWp,hDona,'Ranking por monto');
   var lyR=yP+13;
   pagosOrdenados.forEach(function(p){
     if(lyR>yP+hDona-4) return;
-    fn(7); st(TEXT); doc.text(p[0].length>20?p[0].slice(0,20)+'…':p[0], ML+colWp+12, lyR);
-    fb(7); st(NAVY); doc.text(fmtFull(p[1]), ML+2*colWp, lyR, {align:'right'});
+    fn(7); st(TEXT); doc.text(p[0].length>20?p[0].slice(0,20)+'…':p[0], X0+colWp+12, lyR);
+    fb(7); st(NAVY); doc.text(fmtFull(p[1]), X0+2*colWp, lyR, {align:'right'});
     lyR+=5.5;
   });
   yP+=hDona+8;
@@ -1842,35 +1847,39 @@ function exportarPDF(estilo){
   })).concat([fmtFull(totPagosSel)]));
 
   var ncP=headPagos.length;
-  var cwP={0:{cellWidth:40}};
-  var rwP=(CW-40-24)/(ncP-2);
+  var cwP={0:{cellWidth:34}};
+  var rwP=(CWp-34-20)/(ncP-2);
   for(var ciP=1;ciP<ncP-1;ciP++) cwP[ciP]={cellWidth:rwP,halign:'right'};
-  cwP[ncP-1]={cellWidth:24,halign:'right'};
+  cwP[ncP-1]={cellWidth:20,halign:'right'};
 
   autoT(headPagos,bodyPagos,cwP,yP,function(d){
     var lb=String(d.cell.raw||'');
     if(lb==='Total'){ d.cell.styles.fillColor=[210,220,248]; d.cell.styles.textColor=NAVY; d.cell.styles.fontStyle='bold'; }
-  }, CW);
+  }, CWp);
 
   finalizarYGuardar();
    } catch(errAsync){
      console.error('Error generando las páginas del PDF:', errAsync);
      alert('Ocurrió un error generando el PDF: '+errAsync.message+'\n\nRevisa la consola (F12) para más detalles.');
+     setBotonPDFCargando(false);
    }
   } // fin generarPDFCompleto
 
    } catch(errDatos){
      console.error('Error procesando los datos del informe:', errDatos);
      alert('Ocurrió un error generando el PDF: '+errDatos.message+'\n\nRevisa la consola (F12) para más detalles.');
+     setBotonPDFCargando(false);
    }
   }).catch(function(errFetch){
     console.error('Error obteniendo los datos del informe:', errFetch);
     alert('No se pudieron cargar los datos para el informe: '+errFetch.message);
+    setBotonPDFCargando(false);
   });
 
  }catch(errSync){
   console.error('Error generando el PDF:', errSync);
   alert('Ocurrió un error generando el PDF: '+errSync.message+'\n\nRevisa la consola (F12) para más detalles.');
+  setBotonPDFCargando(false);
   return;
  }
 }
