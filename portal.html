@@ -1298,6 +1298,7 @@ function exportarPDF(estilo){
   function lm(p){var pt=p.split(' ');return pt[0].slice(0,3).charAt(0).toUpperCase()+pt[0].slice(1,3)+"'"+pt[1].slice(2);}
   function fk(v){ v=v||0; var neg=v<0; v=Math.abs(v); var s= v>=1000000?'$'+(v/1000000).toFixed(1)+'M': v>=1000?'$'+Math.round(v/1000)+'K' : '$'+Math.round(v); return neg?'-'+s:s; }
   function fk0(v){ v=v||0; return v>=1000000?(v/1000000).toFixed(1)+'M': v>=1000?Math.round(v/1000)+'K':String(Math.round(v)); }
+  function fmtFull(v){ v=v||0; var neg=v<0; v=Math.round(Math.abs(v)); var s='$'+v.toLocaleString('es-CL'); return neg?'-'+s:s; }
 
   function gv(id){ var e=document.getElementById(id); return e?e.textContent.trim():'--'; }
   var vb=gv('kv-vb'), vn=gv('kv-vn'), gn=gv('kv-gn'), res=gv('iv-res'), mb=gv('iv-mb'), mn=gv('iv-mn');
@@ -1318,39 +1319,77 @@ function exportarPDF(estilo){
 
   var repMapSel={}; repsRangoSel.forEach(function(r){repMapSel[r.id]=r.periodo;});
 
-  var ventasPorMes={};
-  sel.forEach(function(p){ventasPorMes[p]=0;});
-  repsRangoSel.forEach(function(r){
-    ventasPorMes[r.periodo]=_aplicaIva?Number(r.ventas_netas||0):Number(r.ventas_brutas||0);
+  // ═══════════════════ 1. Comparativo Anual (TODOS los años disponibles) ═══════════════════
+  var datosAnual={}, aniosSet={};
+  _reportes.forEach(function(r){
+    var parts=(r.periodo||'').split(' '); var mesA=parts[0], anioA=parts[1];
+    if(!mesA||!anioA) return;
+    if(!datosAnual[anioA]) datosAnual[anioA]={};
+    datosAnual[anioA][mesA]=Number(r.ventas_brutas||0);
+    aniosSet[anioA]=1;
   });
+  var aniosOrdenados=Object.keys(aniosSet).sort();
+  var anioMasReciente=aniosOrdenados[aniosOrdenados.length-1];
+  var anioAnteriorComp=aniosOrdenados.length>=2?aniosOrdenados[aniosOrdenados.length-2]:null;
+  var hayAnioAnteriorComp=!!anioAnteriorComp;
 
-  var gastosPorMes={}, famTotales={};
-  sel.forEach(function(p){gastosPorMes[p]=0;});
+  // ═══════════════════ 2. EERR por Familia — TODAS, rango seleccionado ═══════════════════
+  var famTotalesEerr={}, famPorMesEerr={};
   costosSel.forEach(function(c){
-    var p=repMapSel[c.reporte_id]; if(!p||gastosPorMes[p]===undefined) return;
+    var p=repMapSel[c.reporte_id]; if(!p) return;
     if(/impuesto|iva|tribut/i.test(c.familia||c.categoria||'')) return;
     var n=getNetoDoc(c);
-    gastosPorMes[p]+=n;
     var f=c.familia||c.categoria||'Sin familia';
-    famTotales[f]=(famTotales[f]||0)+n;
+    famTotalesEerr[f]=(famTotalesEerr[f]||0)+n;
+    if(!famPorMesEerr[f]) famPorMesEerr[f]={};
+    famPorMesEerr[f][p]=(famPorMesEerr[f][p]||0)+n;
   });
-  var vnTotalSel = Object.values(ventasPorMes).reduce(function(s,v){return s+v;},0);
-  var famArrPdf = Object.entries(famTotales).sort(function(a,b){return b[1]-a[1];});
+  var familiasOrdenadas=Object.entries(famTotalesEerr).sort(function(a,b){return b[1]-a[1];}).map(function(e){return e[0];});
 
-  var catPdf={};
-  productosSel.forEach(function(p){
-    var cat=p.categoria||'Sin categoria';
-    if(!catPdf[cat]) catPdf[cat]={monto:0,cant:0};
-    catPdf[cat].monto+=getMontoProducto(p);
-    catPdf[cat].cant+=Number(p.cantidad||0);
+  var vbPorMesSel={}, vnPorMesSel={};
+  sel.forEach(function(p){vbPorMesSel[p]=0; vnPorMesSel[p]=0;});
+  repsRangoSel.forEach(function(r){
+    vbPorMesSel[r.periodo]=Number(r.ventas_brutas||0);
+    vnPorMesSel[r.periodo]=_aplicaIva?Number(r.ventas_netas||0):Number(r.ventas_brutas||0);
   });
-  var catArrPdf = Object.entries(catPdf).sort(function(a,b){return b[1].cant-a[1].cant;}).slice(0,8);
+  var vbTotalSel=Object.values(vbPorMesSel).reduce(function(s,v){return s+v;},0);
+  var vnTotalSel=Object.values(vnPorMesSel).reduce(function(s,v){return s+v;},0);
+  var gnTotalSel=Object.values(famTotalesEerr).reduce(function(s,v){return s+v;},0);
+  var resTotalSel=vnTotalSel-gnTotalSel;
+
+  // ═══════════════════ 3. Familia → Categoría (sin proveedor) ═══════════════════
+  var famCatTotales={};
+  costosSel.forEach(function(c){
+    var p=repMapSel[c.reporte_id]; if(!p) return;
+    if(/impuesto|iva|tribut/i.test(c.familia||c.categoria||'')) return;
+    var n=getNetoDoc(c);
+    var f=c.familia||'Sin familia', catg=c.categoria||'Sin categoría';
+    if(!famCatTotales[f]) famCatTotales[f]={_total:0,cats:{}};
+    famCatTotales[f]._total+=n;
+    if(!famCatTotales[f].cats[catg]) famCatTotales[f].cats[catg]={_total:0};
+    famCatTotales[f].cats[catg]._total+=n;
+    famCatTotales[f].cats[catg][p]=(famCatTotales[f].cats[catg][p]||0)+n;
+  });
+  var famCatOrdenado=Object.entries(famCatTotales).sort(function(a,b){return b[1]._total-a[1]._total;});
+
+  // ═══════════════════ 5. Forma de pago mensual ═══════════════════
+  var pagosPorMes={};
+  productosSel.forEach(function(pr){
+    var p=repMapSel[pr.reporte_id]; if(!p) return;
+    var fp=pr.forma_pago||'Sin dato';
+    var m=Number(pr.monto||0);
+    if(!pagosPorMes[fp]) pagosPorMes[fp]={};
+    pagosPorMes[fp][p]=(pagosPorMes[fp][p]||0)+m;
+  });
+  var pagosOrdenados=Object.entries(pagosPorMes)
+    .map(function(e){return [e[0], Object.values(e[1]).reduce(function(s,v){return s+v;},0), e[1]];})
+    .sort(function(a,b){return b[1]-a[1];});
+  var totPagosSel=pagosOrdenados.reduce(function(s,p){return s+p[1];},0);
 
   // ── jsPDF setup ───────────────────────────────────────────
   var doc = new jspdf.jsPDF('p','mm','a4');
   var PW=210, PH=297, ML=12, MR=12, CW=PW-ML-MR;
 
-  // ── Paleta ────────────────────────────────────────────────
   var NAVY=[27,58,92], NAVY_DARK=[33,45,85], BLUE_SOFT=[163,178,235];
   var LAV_BG=[226,231,251], BLUE=[52,100,160], BLUE_L=[220,232,245];
   var BG=[247,249,252], TEXT=[32,44,58], MUTED=[120,135,158];
@@ -1370,10 +1409,11 @@ function exportarPDF(estilo){
     if(label){ st(NAVY); fb(9); doc.text(label,x+6,y+8); }
   }
 
-  function lineChart(x,y,w,h,labels,values,color){
-    var maxV=Math.max.apply(null,values.concat([1]))*1.15;
+  function lineChart(x,y,w,h,labels,values,color,valuesB,colorB){
+    var all=values.concat(valuesB||[]).filter(function(v){return v!=null;});
+    var maxV=Math.max.apply(null,all.concat([1]))*1.15;
     var n=values.length;
-    var padL=12,padB=7,padT=3,padR=4;
+    var padL=14,padB=7,padT=3,padR=4;
     var pw=w-padL-padR, ph=h-padT-padB;
     fn(6); st(MUTED);
     for(var g=0;g<=3;g++){
@@ -1381,23 +1421,29 @@ function exportarPDF(estilo){
       doc.text(fk0(gvv),x+padL-2,gy+1,{align:'right'});
       sd(GRID); doc.setLineWidth(0.15); doc.line(x+padL,gy,x+w-padR,gy);
     }
-    var pts=values.map(function(v,i){
-      var px=x+padL+(n>1?pw*i/(n-1):pw/2);
-      var py=y+h-padB-(maxV>0?ph*v/maxV:0);
-      return [px,py];
-    });
-    sd(color); doc.setLineWidth(0.7);
-    for(var i=0;i<pts.length-1;i++) doc.line(pts[i][0],pts[i][1],pts[i+1][0],pts[i+1][1]);
-    sf(color);
-    pts.forEach(function(p){doc.circle(p[0],p[1],1.1,'F');});
+    function drawLine(vals,col){
+      var pts=vals.map(function(v,i){
+        var px=x+padL+(n>1?pw*i/(n-1):pw/2);
+        var py=v==null?null:y+h-padB-(maxV>0?ph*v/maxV:0);
+        return [px,py];
+      });
+      sd(col); doc.setLineWidth(0.7);
+      for(var i=0;i<pts.length-1;i++){ if(pts[i][1]!=null&&pts[i+1][1]!=null) doc.line(pts[i][0],pts[i][1],pts[i+1][0],pts[i+1][1]); }
+      sf(col);
+      pts.forEach(function(p){ if(p[1]!=null) doc.circle(p[0],p[1],1.1,'F'); });
+      return pts;
+    }
+    if(valuesB) drawLine(valuesB,colorB);
+    var ptsMain=drawLine(values,color);
     fn(6); st(MUTED);
-    labels.forEach(function(l,i){doc.text(l,pts[i][0],y+h-padB+5,{align:'center'});});
+    labels.forEach(function(l,i){doc.text(l,ptsMain[i][0],y+h-padB+5,{align:'center'});});
+    return ptsMain;
   }
 
   function barChart(x,y,w,h,labels,serA,serB,colA,colB){
     var maxV=Math.max.apply(null,serA.concat(serB).concat([1]))*1.15;
     var n=labels.length;
-    var padL=12,padB=7,padT=3,padR=4;
+    var padL=14,padB=7,padT=3,padR=4;
     var pw=w-padL-padR, ph=h-padT-padB;
     var gw=pw/n, bw=Math.min(gw*0.32,7);
     fn(6); st(MUTED);
@@ -1425,21 +1471,100 @@ function exportarPDF(estilo){
     });
   }
 
+  function pageHeader(titulo, subtitulo){
+    sf(NAVY); doc.rect(0,0,PW,16,'F');
+    if(logoOk){ try{ doc.addImage(logoEl,logoFmt,ML,2,12,12); }catch(e){} }
+    st(WHITE); fb(11); doc.text(titulo, logoOk?ML+16:ML, 9);
+    fn(7.5); st([180,200,225]); doc.text(subtitulo||'', logoOk?ML+16:ML, 13.5);
+  }
+
+  function autoT(head,body,colWidths,startY,didParseCell,tableWidth){
+    doc.autoTable({
+      startY:startY, head:[head], body:body, theme:'plain',
+      tableWidth: tableWidth||'auto',
+      headStyles:{fillColor:NAVY,textColor:WHITE,fontStyle:'bold',fontSize:7.5,cellPadding:{top:2.5,bottom:2.5,left:3,right:3}},
+      bodyStyles:{fontSize:7.5,cellPadding:{top:2,bottom:2,left:3,right:3},textColor:TEXT},
+      alternateRowStyles:{fillColor:LAV_BG},
+      columnStyles:colWidths||{},
+      didParseCell:didParseCell||function(){},
+      tableLineColor:LINE, tableLineWidth:0.2,
+      margin:{left:ML,right:MR,top:20}
+    });
+    return doc.lastAutoTable.finalY;
+  }
+
+  // ═══════════════════ 4. Semanal — requiere fetch adicional del año anterior ═══════════════════
+  var anioSelPrincipal=sel[sel.length-1].split(' ')[1];
+  var anioAnteriorSemanal=String(Number(anioSelPrincipal)-1);
+  var periodosAnioAntSemanal=sel.map(function(p){var parts=p.split(' ');return parts[0]+' '+anioAnteriorSemanal;}).filter(function(p){return _periodos.indexOf(p)>=0;});
+  var repsAnioAntSemanal=_reportes.filter(function(r){return periodosAnioAntSemanal.indexOf(r.periodo)>=0;});
+  var idsAnioAntSemanal=repsAnioAntSemanal.map(function(r){return r.id;});
+
+  function mondayOf(dateStr){
+    var d=new Date(dateStr+'T00:00:00');
+    var day=d.getDay();
+    var diff=(day===0?-6:1-day);
+    d.setDate(d.getDate()+diff);
+    return d;
+  }
+  function toKey(d){ return d.toISOString().slice(0,10); }
+  function fmtFecha(d){ return d.toLocaleDateString('es-CL',{day:'2-digit',month:'short'}); }
+
+  fetchByIds('productos', idsAnioAntSemanal).then(function(productosAnioAnt){
+    var semanasActual={}, semanasAnterior={};
+    productosSel.forEach(function(pr){
+      if(!pr.fecha) return;
+      var k=toKey(mondayOf(pr.fecha));
+      semanasActual[k]=(semanasActual[k]||0)+Number(pr.monto||0);
+    });
+    (productosAnioAnt||[]).forEach(function(pr){
+      if(!pr.fecha) return;
+      var k=toKey(mondayOf(pr.fecha));
+      semanasAnterior[k]=(semanasAnterior[k]||0)+Number(pr.monto||0);
+    });
+    var semanasKeys=Object.keys(semanasActual).sort();
+    var hayDatosSemanales=semanasKeys.length>0;
+
+    var filasSemanales=semanasKeys.map(function(k){
+      var montoAct=semanasActual[k];
+      var dAnt=new Date(k+'T00:00:00'); dAnt.setFullYear(dAnt.getFullYear()-1);
+      var kAnt=toKey(mondayOf(toKey(dAnt)));
+      var montoAnt=semanasAnterior[kAnt]!=null?semanasAnterior[kAnt]:null;
+      var dIni=new Date(k+'T00:00:00'); var dFin=new Date(dIni); dFin.setDate(dFin.getDate()+6);
+      return {rango:fmtFecha(dIni)+' al '+fmtFecha(dFin), montoActual:montoAct, montoAnterior:montoAnt};
+    });
+
+    generarPDFCompleto(filasSemanales, hayDatosSemanales);
+  }).catch(function(err){
+    console.error('Error obteniendo datos del año anterior para comparativo semanal:', err);
+    generarPDFCompleto([], false);
+  });
+
+  function finalizarYGuardar(){
+    var total=doc.internal.getNumberOfPages();
+    for(var pg=1;pg<=total;pg++){
+      doc.setPage(pg);
+      fn(7); st(MUTED);
+      doc.text('SurGestion | surgestionpm.cl',10,doc.internal.pageSize.getHeight()-7);
+      doc.text('Página '+pg+' de '+total,doc.internal.pageSize.getWidth()-10,doc.internal.pageSize.getHeight()-7,{align:'right'});
+    }
+    doc.save(empresa+' - '+periodoTxt+' - Informe.pdf');
+  }
+
+  function generarPDFCompleto(filasSemanales, hayDatosSemanales){
+   try{
+
   // ══════════════════════════════════════════════════════════
-  // PÁGINA 1 — Informe de Resultados
+  // PÁGINA 1 — Portada + Comparativo Anual
   // ══════════════════════════════════════════════════════════
   sf(LAV_BG); doc.rect(0,0,PW,PH,'F');
   sf(WHITE); doc.roundedRect(6,6,PW-12,PH-12,6,6,'F');
-
   var X0=16, XR=PW-16, CWp=XR-X0;
 
-  if(logoOk){
-    try{ doc.addImage(logoEl,logoFmt,X0,14,16,16); }catch(e){ console.warn('No se pudo incluir el logo en el PDF:',e); }
-  }
+  if(logoOk){ try{ doc.addImage(logoEl,logoFmt,X0,14,16,16); }catch(e){} }
   st(NAVY); fb(17); doc.text('INFORME DE RESULTADOS',X0+20,22);
   fn(11.5); st(NAVY); doc.text(periodoTxt,X0+20,29);
   fn(7); st(MUTED); doc.text('S U R G E S T I Ó N',X0+20,35);
-
   var y=45;
 
   var kw=(CWp-8)/3;
@@ -1453,178 +1578,253 @@ function exportarPDF(estilo){
   });
   y+=26;
 
-  var hEvo=48;
-  card(X0,y,CWp,hEvo,'Evolución de Ventas · '+periodoTxt);
-  lineChart(X0+2,y+11,CWp-4,hEvo-15,sel.map(lm),sel.map(function(p){return ventasPorMes[p]||0;}),NAVY_DARK);
-  y+=hEvo+6;
+  st(NAVY); fb(9); doc.text('1 · Comparativo Anual de Ventas Brutas',X0,y); y+=6;
 
-  var hRow=62;
-  var colW=(CWp-6)/2;
+  var hChartAnual=58;
+  card(X0,y,CWp,hChartAnual);
+  var mesesLabelsCortos=MESES_ORD_PDF.map(function(m){return m.slice(0,3).charAt(0).toUpperCase()+m.slice(1,3);});
+  var serieAct=MESES_ORD_PDF.map(function(m){return datosAnual[anioMasReciente]&&datosAnual[anioMasReciente][m]!=null?datosAnual[anioMasReciente][m]:null;});
+  var serieAnt=hayAnioAnteriorComp?MESES_ORD_PDF.map(function(m){return datosAnual[anioAnteriorComp]&&datosAnual[anioAnteriorComp][m]!=null?datosAnual[anioAnteriorComp][m]:null;}):null;
 
-  card(X0,y,colW,hRow,'Gasto x Familia (% s/ Venta Neta)');
-  var fy=y+13;
-  famArrPdf.slice(0,7).forEach(function(f){
-    var pct = vnTotalSel>0 ? (f[1]/vnTotalSel*100) : 0;
-    fn(7); st(TEXT); doc.text(f[0].length>22?f[0].slice(0,22)+'…':f[0],X0+6,fy);
-    fb(7); st(NAVY); doc.text(pct.toFixed(1)+'%',X0+colW-6,fy,{align:'right'});
-    fn(6.5); st(MUTED); doc.text(fk(f[1]),X0+colW-24,fy,{align:'right'});
-    fy+=6.6;
-  });
+  if(hayAnioAnteriorComp){
+    legend(X0+6,y+8,[{c:BLUE_SOFT,l:anioAnteriorComp},{c:NAVY_DARK,l:anioMasReciente}]);
+    var ptsAnual=lineChart(X0+2,y+11,CWp-4,hChartAnual-15,mesesLabelsCortos,serieAct,NAVY_DARK,serieAnt,BLUE_SOFT);
+    // % de variación sobre cada punto
+    fn(6); fb(6);
+    MESES_ORD_PDF.forEach(function(m,i){
+      var a=serieAnt&&serieAnt[i], b=serieAct[i];
+      if(a==null||b==null||!a) return;
+      var p=((b-a)/a*100);
+      st(p>=0?GREEN:RED);
+      doc.text((p>=0?'+':'')+p.toFixed(0)+'%', ptsAnual[i][0], ptsAnual[i][1]-3, {align:'center'});
+    });
+  } else {
+    fn(8); st(MUTED); doc.text('Sin datos del año anterior para comparar — mostrando solo '+anioMasReciente+'.',X0+6,y+9);
+    lineChart(X0+2,y+13,CWp-4,hChartAnual-17,mesesLabelsCortos,serieAct,NAVY_DARK);
+  }
+  y+=hChartAnual+6;
 
-  var x2=X0+colW+6;
-  card(x2,y,colW,hRow,'Venta x Categoría (Monto / Unidades)');
-  var fy2=y+13;
-  catArrPdf.forEach(function(c){
-    fn(7); st(TEXT); doc.text(c[0].length>16?c[0].slice(0,16)+'…':c[0],x2+6,fy2);
-    fb(7); st(NAVY); doc.text(fk(c[1].monto),x2+colW-6,fy2,{align:'right'});
-    fn(6.5); st(MUTED); doc.text(c[1].cant+' u.',x2+colW-30,fy2,{align:'right'});
-    fy2+=6.6;
-  });
-  y+=hRow+6;
-
-  card(X0,y,colW,hRow,'Margen Bruto y Margen Neto');
-  fn(7); st(MUTED); doc.text('Calculado sobre '+periodoTxt,X0+6,y+15);
-
-  fn(7.5); st(MUTED); doc.text('MARGEN BRUTO',X0+6,y+27);
-  fb(15); st(NAVY); doc.text(mb,X0+6,y+37);
-  fn(6.5); st(MUTED); doc.text('Resultado / Ventas Brutas',X0+6,y+43);
-
-  fn(7.5); st(MUTED); doc.text('MARGEN NETO',X0+colW/2+4,y+27);
-  fb(15); st(NAVY); doc.text(mn,X0+colW/2+4,y+37);
-  fn(6.5); st(MUTED); doc.text('Resultado / Ventas Netas',X0+colW/2+4,y+43);
-
-  card(x2,y,colW,hRow,'Evolución Mensual · Resultado Operacional');
-  legend(x2+6,y+13,[{c:NAVY_DARK,l:'Ventas'},{c:BLUE_SOFT,l:'Gastos'}]);
-  barChart(x2+2,y+16,colW-4,hRow-20,sel.map(lm),
-    sel.map(function(p){return ventasPorMes[p]||0;}),
-    sel.map(function(p){return gastosPorMes[p]||0;}), NAVY_DARK, BLUE_SOFT);
-  y+=hRow+8;
-
-  sd(LINE); doc.setLineWidth(0.25); doc.line(X0,y,XR,y); y+=5;
-  fn(7); st(MUTED);
-  doc.text(empresa+' · SurGestion | surgestionpm.cl',X0,y);
-  doc.text(hoy,XR,y,{align:'right'});
-
-  // ══════════════════════════════════════════════════════════
-  // PÁGINA 2 — EERR Comparativo (año en curso, meses cerrados) — horizontal
-  // ══════════════════════════════════════════════════════════
-  var anioActualPdf=new Date().getFullYear();
-  var mesActualIdxPdf=new Date().getMonth();
-  var periodosP2 = MESES_ORD_PDF.slice(0,mesActualIdxPdf)
-    .map(function(m){return m+' '+anioActualPdf;})
-    .filter(function(p){return _periodos.indexOf(p)>=0;});
-
-  function finalizarYGuardar(){
-    var total=doc.internal.getNumberOfPages();
-    for(var pg=1;pg<=total;pg++){
-      doc.setPage(pg);
-      fn(7); st(MUTED);
-      doc.text('SurGestion | surgestionpm.cl',10,290);
-      doc.text('Página '+pg+' de '+total,doc.internal.pageSize.getWidth()-10,290,{align:'right'});
+  var headAnual=hayAnioAnteriorComp?['Mes',anioAnteriorComp,anioMasReciente,'Var.']:['Mes',anioMasReciente];
+  var bodyAnual=MESES_ORD_PDF.map(function(m){
+    var a=hayAnioAnteriorComp?(datosAnual[anioAnteriorComp]&&datosAnual[anioAnteriorComp][m]):null;
+    var b=datosAnual[anioMasReciente]&&datosAnual[anioMasReciente][m];
+    var row=[cap(m)];
+    if(hayAnioAnteriorComp) row.push(a?fmtFull(a):'-');
+    row.push(b!=null?fmtFull(b):'-');
+    if(hayAnioAnteriorComp){
+      if(a&&b!=null){ var p=((b-a)/a*100); row.push((p>=0?'+':'')+p.toFixed(1)+'%'); }
+      else row.push('-');
     }
-    doc.save(empresa+' - '+periodoTxt+' - Informe.pdf');
+    return row;
+  });
+  var colWAnual=hayAnioAnteriorComp?{0:{cellWidth:35},3:{cellWidth:25}}:{0:{cellWidth:35}};
+  autoT(headAnual,bodyAnual,colWAnual,y,function(d){}, CWp);
+
+  finalizarYGuardar_addFooterNote();
+  function finalizarYGuardar_addFooterNote(){} // placeholder no-op (footer se agrega al final con finalizarYGuardar)
+
+  // ══════════════════════════════════════════════════════════
+  // PÁGINA 2 — EERR por Familia (TODAS las familias, montos completos)
+  // ══════════════════════════════════════════════════════════
+  doc.addPage();
+  pageHeader('EERR por Familia · '+empresa, periodoTxt+' · Gastos en base neta SII, sin impuestos');
+
+  var headEerr=['Concepto'].concat(sel.map(lm)).concat(['Total','%V.Neta']);
+  var bodyEerr=[];
+  bodyEerr.push(['Ventas Brutas'].concat(sel.map(function(p){return fmtFull(vbPorMesSel[p]);})).concat([fmtFull(vbTotalSel),'']));
+  bodyEerr.push(['Ventas Netas (sin IVA)'].concat(sel.map(function(p){return fmtFull(vnPorMesSel[p]);})).concat([fmtFull(vnTotalSel),'']));
+  familiasOrdenadas.forEach(function(f){
+    var tot=famTotalesEerr[f];
+    var pct=vnTotalSel>0?(tot/vnTotalSel*100).toFixed(1)+'%':'-';
+    bodyEerr.push([f].concat(sel.map(function(p){return fmtFull((famPorMesEerr[f]&&famPorMesEerr[f][p])||0);})).concat([fmtFull(tot),pct]));
+  });
+  bodyEerr.push(['Total Gastos Netos'].concat(sel.map(function(p){
+    var s=0; familiasOrdenadas.forEach(function(f){s+=(famPorMesEerr[f]&&famPorMesEerr[f][p])||0;});
+    return fmtFull(s);
+  })).concat([fmtFull(gnTotalSel), vnTotalSel>0?(gnTotalSel/vnTotalSel*100).toFixed(1)+'%':'-']));
+  bodyEerr.push(['RESULTADO OPERACIONAL'].concat(sel.map(function(p){
+    var g=0; familiasOrdenadas.forEach(function(f){g+=(famPorMesEerr[f]&&famPorMesEerr[f][p])||0;});
+    return fmtFull(vnPorMesSel[p]-g);
+  })).concat([fmtFull(resTotalSel), vnTotalSel>0?(resTotalSel/vnTotalSel*100).toFixed(1)+'%':'-']));
+
+  var ncE=headEerr.length;
+  var cwE={0:{cellWidth:38,fontStyle:'bold'}};
+  var rwE=(CW-38-22)/(ncE-2);
+  for(var ciE=1;ciE<ncE-1;ciE++) cwE[ciE]={cellWidth:rwE,halign:'right'};
+  cwE[ncE-1]={cellWidth:22,halign:'right'};
+
+  autoT(headEerr,bodyEerr,cwE,20,function(d){
+    var lb=String(d.cell.raw||'');
+    if(lb==='RESULTADO OPERACIONAL'){ d.cell.styles.fillColor=resTotalSel<0?RED_L:GREEN_L; d.cell.styles.textColor=resTotalSel<0?RED:GREEN; d.cell.styles.fontStyle='bold'; }
+    if(lb==='Total Gastos Netos'){ d.cell.styles.fillColor=[210,220,248]; d.cell.styles.textColor=NAVY; d.cell.styles.fontStyle='bold'; }
+    if(lb==='Ventas Netas (sin IVA)') d.cell.styles.fontStyle='bold';
+  });
+
+  // ══════════════════════════════════════════════════════════
+  // PÁGINA 3 — Familia → Categoría (horizontal, montos completos)
+  // ══════════════════════════════════════════════════════════
+  doc.addPage('a4','l');
+  var PWl=297, MLl=10, MRl=10, CWl=PWl-MLl-MRl;
+  sf(NAVY); doc.rect(0,0,PWl,16,'F');
+  if(logoOk){ try{ doc.addImage(logoEl,logoFmt,MLl,2,12,12); }catch(e){} }
+  st(WHITE); fb(11); doc.text('Desglose Familia → Categoría · '+empresa, logoOk?MLl+16:MLl, 9);
+  fn(7.5); st([180,200,225]); doc.text(periodoTxt+' · Gastos en base neta SII, sin impuestos', logoOk?MLl+16:MLl, 13.5);
+
+  var headFC=['Familia / Categoría'].concat(sel.map(lm)).concat(['Total']);
+  var bodyFC=[];
+  famCatOrdenado.forEach(function(entry){
+    var famNombre=entry[0], famData=entry[1];
+    bodyFC.push(['■ '+famNombre].concat(sel.map(function(p){
+      var s=0; Object.keys(famData.cats).forEach(function(c){s+=famData.cats[c][p]||0;});
+      return fmtFull(s);
+    })).concat([fmtFull(famData._total)]));
+    Object.entries(famData.cats).sort(function(a,b){return b[1]._total-a[1]._total;}).forEach(function(ce){
+      var catNombre=ce[0], catData=ce[1];
+      bodyFC.push(['   '+catNombre].concat(sel.map(function(p){return fmtFull(catData[p]||0);})).concat([fmtFull(catData._total)]));
+    });
+  });
+
+  var ncFC=headFC.length;
+  var cwFC={0:{cellWidth:48}};
+  var rwFC=(CWl-48-26)/(ncFC-2);
+  for(var ciFC=1;ciFC<ncFC-1;ciFC++) cwFC[ciFC]={cellWidth:rwFC,halign:'right'};
+  cwFC[ncFC-1]={cellWidth:26,halign:'right',fontStyle:'bold'};
+
+  doc.autoTable({
+    startY:20, head:[headFC], body:bodyFC, theme:'plain',
+    headStyles:{fillColor:NAVY,textColor:WHITE,fontStyle:'bold',fontSize:7,cellPadding:{top:2,bottom:2,left:3,right:3}},
+    bodyStyles:{fontSize:6.8,cellPadding:{top:1.5,bottom:1.5,left:3,right:3},textColor:TEXT},
+    columnStyles:cwFC,
+    didParseCell:function(d){
+      var lb=String(d.cell.raw||'');
+      if(lb.indexOf('■')===0){ d.cell.styles.fillColor=[210,220,248]; d.cell.styles.textColor=NAVY; d.cell.styles.fontStyle='bold'; }
+    },
+    tableLineColor:LINE, tableLineWidth:0.15,
+    margin:{left:MLl,right:MRl,top:20}
+  });
+
+  // ══════════════════════════════════════════════════════════
+  // PÁGINA 4 — Comparativo Semanal (Lunes–Domingo, horizontal)
+  // ══════════════════════════════════════════════════════════
+  doc.addPage('a4','l');
+  sf(NAVY); doc.rect(0,0,PWl,16,'F');
+  if(logoOk){ try{ doc.addImage(logoEl,logoFmt,MLl,2,12,12); }catch(e){} }
+  st(WHITE); fb(11); doc.text('Comparativo Semanal (Lunes–Domingo) · '+empresa, logoOk?MLl+16:MLl, 9);
+  fn(7.5); st([180,200,225]); doc.text(periodoTxt+(hayDatosSemanales?'':' · Sin datos de fecha suficientes para este cálculo'), logoOk?MLl+16:MLl, 13.5);
+
+  var yW=20;
+  if(hayDatosSemanales && filasSemanales.length){
+    var hChartSem=52;
+    sf(LAV_BG); doc.roundedRect(MLl,yW,CWl,hChartSem,3,3,'F');
+    var labelsSem=filasSemanales.map(function(f,i){return String(i+1);});
+    var serieSemAct=filasSemanales.map(function(f){return f.montoActual;});
+    var hayAnteriorSem=filasSemanales.some(function(f){return f.montoAnterior!=null;});
+    if(hayAnteriorSem){
+      legend(MLl+6,yW+8,[{c:BLUE_SOFT,l:'Año anterior'},{c:NAVY_DARK,l:'Año actual'}]);
+      var serieSemAnt=filasSemanales.map(function(f){return f.montoAnterior;});
+      lineChart(MLl+2,yW+11,CWl-4,hChartSem-15,labelsSem,serieSemAct,NAVY_DARK,serieSemAnt,BLUE_SOFT);
+    } else {
+      fn(7); st(MUTED); doc.text('Sin datos del año anterior para comparar.',MLl+6,yW+9);
+      lineChart(MLl+2,yW+12,CWl-4,hChartSem-16,labelsSem,serieSemAct,NAVY_DARK);
+    }
+    yW+=hChartSem+6;
+
+    var headSem=hayAnteriorSem?['Semana','Del – Al','Año Ant.','Año Actual','Var.']:['Semana','Del – Al','Año Actual'];
+    var bodySem=filasSemanales.map(function(f,i){
+      var row=['S'+(i+1), f.rango];
+      if(hayAnteriorSem){
+        row.push(f.montoAnterior!=null?fmtFull(f.montoAnterior):'-');
+        row.push(fmtFull(f.montoActual));
+        if(f.montoAnterior){ var p=((f.montoActual-f.montoAnterior)/f.montoAnterior*100); row.push((p>=0?'+':'')+p.toFixed(1)+'%'); }
+        else row.push('-');
+      } else {
+        row.push(fmtFull(f.montoActual));
+      }
+      return row;
+    });
+    autoT(headSem,bodySem,{0:{cellWidth:20},1:{cellWidth:35}},yW,function(){}, CWl);
+  } else {
+    fn(9); st(MUTED); doc.text('No hay suficientes datos con fecha para calcular el comparativo semanal de este período.',MLl,yW+10);
   }
 
-  if(!periodosP2.length){
-    doc.addPage('a4','l');
-    st(NAVY); fb(13); doc.text('EERR Comparativo '+anioActualPdf,14,20);
-    fn(9); st(MUTED); doc.text('Aún no hay meses cerrados en '+anioActualPdf+'.',14,30);
-    finalizarYGuardar();
-    return;
-  }
+  // ══════════════════════════════════════════════════════════
+  // PÁGINA 5 — Formas de Pago (mensual, montos completos)
+  // ══════════════════════════════════════════════════════════
+  doc.addPage();
+  pageHeader('Formas de Pago · '+empresa, periodoTxt);
 
-  var repsP2=_reportes.filter(function(r){return periodosP2.indexOf(r.periodo)>=0;});
-  var idsP2=repsP2.map(function(r){return r.id;});
-  var repMapP2={}; repsP2.forEach(function(r){repMapP2[r.id]=r.periodo;});
+  var yP=22;
+  st(NAVY); fb(9); doc.text('Distribución por medio de pago',ML,yP); yP+=4;
+
+  var hDona=50;
+  var colWp=(CW-6)/2;
+  var coloresDonut=[[27,58,92],[58,90,140],[95,125,176],[138,160,208],[163,178,235],[195,205,242],[217,224,247],[232,236,250]];
+  card(ML,yP,colWp,hDona,'Distribución (barra proporcional)');
+  var barX=ML+6, barY=yP+15, barW=colWp-12, barH=10;
+  var accX=barX;
+  pagosOrdenados.slice(0,8).forEach(function(p,i){
+    var frac=p[1]/totPagosSel;
+    var segW=barW*frac;
+    sf(coloresDonut[i%coloresDonut.length]);
+    doc.rect(accX,barY,Math.max(segW,0.3),barH,'F');
+    accX+=segW;
+  });
+  sd(WHITE); doc.setLineWidth(0.4);
+  var accX2=barX;
+  pagosOrdenados.slice(0,8).forEach(function(p){ accX2+=barW*(p[1]/totPagosSel); doc.line(accX2,barY,accX2,barY+barH); });
+
+  var lyLeg=barY+barH+8;
+  pagosOrdenados.slice(0,8).forEach(function(p,i){
+    sf(coloresDonut[i%coloresDonut.length]); doc.rect(ML+6,lyLeg-3,3,3,'F');
+    fn(6.5); st(TEXT); doc.text(p[0].length>18?p[0].slice(0,18)+'…':p[0], ML+11, lyLeg);
+    fb(6.5); st(NAVY); doc.text((p[1]/totPagosSel*100).toFixed(1)+'%', ML+colWp-6, lyLeg, {align:'right'});
+    lyLeg+=5;
+  });
+
+  card(ML+colWp+6,yP,colWp,hDona,'Ranking por monto');
+  var lyR=yP+13;
+  pagosOrdenados.forEach(function(p){
+    if(lyR>yP+hDona-4) return;
+    fn(7); st(TEXT); doc.text(p[0].length>20?p[0].slice(0,20)+'…':p[0], ML+colWp+12, lyR);
+    fb(7); st(NAVY); doc.text(fmtFull(p[1]), ML+2*colWp, lyR, {align:'right'});
+    lyR+=5.5;
+  });
+  yP+=hDona+8;
+
+  var headPagos=['Forma de Pago'].concat(sel.map(lm)).concat(['Total']);
+  var bodyPagos=pagosOrdenados.map(function(p){
+    var fpNombre=p[0], datosPorMes=p[2], tot=p[1];
+    return [fpNombre].concat(sel.map(function(per){return fmtFull(datosPorMes[per]||0);})).concat([fmtFull(tot)]);
+  });
+  bodyPagos.push(['Total'].concat(sel.map(function(per){
+    var s=0; pagosOrdenados.forEach(function(p){s+=p[2][per]||0;});
+    return fmtFull(s);
+  })).concat([fmtFull(totPagosSel)]));
+
+  var ncP=headPagos.length;
+  var cwP={0:{cellWidth:40}};
+  var rwP=(CW-40-24)/(ncP-2);
+  for(var ciP=1;ciP<ncP-1;ciP++) cwP[ciP]={cellWidth:rwP,halign:'right'};
+  cwP[ncP-1]={cellWidth:24,halign:'right'};
+
+  autoT(headPagos,bodyPagos,cwP,yP,function(d){
+    var lb=String(d.cell.raw||'');
+    if(lb==='Total'){ d.cell.styles.fillColor=[210,220,248]; d.cell.styles.textColor=NAVY; d.cell.styles.fontStyle='bold'; }
+  }, CW);
+
+  finalizarYGuardar();
+   } catch(errAsync){
+     console.error('Error generando las páginas del PDF:', errAsync);
+     alert('Ocurrió un error generando el PDF: '+errAsync.message+'\n\nRevisa la consola (F12) para más detalles.');
+   }
+  } // fin generarPDFCompleto
 
  }catch(errSync){
-  console.error('Error generando el PDF (página 1):', errSync);
+  console.error('Error generando el PDF:', errSync);
   alert('Ocurrió un error generando el PDF: '+errSync.message+'\n\nRevisa la consola (F12) para más detalles.');
   return;
  }
-
-  fetchByIds('costos',idsP2).then(function(costosP2){
-    var dat={};
-    periodosP2.forEach(function(p){dat[p]={vb:0,vn:0,gn:0,fams:{}};});
-    repsP2.forEach(function(r){
-      dat[r.periodo].vb=Number(r.ventas_brutas||0);
-      dat[r.periodo].vn=_aplicaIva?Number(r.ventas_netas||0):Number(r.ventas_brutas||0);
-    });
-    costosP2.forEach(function(c){
-      var p=repMapP2[c.reporte_id]; if(!p||!dat[p]) return;
-      if(/impuesto|iva|tribut/i.test(c.familia||c.categoria||'')) return;
-      var n=getNetoDoc(c);
-      dat[p].gn+=n;
-      var f=c.familia||c.categoria||'Sin familia';
-      dat[p].fams[f]=(dat[p].fams[f]||0)+n;
-    });
-
-    var famsP2=[];
-    periodosP2.forEach(function(p){Object.keys(dat[p].fams).forEach(function(f){if(famsP2.indexOf(f)<0)famsP2.push(f);});});
-    famsP2.sort(function(a,b){
-      return periodosP2.reduce(function(s,p){return s+(dat[p].fams[b]||0);},0)
-            -periodosP2.reduce(function(s,p){return s+(dat[p].fams[a]||0);},0);
-    });
-
-    var tVbP2=periodosP2.reduce(function(s,p){return s+dat[p].vb;},0);
-    var tVnP2=periodosP2.reduce(function(s,p){return s+dat[p].vn;},0);
-    var tGnP2=periodosP2.reduce(function(s,p){return s+dat[p].gn;},0);
-    var tResP2=tVnP2-tGnP2;
-    var tMargenP2 = tVnP2>0 ? (tResP2/tVnP2*100) : null;
-
-    doc.addPage('a4','l');
-    var PWl=297, MLl=10, MRl=10, CWl=PWl-MLl-MRl;
-    sf(NAVY); doc.rect(0,0,PWl,16,'F');
-    st(WHITE); fb(11); doc.text('EERR Comparativo · '+empresa,MLl,10);
-    fn(7.5); st([180,200,225]); doc.text('Año '+anioActualPdf+' · Meses cerrados: '+lm(periodosP2[0])+' - '+lm(periodosP2[periodosP2.length-1])+' · Gastos en base neta SII, sin impuestos',MLl,14);
-
-    var head=['Concepto'].concat(periodosP2.map(lm)).concat(['Total','% V.Neta']);
-    var body=[];
-    body.push(['Ventas Brutas'].concat(periodosP2.map(function(p){return fk(dat[p].vb);})).concat([fk(tVbP2),'']));
-    body.push(['Ventas Netas'].concat(periodosP2.map(function(p){return fk(dat[p].vn);})).concat([fk(tVnP2),'']));
-    famsP2.forEach(function(f){
-      var tf=periodosP2.reduce(function(s,p){return s+(dat[p].fams[f]||0);},0);
-      if(!tf) return;
-      var pctVn = tVnP2>0 ? (tf/tVnP2*100).toFixed(1)+'%' : '-';
-      body.push([f].concat(periodosP2.map(function(p){return fk(dat[p].fams[f]||0);})).concat([fk(tf),pctVn]));
-    });
-    body.push(['Total Gastos Netos'].concat(periodosP2.map(function(p){return fk(dat[p].gn);})).concat([fk(tGnP2), tVnP2>0?(tGnP2/tVnP2*100).toFixed(1)+'%':'-']));
-    body.push(['RESULTADO OPERACIONAL'].concat(periodosP2.map(function(p){return fk(dat[p].vn-dat[p].gn);})).concat([fk(tResP2), tMargenP2==null?'-':tMargenP2.toFixed(1)+'%']));
-
-    var nc=head.length;
-    var cw={0:{cellWidth:40,fontStyle:'bold'}};
-    var rw=(CWl-40-30)/(nc-2);
-    for(var ci=1;ci<nc-1;ci++) cw[ci]={cellWidth:rw,halign:'right'};
-    cw[nc-1]={cellWidth:30,halign:'right'};
-
-    doc.autoTable({
-      startY:20, head:[head], body:body, theme:'plain',
-      headStyles:{fillColor:NAVY,textColor:WHITE,fontStyle:'bold',fontSize:7.5,cellPadding:{top:2.5,bottom:2.5,left:3,right:3}},
-      bodyStyles:{fontSize:7.5,cellPadding:{top:2,bottom:2,left:3,right:3},textColor:TEXT},
-      alternateRowStyles:{fillColor:LAV_BG},
-      columnStyles:cw,
-      didParseCell:function(d){
-        var lb=String(d.cell.raw||'');
-        if(lb==='RESULTADO OPERACIONAL'){ d.cell.styles.fillColor=tResP2<0?RED_L:GREEN_L; d.cell.styles.textColor=tResP2<0?RED:GREEN; d.cell.styles.fontStyle='bold'; }
-        if(lb==='Total Gastos Netos'){ d.cell.styles.fillColor=[210,220,248]; d.cell.styles.textColor=NAVY; d.cell.styles.fontStyle='bold'; }
-        if(lb==='Ventas Netas') d.cell.styles.fontStyle='bold';
-      },
-      tableLineColor:LINE, tableLineWidth:0.2,
-      margin:{left:MLl,right:MRl}
-    });
-
-    var finalY=doc.lastAutoTable.finalY+6;
-    st(NAVY); fb(9); doc.text('Margen Neto del período: ',MLl,finalY);
-    st(tMargenP2!=null && tMargenP2<0 ? RED : GREEN); fb(9);
-    doc.text(tMargenP2==null?'-':tMargenP2.toFixed(1)+'%', MLl+45, finalY);
-
-    finalizarYGuardar();
-  }).catch(function(err){
-    console.error('Error exportando PDF (EERR):',err);
-    finalizarYGuardar();
-  });
 }
-
 
 // ── Helper buildTableHtml (compartido por todas las plantillas) ──
 function buildTableHtml(head,rows,rightCols,headBg){
