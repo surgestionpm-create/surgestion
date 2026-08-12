@@ -1340,11 +1340,9 @@ function exportarPDF(estilo){
   var repIdsInforme=repsRangoSel.map(function(r){return r.id;});
   var repMapSel={}; repsRangoSel.forEach(function(r){repMapSel[r.id]=r.periodo;});
 
-  Promise.all([fetchByIds('productos',repIdsInforme), fetchByIds('costos',repIdsInforme)]).then(function(resultadosInforme){
+  fetchByIds('productos',repIdsInforme).then(function(productosSel){
+   return fetchByIds('costos',repIdsInforme).then(function(costosSel){
    try{
-    var productosSel=resultadosInforme[0]||[];
-    var costosSel=resultadosInforme[1]||[];
-
   // ═══════════════════ 1. Comparativo Anual (TODOS los años disponibles) ═══════════════════
   var datosAnual={}, aniosSet={};
   _reportes.forEach(function(r){
@@ -1721,6 +1719,7 @@ function exportarPDF(estilo){
      alert('Ocurrió un error generando el PDF: '+errDatos.message+'\n\nRevisa la consola (F12) para más detalles.');
      setBotonPDFCargando(false);
    }
+   });
   }).catch(function(errFetch){
     console.error('Error obteniendo los datos del informe:', errFetch);
     alert('No se pudieron cargar los datos para el informe: '+errFetch.message);
@@ -1759,9 +1758,9 @@ function buildTableHtml(head,rows,rightCols,headBg){
 function fetchById(table, id){
   return fetchByIds(table,[id]);
 }
-function fetchByIds(table, ids){
+function fetchByIdsBatch(table, ids){
   if(!ids||!ids.length) return Promise.resolve([]);
-  var PAGE=1000, all=[];
+  var PAGE=500, all=[];
   function page(lastId){
     var q = sb_client.from(table).select('*')
       .in('reporte_id', ids)
@@ -1774,8 +1773,8 @@ function fetchByIds(table, ids){
           var clave = lastId==null?'inicio':lastId;
           var n=(page._reintentos[clave]||0)+1;
           page._reintentos[clave]=n;
-          if(n<=3){
-            return new Promise(function(res){ setTimeout(res,400*n); }).then(function(){ return page(lastId); });
+          if(n<=5){
+            return new Promise(function(res){ setTimeout(res,600*n); }).then(function(){ return page(lastId); });
           }
           console.error('fetchByIds: fallo definitivo en',table,'después de id',lastId,r.error);
           return all;
@@ -1787,6 +1786,25 @@ function fetchByIds(table, ids){
       });
   }
   return page(null);
+}
+
+function fetchByIds(table, ids){
+  if(!ids||!ids.length) return Promise.resolve([]);
+  // Dividir en grupos chicos de reporte_id: consultas más livianas y menos propensas a error 500
+  // que pedir todos los reportes juntos de una vez (especialmente en clientes con mucho volumen).
+  var TAM_GRUPO=2;
+  var grupos=[];
+  for(var i=0;i<ids.length;i+=TAM_GRUPO){ grupos.push(ids.slice(i,i+TAM_GRUPO)); }
+
+  var resultado=[];
+  function siguienteGrupo(idx){
+    if(idx>=grupos.length) return Promise.resolve(resultado);
+    return fetchByIdsBatch(table, grupos[idx]).then(function(filas){
+      resultado=resultado.concat(filas);
+      return siguienteGrupo(idx+1);
+    });
+  }
+  return siguienteGrupo(0);
 }
 
 // ── Gráfico comparativo anual ──────────────────────────────────
