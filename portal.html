@@ -1567,13 +1567,14 @@ function exportarPDF(estilo){
     }).join('');
 
     // ── Sección 5: Formas de pago ──
-    var headPagosHtml = '<tr><th>Forma de Pago</th>'+sel.map(lm).map(function(l){return '<th>'+l+'</th>';}).join('')+'<th>Total</th></tr>';
+    var headPagosHtml = '<tr><th>Forma de Pago</th>'+sel.map(lm).map(function(l){return '<th>'+l+'</th>';}).join('')+'<th>Total</th><th>%</th></tr>';
     var filasPagosHtml = pagosOrdenados.map(function(p){
       var fpNombre=p[0], datosPorMes=p[2], tot=p[1];
-      return '<tr><td>'+fpNombre+'</td>'+sel.map(function(per){return '<td>'+fmtN(datosPorMes[per]||0)+'</td>';}).join('')+'<td>'+fmtN(tot)+'</td></tr>';
+      var pctPago = totPagosSel>0 ? (tot/totPagosSel*100).toFixed(1)+'%' : '-';
+      return '<tr><td>'+fpNombre+'</td>'+sel.map(function(per){return '<td>'+fmtN(datosPorMes[per]||0)+'</td>';}).join('')+'<td>'+fmtN(tot)+'</td><td>'+pctPago+'</td></tr>';
     }).join('');
     var totalPorMesPagosHtml = sel.map(function(per){ var s=0; pagosOrdenados.forEach(function(p){s+=p[2][per]||0;}); return '<td>'+fmtN(s)+'</td>'; }).join('');
-    filasPagosHtml += '<tr class="tot"><td>Total</td>'+totalPorMesPagosHtml+'<td>'+fmtN(totPagosSel)+'</td></tr>';
+    filasPagosHtml += '<tr class="tot"><td>Total</td>'+totalPorMesPagosHtml+'<td>'+fmtN(totPagosSel)+'</td><td>100.0%</td></tr>';
 
     var filasPagosPctHtml = pagosOrdenados.map(function(p){
       return '<tr><td>'+p[0]+'</td><td>'+fmtN(p[1])+'</td><td style="font-weight:700;color:var(--navy)">'+(p[1]/totPagosSel*100).toFixed(1)+'%</td></tr>';
@@ -1595,14 +1596,13 @@ function exportarPDF(estilo){
     +'#pdf-render-root .tag{font-size:9px;letter-spacing:2px;color:#78879E;margin-top:5px}'
     +'#pdf-render-root h2{font-size:14px;color:#1B3A5C;border-left:4px solid #A3B2EB;padding-left:9px;margin:20px 0 10px}'
     +'#pdf-render-root .card{background:#E2E7FB;border-radius:10px;padding:14px 16px;margin-bottom:12px}'
-    +'#pdf-render-root table{width:100%;border-collapse:collapse;font-size:10px;table-layout:fixed}'
-    +'#pdf-render-root th{background:#1B3A5C;color:#fff;text-align:right;padding:5px 6px;font-size:8.5px;text-transform:uppercase;white-space:nowrap}'
-    +'#pdf-render-root th:first-child,#pdf-render-root td:first-child{text-align:left}'
-    +'#pdf-render-root td{padding:4px 6px;text-align:right;border-bottom:1px solid #EEF1FB;white-space:nowrap}'
+    +'#pdf-render-root table{width:100%;border-collapse:collapse;font-size:9px;table-layout:fixed}'
+    +'#pdf-render-root th{background:#1B3A5C;color:#fff;text-align:right;padding:5px 4px;font-size:8px;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
+    +'#pdf-render-root th:first-child,#pdf-render-root td:first-child{text-align:left;width:22%}'
+    +'#pdf-render-root td{padding:4px 4px;text-align:right;border-bottom:1px solid #EEF1FB;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
     +'#pdf-render-root tr.tot td{font-weight:700;background:#D9E0F7}'
     +'#pdf-render-root tr.res td{font-weight:700}'
     +'#pdf-render-root tr.fam-row td{font-weight:700;background:#EEF1FB}'
-    +'#pdf-render-root tr.cat-row td{color:#C9971A}'
     +'#pdf-render-root tr.cat-row td:first-child{padding-left:18px}'
     +'#pdf-render-root .pos{color:#277A56} #pdf-render-root .neg{color:#B23C3C}'
     +'#pdf-render-root .chartwrap{background:#fff;border-radius:8px;padding:8px;height:230px}'
