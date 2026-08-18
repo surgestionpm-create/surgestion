@@ -528,7 +528,11 @@ function getMontoProducto(p){
   var pb = Number(p.precio_base||0);
   var cant = Number(p.cantidad||0);
   var desc = Math.abs(Number(p.descuento||0));
-  if(pb > 0 && cant > 0) return (pb * cant) - desc;
+  // Si hay cantidad, se confía en el Precio Base tal cual viene (incluyendo $0 = producto gratis/cortesía).
+  // Antes, cuando pb=0 se usaba el campo "monto" (Total a Pagar) como respaldo, pero ese campo es
+  // el total del FOLIO completo (solo aparece una vez por orden) y no el valor de este producto en
+  // particular — eso hacía que productos gratis "heredaran" el total de órdenes con varios ítems.
+  if(cant > 0) return Math.max(0, (pb * cant) - desc);
   return Number(p.monto||0);
 }
 
