@@ -239,11 +239,12 @@ html { scroll-behavior: smooth; }
 body{background:var(--bg)}
 nav,.sb,#dashboard{font-family:Inter,system-ui,-apple-system,sans-serif;font-feature-settings:"tnum";-webkit-font-smoothing:antialiased}
 /* barra superior */
-nav{background:var(--bg);border-bottom:1px solid var(--navy);height:64px}
-.nav-empresa{color:var(--navy);font-weight:600}.nav-sub{color:var(--muted)}
-.nav-email{color:var(--muted)}
-.btn-lo{background:transparent;color:var(--navy);border:1.5px solid var(--navy);border-radius:10px;font-weight:600}
-.btn-lo:hover{background:var(--navy);color:#fff}
+nav{background:var(--navy);border-bottom:0;height:64px;box-shadow:0 2px 14px -6px rgba(27,58,92,.5)}
+.nav-empresa{color:#fff;font-weight:600}.nav-sub{color:rgba(255,255,255,.6)}
+.nav-email{color:rgba(255,255,255,.7)}
+.btn-lo{background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,.55);border-radius:10px;font-weight:600}
+.btn-lo:hover{background:#fff;color:var(--navy)}
+.nav-l img{border-radius:8px}
 /* menú lateral */
 .sb{background:var(--bg);border-right:1px solid var(--border);box-shadow:none}
 .sb:hover{box-shadow:12px 0 30px -18px rgba(27,58,92,.25)}
