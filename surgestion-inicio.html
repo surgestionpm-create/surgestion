@@ -206,6 +206,38 @@ section{padding:70px 0}
 .kpis{grid-template-columns:1fr 1fr 1fr}
 }
 @media(max-width:560px){.steps{grid-template-columns:1fr}.facts{grid-template-columns:1fr}.kpi b{font-size:18px}.hero{padding:50px 0 60px}}
+
+.u{color:#1c7a6e}.n{color:#C4453A}
+/* ── Lenguaje visual unificado con el portal ── */
+.blob,.float{display:none!important}
+nav{background:var(--cream);backdrop-filter:none;border-bottom:1px solid var(--navy)}
+.btn{border-radius:10px}.btn-dark:hover{transform:none}
+.menu .btn{border-radius:10px}
+h1 em,h2 em{font-style:normal;color:var(--teal)}
+.eyebrow{color:var(--muted);font-weight:600}
+.card{border-radius:18px;box-shadow:none}.card:hover{transform:none;box-shadow:none;border-color:#CFC6B5}
+.card.gold{background:var(--sand);border-color:var(--line)}
+.card .ic{border-radius:12px;background:var(--sand)}
+.card.navy .ic{background:rgba(255,255,255,.12)}
+.band{background:var(--sand);border-radius:0;margin:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.step{border-radius:18px}
+.chip{border-radius:10px}
+.mock{border-radius:18px;box-shadow:none}
+.contact{border-radius:0;margin:0}
+form.f{border-radius:18px}
+.g input,.g select,.g textarea{border-radius:10px}
+.c-links a{border-radius:12px}
+.portrait{border-radius:18px;background:var(--navy)}.portrait::after{display:none}
+.fact{border-radius:14px}
+.hero{padding:70px 0 90px}
+.strip{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line)}
+.strip>div{padding:16px 16px 16px 0}
+.strip>div.pr{background:var(--sand);padding-left:16px}
+.strip small{display:block;font-size:11.5px;color:var(--muted)}
+.strip b{display:block;font-family:'Fraunces',serif;font-size:25px;font-weight:500;color:var(--navy);letter-spacing:-.02em;margin:5px 0 3px;white-space:nowrap}
+.strip .pr b{color:#1c7a6e}
+.strip em{font-style:normal;font-size:12px;font-weight:600}
+@media(max-width:560px){.strip b{font-size:18px}}
 </style>
 
 <!-- Google Analytics -->
@@ -236,15 +268,16 @@ section{padding:70px 0}
   </div>
   <div class="stage">
     <div class="mock">
-  <div class="mock-top"><div class="dots"><i></i><i></i><i></i></div><span class="tag">Resumen · mes cerrado</span></div>
-  <div class="kpis">
-    <div class="kpi"><small>Ventas</small><b>$18,4M</b><span class="pill up">▲ 12,3%</span></div>
-    <div class="kpi"><small>Costos</small><b>$9,1M</b><span class="pill down">▲ 4,1%</span></div>
-    <div class="kpi"><small>Margen</small><b>50,6%</b><span class="pill up">▲ 3,2 pts</span></div>
+  <div class="mock-top"><b class="serif" style="font-size:19px;color:var(--navy)">Resumen del mes</b><span class="tag">Octubre 2026</span></div>
+  <div class="strip">
+    <div><small>Ventas netas</small><b>$21.846.320</b><em class="u">▲ 12,3%</em></div>
+    <div><small>Costos</small><b>$9.172.450</b><em class="n">▲ 4,1%</em></div>
+    <div class="pr"><small>Proyección mensual</small><b>$31.208.057</b><em class="u">▲ 11,4%</em></div>
   </div>
-  <div class="bars" aria-hidden="true">
-    <span style="height:38%"></span><span style="height:52%"></span><span style="height:44%"></span><span style="height:63%" class="t"></span><span style="height:58%"></span><span style="height:74%" class="t"></span><span style="height:68%"></span><span style="height:88%" class="g"></span>
-  </div>
+  <svg viewBox="0 0 520 150" style="width:100%;margin-top:14px;display:block" aria-hidden="true"><g stroke="#E6DFD3"><line x1="0" y1="20" x2="520" y2="20"/><line x1="0" y1="70" x2="520" y2="70"/></g><line x1="0" y1="125" x2="520" y2="125" stroke="#1B3A5C"/>
+  <polyline fill="none" stroke="#C9C2B3" stroke-width="2" stroke-dasharray="5 5" points="20,95 90,100 160,84 230,88 300,74 370,70 440,60"/>
+  <polyline fill="none" stroke="#1B3A5C" stroke-width="3" points="20,80 90,86 160,64 230,58 300,44 370,36 440,26"/><circle cx="440" cy="26" r="5" fill="#2A9D8F"/>
+  <g font-size="10" fill="#6B7685" text-anchor="middle"><text x="20" y="142">Ene</text><text x="160" y="142">Mar</text><text x="300" y="142">May</text><text x="440" y="142">Jul</text></g></svg>
 </div>
     <div class="float" style="left:-34px;bottom:-26px"><small style="color:var(--muted)">Acompañando a negocios</small><b>+5 años</b></div>
     <div class="float" style="right:-14px;top:-52px"><small style="color:var(--muted)">Flujo de caja</small><b style="color:var(--teal)">+ $2,8M</b></div>

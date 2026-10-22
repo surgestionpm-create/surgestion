@@ -231,6 +231,92 @@ html { scroll-behavior: smooth; }
 }
 /* ── FIN SIDEBAR ─────────────────────────────────────── */
 </style>
+<!-- ══ TEMA 2026 · rediseño visual (solo estilos, sin cambios de lógica) ══ -->
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style id="tema-2026">
+:root{--navy:#1B3A5C;--blue:#2A9D8F;--blue-l:#F3EEE5;--text:#16293F;--muted:#6B7685;--bg:#FAF7F2;--border:#E6DFD3;--green:#1F8A7D;--red:#C4453A;--gl:#DFF1EE;--rl:#FBE4E7;--orange:#B27A0E;--gold:#B27A0E;--sand:#F3EEE5}
+body{background:var(--bg)}
+nav,.sb,#dashboard{font-family:Inter,system-ui,-apple-system,sans-serif;font-feature-settings:"tnum";-webkit-font-smoothing:antialiased}
+/* barra superior */
+nav{background:var(--bg);border-bottom:1px solid var(--navy);height:64px}
+.nav-empresa{color:var(--navy);font-weight:600}.nav-sub{color:var(--muted)}
+.nav-email{color:var(--muted)}
+.btn-lo{background:transparent;color:var(--navy);border:1.5px solid var(--navy);border-radius:10px;font-weight:600}
+.btn-lo:hover{background:var(--navy);color:#fff}
+/* menú lateral */
+.sb{background:var(--bg);border-right:1px solid var(--border);box-shadow:none}
+.sb:hover{box-shadow:12px 0 30px -18px rgba(27,58,92,.25)}
+.sb-logo{border-bottom:1px solid var(--border)}.sb-logo svg{color:var(--navy)}
+.sb-item{color:var(--muted)}
+.sb-item:hover{background:var(--sand);color:var(--navy);border-left-color:var(--gold)}
+.sb-item.sb-active{background:var(--sand);color:var(--navy);border-left-color:var(--gold);font-weight:600}
+.sb-divider{background:var(--border)}
+/* títulos */
+#dashboard .dash-title{font-family:Fraunces,Georgia,serif;font-weight:500;font-size:40px;letter-spacing:-.03em;line-height:1.05;color:var(--navy)}
+#dashboard .dash-title span{color:var(--blue);font-style:normal}
+#dashboard .dash-header{padding-bottom:18px;margin-bottom:20px;border-bottom:1px solid var(--border)}
+#dashboard .dash-header button{border-radius:10px!important;font-weight:600!important;box-shadow:none}
+#dashboard .dash-header button[onclick^="exportarExcel"]{background:transparent!important;color:var(--navy)!important;border:1.5px solid var(--navy)!important}
+#dashboard .dash-header button[onclick^="exportarExcel"]:hover{background:var(--navy)!important;color:#fff!important}
+#dashboard .dash-header button#btn-exportar-pdf{background:var(--navy)!important;color:#fff!important;border:1.5px solid var(--navy)!important}
+#dashboard .dash-header button#btn-exportar-pdf:hover{opacity:.9}
+/* filtros de período */
+#dashboard .periodo-nav label{color:var(--muted);letter-spacing:.08em}
+#dashboard select.sel{border:1px solid var(--border);border-radius:10px;background:var(--white);color:var(--navy);font-weight:500;padding:8px 14px}
+#dashboard .periodo-pill{background:var(--sand);border:0;color:var(--navy);font-weight:600;border-radius:999px}
+#dashboard .ult-act{background:transparent;border:0;color:var(--muted)}
+/* secciones */
+#dashboard .sec{font-family:Fraunces,Georgia,serif;font-size:26px;font-weight:500;letter-spacing:-.02em;color:var(--navy);border:0;margin:48px 0 18px;padding:0}
+#dashboard .sec::before{content:"";display:inline-block;width:22px;height:2px;background:var(--gold);vertical-align:middle;margin-right:12px;border-radius:2px}
+/* indicadores (cifras completas) */
+#dashboard .kpi{background:transparent;border:0;border-top:1px solid var(--border);border-radius:0;box-shadow:none;padding:20px 20px 20px 0}
+#dashboard .kpi[style*="border-left"]{background:var(--sand);border:0!important;border-top:1px solid var(--border)!important;padding:20px}
+#dashboard .kl{font-size:11.5px;font-weight:500;letter-spacing:0;text-transform:none;color:var(--muted);margin-bottom:6px}
+#dashboard .kv{font-family:Fraunces,Georgia,serif;font-weight:500;font-size:28px;letter-spacing:-.02em;color:var(--navy);white-space:nowrap;margin-bottom:6px}
+#dashboard .kb{background:transparent!important;padding:0;border-radius:0;font-size:12px;font-weight:500;color:var(--muted)}
+#dashboard .kb.bb,#dashboard .kb.bo{color:var(--muted)}
+#dashboard .kb.bg{color:var(--green)}#dashboard .kb.br{color:var(--red)}
+@media(min-width:901px){
+  #dashboard .kpi5{grid-template-columns:repeat(4,1fr)!important;gap:0 24px}
+  #dashboard .kpi4{gap:0 24px}
+}
+/* bloques IVA / indicadores financieros */
+#dashboard .ind{border-radius:18px;padding:18px 20px}
+#dashboard .ind[style*="#1a5276"],#dashboard .ind[style*="#2A4A6B"]{background:var(--navy)!important}
+#dashboard .iv{font-family:Fraunces,Georgia,serif;font-weight:500;font-size:26px;letter-spacing:-.02em;white-space:nowrap}
+#dashboard .il{letter-spacing:.06em}
+/* tarjetas y tablas */
+#dashboard .card{background:var(--white);border:1px solid var(--border);border-radius:18px;box-shadow:none}
+#dashboard .ch{border-bottom:1px solid var(--border);padding:14px 20px}
+#dashboard .ct{font-family:Fraunces,Georgia,serif;font-weight:500;font-size:17px;color:var(--navy)}
+#dashboard .cb{padding:18px 20px}
+#dashboard table.t th{background:var(--navy);color:#fff;font-weight:500;font-size:11px;letter-spacing:.05em;padding:10px 12px}
+#dashboard table.t td{border-top:1px solid var(--border);padding:9px 12px;font-size:12.5px}
+#dashboard table.t tr:hover td{background:#FBF8F3}
+#dashboard .crow{background:var(--sand)}
+#dashboard .crow td{color:var(--navy)}
+/* estado de resultados */
+#dashboard .eg{border:1px solid var(--border);border-radius:16px}
+#dashboard .egh{background:var(--navy)}#dashboard .egh:hover{background:#244b75}
+#dashboard .ech{background:var(--sand);border-top:1px solid var(--border)}
+#dashboard .erow{border-top:1px solid var(--border)}
+#dashboard .etax{background:var(--sand);border:1px solid var(--border);border-radius:12px;color:var(--gold)}
+#dashboard .ekpi{background:var(--sand);border-radius:12px}
+#dashboard .ekv{font-family:Fraunces,Georgia,serif;font-weight:500}
+@media(max-width:900px){#dashboard .dash-title{font-size:30px}}
+@media(max-width:600px){
+  #dashboard .dash-title{font-size:26px}
+  #dashboard .sec{font-size:21px;margin:34px 0 14px}
+  #dashboard .kv{font-size:20px}
+  #dashboard .iv{font-size:20px}
+  nav{padding:0 14px}
+}
+@media(max-width:600px){
+  #dashboard div[style*="repeat(3,220px)"]{grid-template-columns:1fr!important;width:100%}
+  #dashboard div[style*="repeat(3,220px)"] .ind{min-width:0}
+}
+</style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
