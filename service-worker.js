@@ -1,4 +1,4 @@
-const CACHE = 'surgestion-v5';
+const CACHE = 'surgestion-v6';
 const ASSETS = [
   '/login.html',
   '/portal.html',
