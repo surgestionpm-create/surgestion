@@ -78,425 +78,137 @@
     ]
   }
   </script>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    :root {
-      --navy:       #1B3A5C;
-      --navy-mid:   #2A5280;
-      --blue:       #3A8FD1;
-      --blue-hover: #2B7FBF;
-      --blue-light: #EBF5FB;
-      --blue-pale:  #F0F7FC;
-      --accent:     #5BAEE8;
-      --text:       #1E2D3D;
-      --muted:      #5E7A94;
-      --light-muted:#8AAFC8;
-      --white:      #FFFFFF;
-      --bg:         #F5F9FC;
-      --border:     #C8DEF0;
-      --border-soft:#DFF0F8;
-      --success:    #27AE60;
-      --success-bg: #E9F7EF;
-    }
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--cream:#FAF7F2;--paper:#FFFFFF;--sand:#F1ECE3;--navy:#1B3A5C;--ink:#16293F;--muted:#5F6F80;--line:#E6DFD3;--teal:#2A9D8F;--teal-soft:#DFF1EE;--gold:#E0A63A;--gold-soft:#FBF0D9;--red:#D1495B;--red-soft:#FBE4E7;--r:24px}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--cream);color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3,.serif{font-family:'Fraunces',Georgia,serif;font-weight:500;letter-spacing:-.02em;line-height:1.1;color:var(--navy)}
+a{color:inherit}
+.wrap{max-width:1160px;margin:0 auto;padding:0 24px}
+section{padding:110px 0}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--teal);letter-spacing:.02em;margin-bottom:18px}
+.eyebrow::before{content:"";width:22px;height:2px;background:var(--gold);border-radius:2px}
+h2{font-size:clamp(32px,4.2vw,50px);max-width:720px}
+h2 em,h1 em{font-style:italic;color:var(--teal)}
+.lead{font-size:18px;color:var(--muted);max-width:560px;margin-top:20px}
+/* nav */
+nav{position:sticky;top:0;z-index:50;background:rgba(250,247,242,.85);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.nav-in{display:flex;align-items:center;justify-content:space-between;height:72px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;font-family:'Fraunces',serif;font-size:22px;color:var(--navy);font-weight:600}
+.brand img{width:36px;height:36px;border-radius:10px}
+.menu{display:flex;align-items:center;gap:30px;font-size:14.5px;font-weight:500}
+.menu a{text-decoration:none;color:var(--muted);transition:.2s}.menu a:hover{color:var(--navy)}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:14px 26px;border-radius:999px;font-weight:600;font-size:15px;text-decoration:none;border:0;cursor:pointer;transition:.25s;font-family:inherit}
+.btn-dark{background:var(--navy);color:#fff}.btn-dark:hover{background:var(--ink);transform:translateY(-2px)}
+.btn-line{background:transparent;color:var(--navy);border:1.5px solid var(--navy)}.btn-line:hover{background:var(--navy);color:#fff}
+.menu .btn{padding:10px 20px;font-size:14px;color:#fff}.menu .btn:hover{color:#fff}
+.burger{display:none}
+/* hero */
+.hero{padding:80px 0 100px;position:relative;overflow-x:clip}
+html,body{overflow-x:clip}
+.hero h1{font-size:clamp(42px,6vw,76px)}
+.hero p.sub{font-size:19px;color:var(--muted);max-width:520px;margin:26px 0 36px}
+.cta-row{display:flex;gap:14px;flex-wrap:wrap}
+.hero-grid{display:grid;grid-template-columns:1.05fr 1fr;gap:56px;align-items:center}
+.chip-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:40px}
+.chip{background:var(--paper);border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-size:13.5px;color:var(--muted);display:flex;align-items:center;gap:8px}
+.chip i{width:8px;height:8px;border-radius:50%;background:var(--teal)}
+.blob{position:absolute;border-radius:50%;filter:blur(70px);z-index:-1;opacity:.55}
+/* mock cards */
+.mock{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:22px;box-shadow:0 24px 60px -28px rgba(27,58,92,.28)}
+.mock-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.dots{display:flex;gap:6px}.dots i{width:10px;height:10px;border-radius:50%;background:var(--line)}
+.tag{font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;background:var(--sand);color:var(--muted)}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.kpi{border:1px solid var(--line);border-radius:16px;padding:14px;background:var(--cream)}
+.kpi small{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.kpi b{display:block;font-family:'Fraunces',serif;font-size:22px;color:var(--navy);margin:2px 0 6px;font-weight:600}
+.pill{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px}
+.up{background:var(--teal-soft);color:#1c7a6e}.down{background:var(--red-soft);color:var(--red)}
+.bars{display:flex;align-items:flex-end;gap:8px;height:110px;margin-top:16px;padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--cream)}
+.bars span{flex:1;border-radius:8px 8px 3px 3px;background:var(--navy);opacity:.9}
+.bars span.g{background:var(--gold)}.bars span.t{background:var(--teal)}
+.float{position:absolute;background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:12px 16px;box-shadow:0 18px 40px -20px rgba(27,58,92,.35);font-size:13px}
+.float b{display:block;font-family:'Fraunces',serif;font-size:20px;color:var(--navy)}
+.stage{position:relative}
+/* services bento */
+.bento{display:grid;grid-template-columns:repeat(6,1fr);gap:18px;margin-top:56px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:30px;transition:.3s}
+.card:hover{transform:translateY(-4px);box-shadow:0 22px 44px -26px rgba(27,58,92,.35)}
+.card .ic{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;font-size:21px;margin-bottom:22px;background:var(--teal-soft)}
+.card h3{font-size:23px;margin-bottom:10px}
+.card p{color:var(--muted);font-size:15px}
+.card ul{list-style:none;margin-top:14px;display:grid;gap:7px;font-size:14.5px;color:var(--ink)}
+.card li::before{content:"→ ";color:var(--teal);font-weight:600}
+.s2{grid-column:span 2}.s3{grid-column:span 3}.s4{grid-column:span 4}
+.card.navy{background:var(--navy);border-color:var(--navy)}.card.navy h3{color:#fff}.card.navy p,.card.navy li{color:#C9D6E4}.card.navy .ic{background:rgba(255,255,255,.12)}
+.card.gold{background:var(--gold-soft);border-color:#F0DDB2}.card.gold .ic{background:#fff}
+/* steps */
+.band{background:var(--sand);border-radius:48px;margin:0 16px}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:56px;counter-reset:s}
+.step{background:var(--paper);border-radius:var(--r);padding:28px;position:relative;border:1px solid var(--line)}
+.step::before{counter-increment:s;content:"0" counter(s);font-family:'Fraunces',serif;font-size:44px;color:var(--gold);display:block;line-height:1;margin-bottom:22px}
+.step h3{font-size:21px;margin-bottom:8px}.step p{font-size:14.5px;color:var(--muted)}
+/* portal */
+.portal-grid{display:grid;grid-template-columns:1fr 1.15fr;gap:60px;align-items:center}
+.checks{list-style:none;margin-top:28px;display:grid;gap:14px}
+.checks li{display:flex;gap:12px;font-size:16px}
+.checks li::before{content:"✓";flex:none;width:24px;height:24px;border-radius:50%;background:var(--teal-soft);color:var(--teal);display:grid;place-items:center;font-size:13px;font-weight:700;margin-top:2px}
+table.t{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px;margin-top:14px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+table.t th{background:var(--navy);color:#fff;font-weight:500;text-align:right;padding:9px 10px}
+table.t th:first-child,table.t td:first-child{text-align:left}
+table.t td{padding:9px 10px;text-align:right;border-top:1px solid var(--line)}
+table.t tr:nth-child(even) td{background:var(--cream)}
+/* about */
+.about{display:grid;grid-template-columns:.8fr 1.2fr;gap:56px;align-items:center}
+.portrait{aspect-ratio:1/1.05;border-radius:var(--r);background:linear-gradient(145deg,var(--navy),#2D5A86);position:relative;overflow:hidden;display:grid;place-items:center}
+.portrait::after{content:"";position:absolute;width:260px;height:260px;border-radius:50%;background:var(--gold);right:-80px;bottom:-80px;opacity:.9}
+.portrait img{width:46%;border-radius:28px;position:relative;z-index:1;box-shadow:0 20px 50px -20px rgba(0,0,0,.5)}
+.facts{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:34px}
+.fact{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:18px}
+.fact b{display:block;font-family:'Fraunces',serif;font-size:30px;color:var(--navy)}.fact span{font-size:13px;color:var(--muted)}
+/* contact */
+.contact{background:var(--navy);border-radius:48px;margin:0 16px;color:#fff}
+.contact h2{color:#fff}.contact .lead{color:#C9D6E4}.contact .eyebrow{color:var(--gold)}
+.c-grid{display:grid;grid-template-columns:1fr 1.1fr;gap:56px}
+.c-links{margin-top:34px;display:grid;gap:12px}
+.c-links a{display:flex;align-items:center;gap:14px;background:rgba(255,255,255,.08);border-radius:18px;padding:16px 20px;text-decoration:none;font-weight:500;transition:.2s}
+.c-links a:hover{background:rgba(255,255,255,.15)}
+form.f{background:var(--paper);border-radius:var(--r);padding:32px;color:var(--ink)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.g{margin-bottom:14px}
+.g label{display:block;font-size:13px;font-weight:600;color:var(--navy);margin-bottom:6px}
+.g input,.g select,.g textarea{width:100%;padding:13px 16px;border:1.5px solid var(--line);border-radius:14px;font:inherit;font-size:15px;background:var(--cream);color:var(--ink);transition:.2s}
+.g input:focus,.g select:focus,.g textarea:focus{outline:0;border-color:var(--teal);background:#fff}
+.g textarea{min-height:90px;resize:vertical}
+.f .btn{width:100%;justify-content:center}
+.ok{display:none;text-align:center;padding:16px 0}.ok h3{font-size:24px;margin-bottom:8px}
+.client{text-align:center;padding:90px 0 40px}
+.client p{color:var(--muted);margin:10px 0 24px}
+footer{padding:40px 0 50px;border-top:1px solid var(--line);margin-top:60px}
+.foot{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;font-size:14px;color:var(--muted)}
+.foot a{text-decoration:none;margin-left:20px}.foot a:hover{color:var(--navy)}
+.wa-float{position:fixed;right:22px;bottom:22px;width:56px;height:56px;border-radius:50%;background:#25D366;display:grid;place-items:center;box-shadow:0 12px 30px -8px rgba(37,211,102,.6);z-index:60}
+.wa-float svg{width:30px;height:30px;fill:#fff}
+@media(max-width:900px){
+section{padding:70px 0}
+.menu a:not(.btn){display:none}
+.hero-grid,.portal-grid,.about,.c-grid{grid-template-columns:1fr;gap:40px}
+.bento{grid-template-columns:1fr}.s2,.s3,.s4{grid-column:auto}
+.steps{grid-template-columns:1fr 1fr}
+.band,.contact{border-radius:32px;margin:0 8px}
+.float{display:none}
+.row{grid-template-columns:1fr}
+.kpis{grid-template-columns:1fr 1fr 1fr}
+}
+@media(max-width:560px){.steps{grid-template-columns:1fr}.facts{grid-template-columns:1fr}.kpi b{font-size:18px}.hero{padding:50px 0 60px}}
+</style>
 
-    html { scroll-behavior: smooth; }
-    body { font-family: system-ui, -apple-system, sans-serif; color: var(--text); background: var(--white); font-size: 16px; line-height: 1.6; }
-
-    /* NAV */
-    nav {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-      background: var(--white);
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      padding: 0 24px;
-      height: 80px;
-      box-shadow: 0 1px 12px rgba(27,58,92,0.07);
-      overflow: hidden;
-    }
-    .nav-logo { display: flex; align-items: center; text-decoration: none; }
-    .nav-center { position: absolute; left: 50%; transform: translateX(-50%); display: flex; align-items: center; height: 80px; overflow: hidden; }
-    .nav-logo img { width: auto; object-fit: contain; }
-
-    /* Logo banner horizontal */
-    .logo-banner {
-      background: var(--white);
-      border-top: 1px solid var(--border-soft);
-      border-bottom: 1px solid var(--border-soft);
-      display: flex; align-items: center; justify-content: center;
-      padding: 20px 48px;
-    }
-    .logo-banner-img { max-width: 200px; width: 30%; height: auto; opacity: 0.75; }
-    .nav-links { display: flex; align-items: center; gap: 18px; flex-wrap: nowrap; margin-left: auto; }
-    nav a.nav-link { color: var(--text); text-decoration: none; font-size: 15px; font-weight: 500; transition: color .2s; }
-    nav a.nav-link:hover { color: var(--navy); }
-    .btn-nav {
-      background: var(--blue); color: #fff !important;
-      padding: 9px 22px; border-radius: 6px; font-size: 14px; font-weight: 500;
-      text-decoration: none; transition: background .2s;
-    
-      white-space: nowrap;
-    }
-    .btn-nav:hover { background: var(--blue-hover); }
-
-    /* HERO */
-    .hero-logo-banner {
-      background: var(--white);
-      padding: 28px 48px 24px;
-      display: flex; align-items: center; justify-content: center;
-      margin-top: 80px; /* altura del nav */
-      border-bottom: 3px solid var(--blue);
-    }
-    .hero-logo-banner img {
-      max-width: 560px; width: 100%; height: auto;
-    }
-    .hero {
-      background: var(--navy);
-      display: flex; align-items: center;
-      padding: 100px 48px 72px; position: relative; overflow: hidden;
-    }
-    .hero-bg-shape {
-      position: absolute; top: 0; right: 0; width: 50%; height: 100%;
-      background: linear-gradient(150deg, transparent 38%, rgba(58,143,209,0.06) 38%);
-      pointer-events: none;
-    }
-    .hero-grid {
-      display: flex; flex-direction: column; align-items: center;
-      gap: 0; max-width: 1000px; margin: 0 auto; width: 100%;
-      position: relative; z-index: 1; text-align: center;
-    }
-    .hero-logo-wrap { display: none; }
-    .hero-logo { height: 90px; width: auto; }
-    .hero-eyebrow {
-      font-family: Georgia, serif;
-      font-size: clamp(28px, 3.2vw, 46px);
-      font-weight: normal; color: #fff; letter-spacing: 0;
-      text-transform: none; line-height: 1.2;
-      margin-bottom: 20px;
-    }
-    .hero h1 {
-      font-family: system-ui, sans-serif;
-      font-size: clamp(16px, 1.6vw, 22px);
-      font-weight: 400; color: rgba(255,255,255,0.7);
-      font-style: italic; line-height: 1.6; margin-bottom: 36px;
-      max-width: 600px;
-    }
-    .hero h1 em { font-style: normal; color: var(--accent); font-weight: 500; }
-    .hero-desc { font-size: 16px; color: rgba(255,255,255,0.65); max-width: 580px; margin: 0 auto 36px; line-height: 1.75; text-align: center; }
-    .hero-ctas { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; margin-bottom: 56px; }
-    .btn-primary {
-      background: var(--blue); color: #fff; padding: 13px 26px;
-      border-radius: 7px; font-size: 15px; font-weight: 500; text-decoration: none;
-      transition: background .2s, transform .15s; display: inline-block;
-    }
-    .btn-primary:hover { background: var(--blue-hover); transform: translateY(-1px); }
-    .btn-ghost {
-      background: transparent; color: rgba(255,255,255,0.8);
-      padding: 13px 26px; border-radius: 7px; font-size: 15px;
-      border: 1px solid rgba(255,255,255,0.22); text-decoration: none;
-      transition: border-color .2s, color .2s; display: inline-block;
-    }
-    .btn-ghost:hover { border-color: rgba(255,255,255,0.55); color: #fff; }
-
-    /* Hero stats — fila horizontal */
-    .hero-stats {
-      display: flex; flex-direction: row; justify-content: center;
-      gap: 0; width: 100%; max-width: 100%;
-      border-top: 1px solid rgba(255,255,255,0.1);
-      padding-top: 40px;
-    }
-    .stat-item {
-      flex: 1; text-align: center;
-      padding: 0 32px;
-      border-right: 1px solid rgba(255,255,255,0.1);
-    }
-    .stat-item:last-child { border-right: none; }
-    .stat-number { font-family: Georgia, serif; font-size: 38px; color: #fff; line-height: 1; margin-bottom: 8px; }
-    .stat-number span { color: var(--accent); font-size: 24px; }
-    .stat-title { font-size: 15px; font-weight: 500; color: #fff; margin-bottom: 5px; }
-    .stat-label { font-size: 13px; color: rgba(255,255,255,0.48); line-height: 1.5; }
-    .stat-divider { display: none; }
-
-    /* SECTIONS */
-    .section { padding: 88px 48px; max-width: 1100px; margin: 0 auto; }
-    .section-label { font-size: 11px; font-weight: 600; letter-spacing: 2.5px; text-transform: uppercase; color: var(--blue); margin-bottom: 10px; }
-    .section-title { font-family: Georgia, serif; font-size: clamp(26px, 2.8vw, 38px); font-weight: normal; color: var(--navy); line-height: 1.28; margin-bottom: 14px; }
-    .section-subtitle { font-size: 15px; color: var(--muted); max-width: 520px; margin-bottom: 52px; line-height: 1.75; }
-
-    /* SERVICIOS */
-    .services-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
-    .service-card {
-      border: 1px solid var(--border-soft); border-radius: 12px;
-      padding: 28px 24px; background: var(--white);
-      transition: border-color .2s, box-shadow .2s;
-    }
-    .service-card:hover { border-color: var(--blue); box-shadow: 0 4px 20px rgba(58,143,209,0.1); }
-    .service-icon { font-size: 22px; margin-bottom: 14px; }
-    .service-card h3 { font-size: 15px; font-weight: 600; color: var(--navy); margin-bottom: 8px; }
-    .service-card p { font-size: 13px; color: var(--muted); line-height: 1.6; }
-
-    /* PLANES */
-    .plans-bg { background: var(--bg); padding: 88px 48px; }
-    .plans-inner { max-width: 1100px; margin: 0 auto; }
-    .plans-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
-    .plan-card {
-      border: 1.5px solid var(--border); border-radius: 14px;
-      padding: 28px 22px; background: var(--white); position: relative;
-      display: flex; flex-direction: column;
-      transition: box-shadow .2s, border-color .2s;
-    }
-    .plan-card:hover { box-shadow: 0 6px 28px rgba(58,143,209,0.1); border-color: var(--blue); }
-    .plan-card.featured {
-      border-color: var(--blue); background: var(--navy);
-    }
-    .plan-badge {
-      position: absolute; top: -11px; left: 50%; transform: translateX(-50%);
-      background: var(--blue); color: #fff; font-size: 10px; font-weight: 600;
-      letter-spacing: 1.5px; text-transform: uppercase;
-      padding: 4px 12px; border-radius: 20px; white-space: nowrap;
-    }
-    .plan-name { font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--blue); margin-bottom: 8px; }
-    .plan-card.featured .plan-name { color: var(--accent); }
-    .plan-price { font-family: Georgia, serif; font-size: 30px; color: var(--navy); line-height: 1; margin-bottom: 4px; }
-    .plan-card.featured .plan-price { color: #fff; }
-    .plan-period { font-size: 12px; color: var(--muted); margin-bottom: 20px; }
-    .plan-card.featured .plan-period { color: rgba(255,255,255,0.55); }
-    .plan-desc { font-size: 12px; color: var(--muted); font-style: italic; margin-bottom: 18px; line-height: 1.5; }
-    .plan-card.featured .plan-desc { color: rgba(255,255,255,0.6); }
-    .plan-list { list-style: none; flex: 1; }
-    .plan-list li { font-size: 12px; color: var(--text); padding: 5px 0; border-bottom: 1px solid var(--border-soft); display: flex; gap: 8px; align-items: flex-start; line-height: 1.45; }
-    .plan-card.featured .plan-list li { color: rgba(255,255,255,0.78); border-bottom-color: rgba(255,255,255,0.1); }
-    .plan-check { color: var(--success); font-size: 13px; flex-shrink: 0; margin-top: 1px; }
-    .plan-card.featured .plan-check { color: #6BE8A0; }
-    .plan-cta {
-      margin-top: 22px; display: block; text-align: center;
-      background: var(--blue-light); color: var(--blue);
-      border: 1px solid var(--border); border-radius: 7px;
-      padding: 10px; font-size: 13px; font-weight: 500; text-decoration: none;
-      transition: background .2s;
-    }
-    .plan-cta:hover { background: var(--blue); color: #fff; border-color: var(--blue); }
-    .plan-card.featured .plan-cta { background: var(--blue); color: #fff; border-color: var(--blue); }
-    .plan-card.featured .plan-cta:hover { background: var(--blue-hover); }
-
-    /* Servicios especiales box */
-    .special-box {
-      background: var(--white); border: 1px solid var(--border);
-      border-radius: 14px; padding: 32px 36px;
-      display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start;
-    }
-    .special-box h3 { font-family: Georgia, serif; font-size: 20px; font-weight: normal; color: var(--navy); margin-bottom: 10px; }
-    .special-box p { font-size: 14px; color: var(--muted); line-height: 1.7; margin-bottom: 10px; }
-    .special-list { list-style: none; }
-    .special-list li { font-size: 13px; color: var(--text); padding: 4px 0; display: flex; gap: 8px; }
-    .special-tag {
-      display: inline-block; background: var(--blue-light); color: var(--blue);
-      border: 1px solid var(--border); border-radius: 6px;
-      padding: 5px 12px; font-size: 13px; font-weight: 500; margin-top: 4px;
-    }
-
-    /* PORTAL PREVIEW */
-    .why-section { background: var(--navy); padding: 88px 48px; }
-    .why-inner { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 72px; align-items: center; }
-    .why-content .section-label { color: var(--accent); }
-    .why-content .section-title { color: #fff; margin-bottom: 24px; }
-    .why-list { list-style: none; display: flex; flex-direction: column; gap: 14px; }
-    .why-list li { display: flex; gap: 12px; align-items: center; }
-    .why-check { width: 22px; height: 22px; background: rgba(91,174,232,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 11px; color: var(--accent); }
-    .why-list p { font-size: 16px; color: rgba(255,255,255,0.85); line-height: 1.4; }
-    .why-list strong { color: #fff; font-weight: 500; }
-
-    /* Portal mockup */
-    .portal-mockup {
-      background: #162E4D; border-radius: 16px; overflow: hidden;
-      border: 1px solid rgba(255,255,255,0.08);
-    }
-    .mockup-header {
-      background: #0F2340; padding: 14px 20px;
-      display: flex; align-items: center; gap: 10px;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
-    }
-    .mockup-header img { height: 26px; }
-    .mockup-header-label { font-size: 12px; color: rgba(255,255,255,0.4); }
-    .mockup-body { padding: 20px; }
-    .mockup-section-title { font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(255,255,255,0.3); margin-bottom: 10px; }
-    .mockup-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
-    .mockup-card { background: rgba(255,255,255,0.05); border-radius: 8px; padding: 12px 14px; }
-    .mockup-card-label { font-size: 10px; color: rgba(255,255,255,0.38); margin-bottom: 4px; }
-    .mockup-card-val { font-size: 18px; font-family: Georgia, serif; color: #fff; }
-    .mockup-card-sub { font-size: 10px; margin-top: 2px; }
-    .sub-green { color: #4ADE80; }
-    .sub-red { color: #F87171; }
-    .sub-blue { color: #6BBDE8; }
-    .mockup-bar-wrap { margin-bottom: 14px; }
-    .mockup-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
-    .mockup-bar-label { font-size: 10px; color: rgba(255,255,255,0.45); width: 80px; flex-shrink: 0; }
-    .mockup-bar-track { flex: 1; height: 6px; background: rgba(255,255,255,0.07); border-radius: 3px; overflow: hidden; }
-    .mockup-bar-fill { height: 100%; border-radius: 3px; }
-    .mockup-bar-val { font-size: 10px; color: rgba(255,255,255,0.5); width: 60px; text-align: right; flex-shrink: 0; }
-    .mockup-result { background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.2); border-radius: 8px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; }
-    .mockup-result-label { font-size: 11px; color: rgba(255,255,255,0.55); }
-    .mockup-result-val { font-size: 20px; font-family: Georgia, serif; color: #4ADE80; }
-
-    /* AGENDAR */
-    .agenda-section { background: var(--bg); padding: 88px 48px; }
-    .agenda-inner { max-width: 960px; margin: 0 auto; }
-    .agenda-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: start; }
-    .agenda-info h2 { font-family: Georgia, serif; font-size: clamp(24px, 2.5vw, 34px); font-weight: normal; color: var(--navy); margin-bottom: 14px; }
-    .agenda-info p { font-size: 15px; color: var(--muted); line-height: 1.75; margin-bottom: 20px; }
-    .agenda-pills { display: flex; flex-direction: column; gap: 10px; }
-    .agenda-pill { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--text); }
-    .pill-icon { width: 32px; height: 32px; background: var(--blue-light); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
-
-    /* Form */
-    .agenda-form { background: var(--white); border: 1px solid var(--border); border-radius: 16px; padding: 32px 28px; }
-    .form-title { font-size: 16px; font-weight: 600; color: var(--navy); margin-bottom: 22px; }
-    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .form-group { margin-bottom: 14px; }
-    .form-group label { display: block; font-size: 12px; font-weight: 500; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.8px; }
-    .form-group input, .form-group select, .form-group textarea {
-      width: 100%; padding: 10px 13px;
-      border: 1px solid var(--border); border-radius: 7px;
-      font-size: 14px; color: var(--text); background: var(--white);
-      font-family: inherit; transition: border-color .2s;
-      -webkit-appearance: none;
-    }
-    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
-      outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(58,143,209,0.1);
-    }
-    .form-group textarea { resize: vertical; min-height: 70px; }
-    .form-note { font-size: 12px; color: var(--muted); margin-bottom: 16px; line-height: 1.5; }
-    .btn-form {
-      width: 100%; background: var(--blue); color: #fff;
-      border: none; border-radius: 7px; padding: 13px;
-      font-size: 15px; font-weight: 500; cursor: pointer;
-      font-family: inherit; transition: background .2s;
-    }
-    .btn-form:hover { background: var(--blue-hover); }
-    .form-success { display: none; text-align: center; padding: 24px; }
-    .form-success-icon { font-size: 36px; margin-bottom: 10px; }
-    .form-success h3 { font-size: 17px; color: var(--navy); margin-bottom: 8px; }
-    .form-success p { font-size: 14px; color: var(--muted); }
-
-    /* WHATSAPP FLOAT */
-    .wa-float {
-      position: fixed; bottom: 28px; right: 28px; z-index: 999;
-      background: #25D366; color: #fff;
-      width: 56px; height: 56px; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      text-decoration: none; box-shadow: 0 4px 16px rgba(37,211,102,0.4);
-      transition: transform .2s, box-shadow .2s;
-    }
-    .wa-float:hover { transform: scale(1.08); box-shadow: 0 6px 24px rgba(37,211,102,0.5); }
-    .wa-float svg { width: 28px; height: 28px; fill: #fff; }
-
-    /* PORTAL CTA */
-    .portal-cta { padding: 88px 48px; max-width: 1100px; margin: 0 auto; }
-    .portal-cta-box { background: var(--blue-pale); border: 1px solid var(--border-soft); border-radius: 20px; padding: 64px 48px; text-align: center; }
-    .portal-cta-box .section-label { display: block; margin-bottom: 10px; }
-    .portal-cta-box .section-title { margin: 0 auto 14px; max-width: 500px; }
-    .portal-cta-desc { font-size: 15px; color: var(--muted); max-width: 420px; margin: 0 auto 36px; line-height: 1.75; }
-
-    /* FOOTER */
-    footer { background: var(--navy); padding: 48px; text-align: center; }
-    .footer-logo { margin-bottom: 14px; }
-    .footer-logo img { height: 48px; }
-    .footer-tagline { font-size: 13px; color: rgba(255,255,255,0.38); margin-bottom: 28px; }
-    .footer-links { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; margin-bottom: 28px; }
-    .footer-links a { font-size: 13px; color: rgba(255,255,255,0.45); text-decoration: none; transition: color .2s; }
-    .footer-links a:hover { color: rgba(255,255,255,0.85); }
-    .footer-copy { font-size: 12px; color: rgba(255,255,255,0.22); }
-
-    /* RESPONSIVE */
-    /* ── TABLET ── */
-    @media (max-width: 900px) {
-      nav { padding: 0 20px; }
-      .nav-links { gap: 14px; }
-      .hero { padding: 90px 20px 50px; }
-      .hero-grid, .why-inner, .agenda-grid, .special-box { grid-template-columns: 1fr; gap: 32px; }
-      .hero::after { display: none; }
-      .hero-stats { flex-direction: column; padding-top: 24px; gap: 20px; }
-      .stat-item { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 18px; }
-      .stat-item:last-child { border-bottom: none; }
-      .section, .plans-bg, .agenda-section, .why-section { padding: 50px 20px; }
-      .plans-grid { grid-template-columns: 1fr 1fr; gap: 16px; }
-      .services-grid { grid-template-columns: 1fr 1fr; gap: 16px; }
-      .portal-cta { padding: 50px 20px; }
-      .portal-cta-box { padding: 36px 20px; }
-      footer { padding: 36px 20px; }
-      .form-row { grid-template-columns: 1fr; }
-    }
-
-    /* ── MOBILE ── */
-    @media (max-width: 600px) {
-      /* Nav mobile */
-      nav { padding: 0 16px; height: 58px; }
-      .nav-logo { font-size: 16px; }
-      .nav-logo img { height: 32px; }
-      .nav-links { gap: 8px; }
-      .nav-links a { display: none; }
-      .nav-links a.btn-nav { display: flex; padding: 7px 14px; font-size: 12px; }
-
-      /* Hero */
-      .hero { padding: 80px 16px 44px; text-align: center; }
-      .hero h1 { font-size: clamp(24px, 7vw, 36px); line-height: 1.25; }
-      .hero p { font-size: 14px; }
-      .hero-grid { grid-template-columns: 1fr; gap: 28px; }
-      .hero-btns { flex-direction: column; align-items: center; gap: 10px; }
-      .hero-btns a { width: 100%; text-align: center; justify-content: center; }
-      .hero-stats { flex-direction: column; gap: 14px; padding-top: 20px; }
-      .stat-item { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 14px; text-align: center; }
-      .stat-num { font-size: 28px; }
-      .stat-label { font-size: 12px; }
-
-      /* Secciones */
-      .section, .plans-bg, .agenda-section, .why-section { padding: 40px 16px; }
-      .section-title { font-size: 22px; }
-      .section-subtitle { font-size: 13px; }
-
-      /* Servicios */
-      .services-grid { grid-template-columns: 1fr; gap: 12px; }
-      .service-card { padding: 20px 16px; }
-
-      /* Planes */
-      .plans-grid { grid-template-columns: 1fr; gap: 14px; }
-      .plan-card { padding: 24px 18px; }
-      .plan-price { font-size: 28px; }
-
-      /* Why */
-      .why-inner { grid-template-columns: 1fr; gap: 20px; }
-      .why-item { padding: 18px 16px; }
-
-      /* Agenda / contacto */
-      .agenda-grid { grid-template-columns: 1fr; gap: 24px; }
-      .form-row { grid-template-columns: 1fr; }
-      .form-group input, .form-group textarea, .form-group select { font-size: 16px; } /* evitar zoom iOS */
-
-      /* CTA portal */
-      .portal-cta { padding: 40px 16px; }
-      .portal-cta-box { padding: 28px 16px; border-radius: 16px; }
-      .portal-cta-box h2 { font-size: 20px; }
-      .mockup-cards { grid-template-columns: 1fr; gap: 10px; }
-
-      /* Footer */
-      footer { padding: 28px 16px; text-align: center; }
-      .footer-grid { grid-template-columns: 1fr; gap: 20px; }
-      .footer-copy { font-size: 11px; }
-
-      /* Botón WhatsApp */
-      .wa-float { bottom: 16px; right: 16px; width: 52px; height: 52px; }
-    }
-
-    /* ── MOBILE PEQUEÑO ── */
-    @media (max-width: 380px) {
-      .hero h1 { font-size: 22px; }
-      .section-title { font-size: 20px; }
-      nav { height: 52px; }
-    }
-
-    @media (prefers-reduced-motion: reduce) { * { transition: none !important; transform: none !important; } }
-  </style>
+<!-- Google Analytics -->
 <!-- Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-N6KQH84GZQ"></script>
 <script>
@@ -505,421 +217,130 @@
   gtag('js', new Date());
   gtag('config', 'G-N6KQH84GZQ');
 </script>
+
 </head>
 <body>
-
-<!-- WHATSAPP -->
-<a class="wa-float" href="https://wa.me/56950491158" target="_blank" aria-label="Contactar por WhatsApp">
-  <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-  </svg>
-</a>
-
-<!-- NAV -->
-<nav>
-  <a href="#" class="nav-logo">
-    <img src="/logo-abreviado.jpg" alt="SG" style="height:52px;width:auto">
-  </a>
-  <div class="nav-center">
-    <img src="/logo-surgestion.jpg" alt="SurGestión" style="height:200px;width:auto;display:block">
+<a class="wa-float" href="https://wa.me/56950491158" target="_blank" rel="noopener" aria-label="Contactar por WhatsApp"><span style="font-size:26px;line-height:1">💬</span></a>
+<nav><div class="wrap nav-in">
+  <a class="brand" href="#"><img src="/logo-abreviado.jpg" alt="SurGestión">SurGestión</a>
+  <div class="menu"><a href="#que-hacemos">Qué hacemos</a><a href="#como-trabajamos">Cómo trabajamos</a><a href="#portal">Portal</a><a href="#nosotros">Quién está detrás</a><a href="login.html">Portal clientes</a><a class="btn btn-dark" href="#contacto">Contacto</a></div>
+</div></nav>
+<header class="hero"><div class="blob" style="width:420px;height:420px;background:#F6DFA8;right:-80px;top:-60px"></div><div class="blob" style="width:360px;height:360px;background:#BFE6E0;left:-120px;bottom:-80px"></div>
+<div class="wrap hero-grid">
+  <div>
+    <span class="eyebrow">Gestión administrativa y financiera · Puerto Montt</span>
+    <h1>Información clara para decisiones que <em>importan</em>.</h1>
+    <p class="sub">Ordenamos los números de tu negocio y los convertimos en información simple, para que decidas con tranquilidad y sin tecnicismos.</p>
+    <div class="cta-row"><a class="btn btn-dark" href="#contacto">Conversemos →</a><a class="btn btn-line" href="#que-hacemos">Qué hacemos</a></div>
+    <div class="chip-row"><span class="chip"><i></i>Datos claros sin tecnicismos</span><span class="chip"><i></i>Nos adaptamos a tu negocio</span></div>
   </div>
-  <div class="nav-links">
-    <a href="#servicios" class="nav-link">Servicios</a>
-    <a href="#planes" class="nav-link">Planes</a>
-    <a href="#agendar" class="nav-link">Agendar reunión</a>
-    <a href="https://surgestionpm.cl/login.html" class="btn-nav">Portal clientes →</a>
+  <div class="stage">
+    <div class="mock">
+  <div class="mock-top"><div class="dots"><i></i><i></i><i></i></div><span class="tag">Resumen · mes cerrado</span></div>
+  <div class="kpis">
+    <div class="kpi"><small>Ventas</small><b>$18,4M</b><span class="pill up">▲ 12,3%</span></div>
+    <div class="kpi"><small>Costos</small><b>$9,1M</b><span class="pill down">▲ 4,1%</span></div>
+    <div class="kpi"><small>Margen</small><b>50,6%</b><span class="pill up">▲ 3,2 pts</span></div>
   </div>
-</nav>
-
-<!-- HERO -->
-<section class="hero">
-  <div class="hero-bg-shape"></div>
-  <div class="hero-grid">
-    <!-- Título principal grande -->
-    <p class="hero-eyebrow">Gestión administrativa y financiera</p>
-
-    <!-- Subtítulo discreto -->
-    <h1>Información <em>clara</em> para decisiones que importan</h1>
-
-    <!-- Descripción -->
-    <p class="hero-desc">Ayudamos a emprendedores y organizaciones a fortalecer el control de sus operaciones, entregando datos oportunos y confiables para respaldar cada decisión estratégica.</p>
-
-    <!-- Botones -->
-    <div class="hero-ctas">
-      <a href="#planes" class="btn-primary">Ver planes y precios</a>
-      <a href="#agendar" class="btn-ghost">Agendar reunión gratuita</a>
-    </div>
-
-    <!-- 3 items en fila horizontal -->
-    <div class="hero-stats">
-      <div class="stat-item">
-        <div class="stat-number">+5<span> años</span></div>
-        <div class="stat-title">Experiencia</div>
-        <div class="stat-label">en gestión financiera y administrativa</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-number" style="font-size:32px">Datos <span style="font-size:22px">claros</span></div>
-        <div class="stat-title">Sin tecnicismos</div>
-        <div class="stat-label">información fácil de leer para mejores decisiones</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-number" style="font-size:26px; line-height:1.2">Nos<br><span style="font-size:26px; color:var(--accent)">adaptamos</span></div>
-        <div class="stat-title">A tu negocio</div>
-        <div class="stat-label">sin importar el rubro o la forma en que trabajas</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- LOGO BANNER HORIZONTAL -->
-<div class="logo-banner">
-  <img src="/logo-surgestion.jpg" alt="SurGestión — Números claros para mejores decisiones" class="logo-banner-img">
-</div>
-
-<!-- SERVICIOS -->
-<div id="servicios">
-<div class="section">
-  <p class="section-label">Lo que hacemos</p>
-  <h2 class="section-title">Servicios especializados para tu operación</h2>
-  <p class="section-subtitle">Desde el registro diario hasta el análisis estratégico, cubrimos todos los frentes de tu gestión financiera.</p>
-  <div class="services-grid">
-    <div class="service-card">
-      <div class="service-icon">🏦</div>
-      <h3>Conciliación bancaria</h3>
-      <p>Revisamos y ordenamos tus movimientos bancarios para que cuadren con tus registros internos.</p>
-    </div>
-    <div class="service-card">
-      <div class="service-icon">🧾</div>
-      <h3>Registro de ventas y compras</h3>
-      <p>Llevamos el control detallado de todas tus transacciones comerciales de forma organizada.</p>
-    </div>
-    <div class="service-card">
-      <div class="service-icon">🗂️</div>
-      <h3>Categorización de gastos</h3>
-      <p>Clasificamos y organizamos cada gasto de tu empresa para que sepas exactamente en qué va tu dinero.</p>
-    </div>
-    <div class="service-card">
-      <div class="service-icon">📊</div>
-      <h3>Estados de resultados</h3>
-      <p>Preparamos tu EERR mensual con claridad: ingresos, costos y resultado final bien explicados.</p>
-    </div>
-    <div class="service-card">
-      <div class="service-icon">🎯</div>
-      <h3>Análisis de márgenes y rentabilidad</h3>
-      <p>Identificamos qué productos o servicios te generan más y dónde puedes mejorar tu rentabilidad.</p>
-    </div>
-    <div class="service-card">
-      <div class="service-icon">📈</div>
-      <h3>Proyecciones y flujos de caja</h3>
-      <p>Proyectamos tus ingresos y gastos a futuro para anticiparte a lo que viene en tu negocio.</p>
-    </div>
-    <div class="service-card">
-      <div class="service-icon">🧮</div>
-      <h3>Costeo de productos</h3>
-      <p>Calculamos el costo real de lo que produces o vendes para que fijes precios con información.</p>
-    </div>
-    <div class="service-card">
-      <div class="service-icon">📋</div>
-      <h3>Facturación y control de pagos</h3>
-      <p>Emitimos tus facturas y llevamos el control de pagos pendientes y proveedores.</p>
-    </div>
-    <div class="service-card">
-      <div class="service-icon">🤝</div>
-      <h3>Asesoría administrativa y financiera</h3>
-      <p>Te acompañamos con orientación continua para que tomes mejores decisiones en tu negocio.</p>
-    </div>
+  <div class="bars" aria-hidden="true">
+    <span style="height:38%"></span><span style="height:52%"></span><span style="height:44%"></span><span style="height:63%" class="t"></span><span style="height:58%"></span><span style="height:74%" class="t"></span><span style="height:68%"></span><span style="height:88%" class="g"></span>
   </div>
 </div>
-</div>
-
-<!-- PLANES -->
-<div id="planes">
-<div class="plans-bg">
-<div class="plans-inner">
-  <p class="section-label">Planes y precios</p>
-  <h2 class="section-title">Elige el plan que se adapta a tu empresa</h2>
-  <p class="section-subtitle">Todos los valores en pesos chilenos, con factura incluida. Sin costos ocultos.</p>
-
-  <div class="plans-grid">
-
-    <!-- Plan 1 -->
-    <div class="plan-card">
-      <p class="plan-name">Plan Inicial</p>
-      <p class="plan-price">$100.000</p>
-      <p class="plan-period">mensuales</p>
-      <p class="plan-desc">Para negocios con ventas hasta $10 millones mensuales.</p>
-      <ul class="plan-list">
-        <li><span class="plan-check">&#10003;</span> Registro de ventas y gastos</li>
-        <li><span class="plan-check">&#10003;</span> Categorizacion de gastos</li>
-        <li><span class="plan-check">&#10003;</span> Estado de resultados mensual</li>
-        <li><span class="plan-check">&#10003;</span> Asesoria financiera basica</li>
-        <li><span class="plan-check">&#10003;</span> Acceso a plataforma de gestion</li>
-      </ul>
-      <a href="#agendar" class="plan-cta">Comenzar</a>
-    </div>
-
-    <!-- Plan 2 -->
-    <div class="plan-card">
-      <p class="plan-name">Plan Estandar</p>
-      <p class="plan-price">$200.000</p>
-      <p class="plan-period">mensuales</p>
-      <p class="plan-desc">Para negocios con ventas entre $10 y $30 millones mensuales.</p>
-      <ul class="plan-list">
-        <li><span class="plan-check">&#10003;</span> Registro de ventas y gastos</li>
-        <li><span class="plan-check">&#10003;</span> Categorizacion y analisis de costos</li>
-        <li><span class="plan-check">&#10003;</span> Estado de resultados mensual</li>
-        <li><span class="plan-check">&#10003;</span> Analisis de margenes y rentabilidad</li>
-        <li><span class="plan-check">&#10003;</span> Asesoria financiera y administrativa</li>
-        <li><span class="plan-check">&#10003;</span> Acceso a plataforma de gestion</li>
-      </ul>
-      <a href="#agendar" class="plan-cta">Comenzar</a>
-    </div>
-
-    <!-- Plan 3 - DESTACADO -->
-    <div class="plan-card featured">
-      <div class="plan-badge">Mas popular</div>
-      <p class="plan-name">Plan Avanzado</p>
-      <p class="plan-price">$300.000</p>
-      <p class="plan-period">mensuales</p>
-      <p class="plan-desc">Para negocios con ventas entre $30 y $80 millones mensuales.</p>
-      <ul class="plan-list">
-        <li><span class="plan-check">&#10003;</span> Todo lo del Plan Estandar</li>
-        <li><span class="plan-check">&#10003;</span> Analisis financiero avanzado</li>
-        <li><span class="plan-check">&#10003;</span> Presupuestos y proyecciones</li>
-        <li><span class="plan-check">&#10003;</span> Indicadores de gestion (KPIs)</li>
-        <li><span class="plan-check">&#10003;</span> Reuniones de seguimiento mensuales</li>
-        <li><span class="plan-check">&#10003;</span> Acceso a plataforma de gestion</li>
-      </ul>
-      <a href="#agendar" class="plan-cta">Comenzar</a>
-    </div>
-
-    <!-- Plan 4 -->
-    <div class="plan-card">
-      <p class="plan-name">Plan Premium</p>
-      <p class="plan-price">$600.000</p>
-      <p class="plan-period">mensuales</p>
-      <p class="plan-desc">Para negocios con ventas entre $80 y $200 millones mensuales.</p>
-      <ul class="plan-list">
-        <li><span class="plan-check">&#10003;</span> Todo lo del Plan Avanzado</li>
-        <li><span class="plan-check">&#10003;</span> Gestion financiera integral</li>
-        <li><span class="plan-check">&#10003;</span> Analisis por linea de negocio</li>
-        <li><span class="plan-check">&#10003;</span> Reportes ejecutivos personalizados</li>
-        <li><span class="plan-check">&#10003;</span> Soporte prioritario</li>
-        <li><span class="plan-check">&#10003;</span> Acceso a plataforma de gestion</li>
-      </ul>
-      <a href="#agendar" class="plan-cta">Comenzar</a>
-    </div>
-
+    <div class="float" style="left:-34px;bottom:-26px"><small style="color:var(--muted)">Acompañando a negocios</small><b>+5 años</b></div>
+    <div class="float" style="right:-14px;top:-52px"><small style="color:var(--muted)">Flujo de caja</small><b style="color:var(--teal)">+ $2,8M</b></div>
   </div>
-
-  <!-- Servicios adicionales -->
-  <div class="special-box" style="grid-template-columns:1fr 1fr 1fr;gap:24px">
-    <div>
-      <p class="section-label" style="margin-bottom:8px">Plataforma incluida en todos los planes</p>
-      <h3>Portal de gestión financiera</h3>
-      <p>Todos nuestros clientes tienen acceso a nuestra plataforma exclusiva donde pueden ver en tiempo real sus ventas, gastos, márgenes, estado de resultados y mucho más desde cualquier dispositivo.</p>
-      <span class="special-tag">✓ Incluido en todos los planes</span>
-    </div>
-    <div>
-      <p class="section-label" style="margin-bottom:8px">Servicios adicionales</p>
-      <h3>Cotización según volumen y complejidad</h3>
-      <ul class="special-list">
-        <li><span class="plan-check">+</span> Costeo de productos y servicios</li>
-        <li><span class="plan-check">+</span> Servicio de facturación electrónica</li>
-        <li><span class="plan-check">+</span> Control y pago a proveedores</li>
-      </ul>
-      <span class="special-tag">Precio según cantidad y complejidad</span>
-    </div>
-    <div>
-      <p class="plan-name" style="margin-bottom:12px">¿No sabes qué plan te conviene?</p>
-      <p style="color:var(--text-muted);font-size:14px;margin-bottom:16px">Agenda una reunión gratuita y te asesoramos según el volumen de tu negocio.</p>
-      <a href="#agendar" class="plan-cta" style="display:inline-block">Agendar reunión →</a>
-    </div>
+</div></header>
+<section id="que-hacemos"><div class="wrap">
+  <span class="eyebrow">Qué hacemos</span>
+  <h2>Ordenamos tu administración para que <em>entiendas</em> tu negocio.</h2>
+  <p class="lead">Nos hacemos cargo de la parte numérica y administrativa. Tú recibes información simple, a tiempo y lista para decidir.</p>
+  <div class="bento">
+    <div class="card s4 navy"><div class="ic">🏦</div><h3>Tu información al día</h3><p>Dejamos al día lo que normalmente se acumula: cada movimiento queda registrado, ordenado y cuadrado.</p>
+      <ul><li>Conciliación bancaria</li><li>Registro de ventas y compras</li><li>Categorización de gastos</li></ul></div>
+    <div class="card s2"><div class="ic">🧾</div><h3>Facturación y pagos</h3><p>Facturación y control de pagos, para que sepas qué se cobró y qué falta.</p></div>
+    <div class="card s2"><div class="ic">📊</div><h3>Estados de resultados</h3><p>Cuánto vendiste, cuánto gastaste y cuánto te quedó, explicado con claridad.</p></div>
+    <div class="card s2 gold"><div class="ic">📈</div><h3>Márgenes y rentabilidad</h3><p>Análisis de márgenes y rentabilidad: qué productos y áreas realmente te dejan ganancia.</p></div>
+    <div class="card s2"><div class="ic">🧮</div><h3>Costeo de productos</h3><p>Conoce el costo real de lo que vendes para poner precios con respaldo.</p></div>
+    <div class="card s3"><div class="ic">🔭</div><h3>Proyecciones y flujos de caja</h3><p>Anticipa los meses que vienen: cuándo entra y sale el dinero, y qué tan holgado estarás.</p></div>
+    <div class="card s3"><div class="ic">🤝</div><h3>Asesoría administrativa y financiera</h3><p>Una mirada externa y cercana para ordenar procesos y tomar decisiones con confianza.</p></div>
   </div>
-</section>
-</div>
+</div></section>
 
-<!-- FORMALIZA TU EMPRESA -->
-<div id="formaliza">
-<div style="background:var(--navy);padding:48px 24px">
-  <div style="max-width:560px;margin:0 auto;text-align:center">
-    <p class="section-label" style="color:rgba(255,255,255,.5);margin-bottom:8px">Nuevo en los negocios</p>
-    <h2 class="section-title" style="color:#fff;margin-bottom:10px">Formaliza tu empresa</h2>
-    <p style="color:rgba(255,255,255,.55);font-size:14px;margin-bottom:32px">Te acompa&#241;amos en cada paso para constituir tu empresa de forma simple, r&#225;pida y correcta.</p>
+<section class="band" id="como-trabajamos"><div class="wrap">
+  <span class="eyebrow">Cómo trabajamos</span>
+  <h2>Un proceso simple, <em>a tu ritmo</em>.</h2>
+  <div class="steps">
+    <div class="step"><h3>Conversamos</h3><p>Conocemos tu negocio, cómo vendes y qué necesitas resolver.</p></div>
+    <div class="step"><h3>Ordenamos</h3><p>Recopilamos y organizamos tu información hasta dejarla cuadrada.</p></div>
+    <div class="step"><h3>Analizamos</h3><p>Convertimos los datos en resultados, márgenes y proyecciones.</p></div>
+    <div class="step"><h3>Te acompañamos</h3><p>Revisamos contigo cada mes y ajustamos según cómo evoluciona tu negocio.</p></div>
+  </div>
+</div></section>
 
-    <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:28px 32px;text-align:left">
-      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,.1)">
-        <div>
-          <p style="color:#fff;font-size:17px;font-weight:600;margin:0">Plan Formalizaci&#243;n</p>
-          <p style="color:rgba(255,255,255,.45);font-size:12px;margin:3px 0 0">Pago &#250;nico &#183; Todo incluido</p>
-        </div>
-        <p style="color:#5DECA0;font-size:26px;font-weight:700;margin:0">$150.000</p>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px">
-        <div style="display:flex;gap:7px"><span style="color:#5DECA0;font-size:12px;margin-top:2px">&#10003;</span><span style="color:rgba(255,255,255,.8);font-size:12px">Asesor&#237;a jur&#237;dica societaria</span></div>
-        <div style="display:flex;gap:7px"><span style="color:#5DECA0;font-size:12px;margin-top:2px">&#10003;</span><span style="color:rgba(255,255,255,.8);font-size:12px">Redacci&#243;n de escrituras</span></div>
-        <div style="display:flex;gap:7px"><span style="color:#5DECA0;font-size:12px;margin-top:2px">&#10003;</span><span style="color:rgba(255,255,255,.8);font-size:12px">Inicio de actividades</span></div>
-        <div style="display:flex;gap:7px"><span style="color:#5DECA0;font-size:12px;margin-top:2px">&#10003;</span><span style="color:rgba(255,255,255,.8);font-size:12px">Verificaci&#243;n de actividades</span></div>
-        <div style="display:flex;gap:7px"><span style="color:#5DECA0;font-size:12px;margin-top:2px">&#10003;</span><span style="color:rgba(255,255,255,.8);font-size:12px">Habilitaci&#243;n de facturaci&#243;n</span></div>
-        <div style="display:flex;gap:7px"><span style="color:#5DECA0;font-size:12px;margin-top:2px">&#10003;</span><span style="color:rgba(255,255,255,.8);font-size:12px">Solicitud de E-rut</span></div>
-        <div style="display:flex;gap:7px"><span style="color:#5DECA0;font-size:12px;margin-top:2px">&#10003;</span><span style="color:rgba(255,255,255,.8);font-size:12px">Digitalizaci&#243;n de finanzas</span></div>
-        <div style="display:flex;gap:7px"><span style="color:#5DECA0;font-size:12px;margin-top:2px">&#10003;</span><span style="color:rgba(255,255,255,.8);font-size:12px">Asesor&#237;a inicial en facturaci&#243;n</span></div>
-        <div style="display:flex;gap:7px"><span style="color:#5DECA0;font-size:12px;margin-top:2px">&#10003;</span><span style="color:rgba(255,255,255,.8);font-size:12px">Asesor&#237;a en Gesti&#243;n Financiera</span></div>
-      </div>
-      <p style="color:rgba(255,255,255,.35);font-size:11px;margin-bottom:20px">&#9888; No incluye tr&#225;mite de resoluci&#243;n sanitaria ni obtenci&#243;n de patentes comerciales.</p>
-      <a href="#agendar" style="display:block;text-align:center;background:#5DECA0;color:#1B3A5C;font-weight:700;padding:12px;border-radius:8px;text-decoration:none;font-size:14px">Quiero formalizar mi empresa &#8594;</a>
+<section id="portal"><div class="wrap portal-grid">
+  <div>
+    <span class="eyebrow">Vista del portal</span>
+    <h2>Tus números, <em>siempre a mano</em>.</h2>
+    <p class="lead">Cada cliente cuenta con un portal privado donde revisa su información mes a mes, sin planillas ni correos de por medio.</p>
+    <ul class="checks"><li>Ventas, costos y márgenes del mes</li><li>Comparación año contra año con variaciones</li><li>Detalle por familia de productos y medios de pago</li><li>Informes descargables en PDF</li></ul>
+    <a class="btn btn-line" style="margin-top:34px" href="login.html">Entrar al portal →</a>
+  </div>
+  <div class="mock">
+    <div class="mock-top"><b class="serif" style="font-size:18px;color:var(--navy)">Comparación anual</b><span class="tag">Ene – Sep</span></div>
+    <table class="t"><tr><th>Concepto</th><th>2025</th><th>2026</th><th>Var.</th></tr>
+      <tr><td>Ventas netas</td><td>$142,0M</td><td>$163,8M</td><td><span class="pill up">▲ 15,4%</span></td></tr>
+      <tr><td>Costos</td><td>$71,2M</td><td>$80,1M</td><td><span class="pill down">▲ 12,5%</span></td></tr>
+      <tr><td>Margen bruto</td><td>$70,8M</td><td>$83,7M</td><td><span class="pill up">▲ 18,2%</span></td></tr>
+      <tr><td><b>Total</b></td><td><b>$284,0M</b></td><td><b>$327,6M</b></td><td><span class="pill up">▲ 15,4%</span></td></tr></table>
+    <div class="kpis" style="margin-top:14px">
+      <div class="kpi"><small>Efectivo</small><b>42%</b></div><div class="kpi"><small>Tarjeta</small><b>46%</b></div><div class="kpi"><small>Transferencia</small><b>12%</b></div>
     </div>
+    <p style="font-size:11.5px;color:var(--muted);margin-top:12px">* Datos de ejemplo con fines ilustrativos.</p>
   </div>
-</div>
-</div>
+</div></section>
 
-<!-- AGENDAR -->
-<div id="agendar">
-<div class="agenda-section">
-<div class="agenda-inner">
-  <div style="margin-bottom:40px">
-    <p class="section-label">Reunión gratuita de 30 minutos</p>
-    <h2 class="section-title">¿Quieres conocer cómo podemos ayudarte?</h2>
-    <p class="section-subtitle">Agenda una reunión sin compromiso y conversamos sobre tu negocio, tus necesidades y qué plan se adapta mejor a ti.</p>
+<section id="nosotros" style="padding-top:20px"><div class="wrap about">
+  <div class="portrait"><img src="/icon-512.png" alt="SurGestión"></div>
+  <div>
+    <span class="eyebrow">Quién está detrás</span>
+    <h2>Cercanía y números <em>bien hechos</em>.</h2>
+    <p class="lead">Soy Benjamín, y creé SurGestión en Puerto Montt para acompañar a negocios de la región con sus finanzas y su operación. Más de cinco años de experiencia, un trato directo y un objetivo: que entiendas tu negocio sin necesitar ser contador.</p>
+    <div class="facts"><div class="fact"><b>+5 años</b><span>de experiencia</span></div><div class="fact"><b>Los Lagos</b><span>negocios de la región</span></div><div class="fact"><b>1 a 1</b><span>trato directo</span></div></div>
   </div>
-  <div class="agenda-grid">
-    <div class="agenda-info">
-      <div class="agenda-pills">
-        <div class="agenda-pill"><div class="pill-icon">⏱️</div> Reunión de 30 minutos por videollamada</div>
-        <div class="agenda-pill"><div class="pill-icon">💬</div> Sin compromiso ni costo</div>
-        <div class="agenda-pill"><div class="pill-icon">📅</div> Elige el horario que mejor te acomode</div>
-        <div class="agenda-pill"><div class="pill-icon">🎯</div> Te contamos exactamente qué plan necesitas</div>
-        <div class="agenda-pill" style="margin-top:8px">
-          <div class="pill-icon">💬</div>
-          <span>¿Prefieres WhatsApp? <a href="https://wa.me/56950491158" target="_blank" style="color:var(--blue);font-weight:500">Escríbenos al +56 9 5049 1158</a></span>
-        </div>
-      </div>
-    </div>
+</div></section>
 
-    <div class="agenda-form" id="agenda-form-wrap">
-      <p class="form-title">Solicita tu reunión</p>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Nombre</label>
-          <input type="text" id="f-nombre" placeholder="Tu nombre">
-        </div>
-        <div class="form-group">
-          <label>Empresa</label>
-          <input type="text" id="f-empresa" placeholder="Nombre de tu empresa">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Correo electrónico</label>
-          <input type="email" id="f-email" placeholder="tu@correo.cl">
-        </div>
-        <div class="form-group">
-          <label>WhatsApp / Teléfono</label>
-          <input type="tel" id="f-telefono" placeholder="+56 9 XXXX XXXX">
-        </div>
-      </div>
-      <div class="form-group">
-        <label>¿Qué necesita tu empresa?</label>
-        <select id="f-necesidad">
-          <option value="">Selecciona una opción</option>
-          <option>Ordenar mi contabilidad básica</option>
-          <option>Entender mis resultados financieros</option>
-          <option>Regularizar información histórica</option>
-          <option>Gestión financiera completa</option>
-          <option>Preparación para fiscalización</option>
-          <option>No estoy seguro/a, quiero orientación</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Día y horario preferido</label>
-        <input type="text" id="f-horario" placeholder="Ej: Lunes o miércoles, mañana o tarde">
-      </div>
-      <div class="form-group">
-        <label>Mensaje (opcional)</label>
-        <textarea id="f-mensaje" placeholder="Cuéntanos brevemente sobre tu negocio o situación actual..."></textarea>
-      </div>
-      <p class="form-note">📧 Te confirmaremos la reunión por correo en menos de 24 horas hábiles con el link de videollamada.</p>
-      <button class="btn-form" onclick="enviarFormulario()">Solicitar reunión gratuita →</button>
-
-      <div class="form-success" id="form-success">
-        <div class="form-success-icon">✅</div>
-        <h3>¡Solicitud enviada!</h3>
-        <p>Te contactaremos en menos de 24 horas hábiles para confirmar tu reunión. También puedes escribirnos por WhatsApp al <strong>+56 9 5049 1158</strong>.</p>
-      </div>
-    </div>
+<section class="contact" id="contacto"><div class="wrap c-grid">
+  <div>
+    <span class="eyebrow">Contacto</span>
+    <h2>Conversemos sobre tu negocio.</h2>
+    <p class="lead">Cuéntanos qué necesitas y coordinamos una reunión de 30 minutos, sin compromiso.</p>
+    <div class="c-links"><a href="https://wa.me/56950491158" target="_blank" rel="noopener">💬 WhatsApp +56 9 5049 1158</a><a href="mailto:surgestion.pm@gmail.com">✉️ surgestion.pm@gmail.com</a></div>
   </div>
-</div>
-</div>
-</div>
+  <form class="f" id="agenda-form-wrap" onsubmit="return false">
+    <div class="row"><div class="g"><label for="f-nombre">Nombre</label><input id="f-nombre" placeholder="Tu nombre"></div><div class="g"><label for="f-empresa">Empresa</label><input id="f-empresa" placeholder="Tu empresa"></div></div>
+    <div class="row"><div class="g"><label for="f-email">Correo</label><input id="f-email" type="email" placeholder="tu@correo.cl"></div><div class="g"><label for="f-telefono">WhatsApp / Teléfono</label><input id="f-telefono" type="tel" placeholder="+56 9 XXXX XXXX"></div></div>
+    <div class="g"><label for="f-necesidad">¿Qué necesita tu empresa?</label><select id="f-necesidad"><option value="">Selecciona una opción</option><option>Ordenar mi contabilidad básica</option><option>Entender mis resultados financieros</option><option>Regularizar información histórica</option><option>Gestión financiera completa</option><option>Preparación para fiscalización</option><option>No estoy seguro/a, quiero orientación</option></select></div>
+    <div class="g"><label for="f-horario">Día y horario preferido</label><input id="f-horario" placeholder="Ej: lunes o miércoles, en la mañana"></div>
+    <div class="g"><label for="f-mensaje">Mensaje (opcional)</label><textarea id="f-mensaje" placeholder="Cuéntanos brevemente sobre tu negocio..."></textarea></div>
+    <button type="button" class="btn btn-dark btn-form" onclick="enviarFormulario()">Solicitar reunión →</button>
+    <div class="ok" id="form-success"><h3>¡Solicitud enviada!</h3><p style="color:var(--muted)">Te contactaremos en menos de 24 horas hábiles. También puedes escribirnos al <b>+56 9 5049 1158</b>.</p></div>
+  </form>
+</div></section>
 
-<!-- PORTAL CTA -->
-<div class="portal-cta">
-  <div class="portal-cta-box">
-    <span class="section-label">Acceso exclusivo</span>
-    <h2 class="section-title">¿Ya eres cliente de SurGestión?</h2>
-    <p class="portal-cta-desc">Ingresa a tu portal privado para ver tus costos, ventas, estado de resultados y toda la información financiera de tu empresa.</p>
-    <a href="https://surgestionpm.cl/portal.html" class="btn-primary">Entrar al portal →</a>
-  </div>
-</div>
+<div class="wrap client"><h2 style="margin:0 auto;font-size:clamp(28px,3.5vw,40px)">¿Ya eres cliente?</h2><p>Ingresa a tu portal privado para ver la información de tu empresa.</p><a class="btn btn-dark" href="login.html">Entrar al portal →</a></div>
 
-<!-- FOOTER -->
-<footer>
-  <div class="footer-logo"><img src="/logo-abreviado.jpg" alt="SurGestión"></div>
-  <p class="footer-tagline">Números claros para mejores decisiones</p>
-  <div class="footer-links">
-    <a href="#servicios">Servicios</a>
-    <a href="#planes">Planes</a>
-    <a href="#agendar">Agendar reunión</a>
-    <a href="https://wa.me/56950491158" target="_blank">WhatsApp</a>
-    <a href="mailto:surgestion.pm@gmail.com">surgestion.pm@gmail.com</a>
-  </div>
-  <p class="footer-copy">© 2026 SurGestión · Todos los derechos reservados</p>
-
-<div style="text-align:center;padding:12px 0 0;border-top:1px solid rgba(255,255,255,0.06);margin-top:16px">
-  <a href="admin.html" style="font-size:11px;color:rgba(255,255,255,0.18);text-decoration:none;letter-spacing:.5px" onmouseover="this.style.color='rgba(255,255,255,0.4)'" onmouseout="this.style.color='rgba(255,255,255,0.18)'">Acceso administrador</a>
-</div>
-</footer>
-
+<footer><div class="wrap foot"><span>© 2026 SurGestión · Números claros para mejores decisiones</span><span><a href="#que-hacemos">Qué hacemos</a><a href="https://wa.me/56950491158" target="_blank" rel="noopener">WhatsApp</a><a href="mailto:surgestion.pm@gmail.com">Correo</a><a href="admin.html" style="opacity:.4">Admin</a></span></div></footer>
 <script>
-function enviarFormulario() {
-  const nombre   = document.getElementById('f-nombre').value.trim();
-  const email    = document.getElementById('f-email').value.trim();
-  const telefono = document.getElementById('f-telefono').value.trim();
-  const necesidad = document.getElementById('f-necesidad').value;
-
-  if (!nombre || !email || !telefono || !necesidad) {
-    alert('Por favor completa los campos obligatorios: nombre, correo, teléfono y necesidad.');
-    return;
-  }
-
-  // Armar mensaje de WhatsApp con los datos del formulario
-  const empresa  = document.getElementById('f-empresa').value.trim();
-  const horario  = document.getElementById('f-horario').value.trim();
-  const mensaje  = document.getElementById('f-mensaje').value.trim();
-
-  const texto = `*Nueva solicitud de reunión — SurGestión*%0A%0A` +
-    `👤 *Nombre:* ${nombre}%0A` +
-    `🏢 *Empresa:* ${empresa || 'No indicada'}%0A` +
-    `📧 *Correo:* ${email}%0A` +
-    `📱 *Teléfono:* ${telefono}%0A` +
-    `🎯 *Necesidad:* ${necesidad}%0A` +
-    `📅 *Horario preferido:* ${horario || 'No indicado'}%0A` +
-    `💬 *Mensaje:* ${mensaje || 'Sin mensaje adicional'}`;
-
-  // Mostrar éxito
-  document.getElementById('agenda-form-wrap').querySelector('.btn-form').style.display = 'none';
-  document.getElementById('form-success').style.display = 'block';
-
-  // Abrir WhatsApp con los datos (después de un pequeño delay)
-  setTimeout(() => {
-    window.open(`https://wa.me/56950491158?text=${texto}`, '_blank');
-  }, 800);
+function enviarFormulario(){
+  const v=id=>document.getElementById(id).value.trim();
+  const nombre=v('f-nombre'),email=v('f-email'),telefono=v('f-telefono'),necesidad=document.getElementById('f-necesidad').value;
+  if(!nombre||!email||!telefono||!necesidad){alert('Por favor completa los campos obligatorios: nombre, correo, teléfono y necesidad.');return;}
+  const texto=`*Nueva solicitud de reunión — SurGestión*%0A%0A`+
+    `👤 *Nombre:* ${nombre}%0A🏢 *Empresa:* ${v('f-empresa')||'No indicada'}%0A📧 *Correo:* ${email}%0A📱 *Teléfono:* ${telefono}%0A🎯 *Necesidad:* ${necesidad}%0A📅 *Horario preferido:* ${v('f-horario')||'No indicado'}%0A💬 *Mensaje:* ${v('f-mensaje')||'Sin mensaje adicional'}`;
+  document.querySelector('.btn-form').style.display='none';
+  document.getElementById('form-success').style.display='block';
+  setTimeout(()=>window.open(`https://wa.me/56950491158?text=${texto}`,'_blank'),800);
 }
+if('serviceWorker' in navigator){navigator.serviceWorker.register('/service-worker.js');}
 </script>
-  <script>
-    if('serviceWorker' in navigator){
-      navigator.serviceWorker.register('/service-worker.js');
-    }
-  </script>
-</body>
-</html>
+</body></html>
