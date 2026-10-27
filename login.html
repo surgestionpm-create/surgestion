@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#1B3A5C">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SurGestion">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <link rel="icon" type="image/png" href="/logo-abreviado.jpg">
+  <link rel="apple-touch-icon" href="/logo-abreviado.jpg">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Acceso clientes — SurGestión</title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{--navy:#1B3A5C;--blue:#3A8FD1;--blue-h:#2B7FBF;--text:#1E2D3D;--muted:#5E7A94;--white:#FFFFFF;--bg:#F5F9FC;--border:#C8DEF0}
+    html,body{height:100%;font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text)}
+    body{display:flex;flex-direction:column;min-height:100vh}
+    nav{background:var(--white);border-bottom:1px solid var(--border);padding:0 48px;height:64px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 1px 8px rgba(27,58,92,0.06)}
+    .nav-logo img{height:44px;width:auto}
+    .nav-back{font-size:14px;color:var(--muted);text-decoration:none}
+    main{flex:1;display:flex;align-items:center;justify-content:center;padding:40px 24px}
+    .card{background:var(--white);border:1px solid var(--border);border-radius:16px;padding:48px 40px;width:100%;max-width:420px;box-shadow:0 4px 24px rgba(27,58,92,0.08)}
+    .card-logo{display:flex;justify-content:center;margin-bottom:28px}
+    .card-logo img{height:52px}
+    h1{font-family:Georgia,serif;font-size:22px;font-weight:normal;color:var(--navy);text-align:center;margin-bottom:6px}
+    .sub{font-size:14px;color:var(--muted);text-align:center;margin-bottom:32px;line-height:1.5}
+    .fg{margin-bottom:18px}
+    .fg label{display:block;font-size:12px;font-weight:500;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.8px}
+    .fg input{width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:8px;font-size:15px;color:var(--text);background:var(--white);font-family:inherit;transition:border-color .2s}
+    .fg input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(58,143,209,.1)}
+    .btn{width:100%;background:var(--blue);color:#fff;border:none;border-radius:8px;padding:13px;font-size:15px;font-weight:500;cursor:pointer;font-family:inherit;transition:background .2s;margin-top:8px}
+    .btn:hover{background:var(--blue-h)}
+    .btn:disabled{background:var(--muted);cursor:not-allowed}
+    .err{display:none;background:#FEF2F2;border:1px solid #FECACA;color:#DC2626;border-radius:8px;padding:12px 14px;font-size:13px;margin-bottom:16px;text-align:center}
+    .foot{text-align:center;margin-top:24px;font-size:13px;color:var(--muted)}
+    .foot a{color:var(--blue);text-decoration:none}
+    footer{text-align:center;padding:20px;font-size:12px;color:var(--muted);border-top:1px solid var(--border)}
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style id="tema-2026">
+    :root{--navy:#1B3A5C;--blue:#2A9D8F;--blue-h:#1c7a6e;--text:#16293F;--muted:#6B7685;--bg:#FAF7F2;--border:#E6DFD3;--gl:#DFF1EE;--green:#1c7a6e;--rl:#FBE4E7;--red:#C4453A}
+    html,body{font-family:Inter,system-ui,-apple-system,sans-serif;background:var(--bg);-webkit-font-smoothing:antialiased}
+    nav{background:var(--navy);box-shadow:0 2px 14px -6px rgba(27,58,92,.5);border-bottom:0}
+    .nav-back{color:#fff;font-weight:500;border:1.5px solid rgba(255,255,255,.55);border-radius:10px;padding:8px 18px;font-size:13.5px;transition:.2s}
+    .nav-back:hover{background:#fff;color:var(--navy)}
+    .nav-logo img{border-radius:8px;height:40px}
+    main{position:relative;overflow:hidden}
+    .card{position:relative;z-index:1;border-radius:18px;border:1px solid var(--border);box-shadow:none;padding:48px 40px;background:#fff}
+    h1{font-family:Fraunces,Georgia,serif;font-weight:500;font-size:32px;letter-spacing:-.03em;line-height:1.1}
+    .sub{color:var(--muted)}
+    .fg label{text-transform:none;letter-spacing:0;font-size:13px;font-weight:600;color:var(--navy)}
+    .fg input,#pass{border:1.5px solid var(--border)!important;border-radius:10px!important;background:var(--bg)!important;padding-top:13px;padding-bottom:13px}
+    .fg input:focus{border-color:var(--blue)!important;background:#fff!important;box-shadow:0 0 0 4px rgba(42,157,143,.12)}
+    .btn{background:var(--navy);border-radius:10px;font-weight:600;padding:15px;transition:.25s}
+    .btn:hover{background:#16293F}
+    .err{background:var(--rl);border:0;color:var(--red);border-radius:10px}
+    footer{border-top:1px solid var(--border)}
+    @media(max-width:600px){nav{padding:0 18px}.card{padding:36px 24px}}
+  </style>
+<!-- Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-N6KQH84GZQ"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-N6KQH84GZQ');
+</script>
+</head>
+<body>
+<nav>
+  <a href="https://surgestionpm.cl/surgestion-inicio.html" class="nav-logo"><img src="/logo-abreviado.jpg" alt="SG"></a>
+  <a href="https://surgestionpm.cl/surgestion-inicio.html" class="nav-back">← Volver al sitio</a>
+</nav>
+<main>
+  <div class="card">
+    <div class="card-logo"><img src="/logo-surgestion.jpg" alt="SurGestión"></div>
+    <h1>Portal de clientes</h1>
+    <p class="sub">Ingresa con tu correo y contraseña para ver tu información financiera.</p>
+    <div class="err" id="err">Correo o contraseña incorrectos.</div>
+    <div class="fg"><label>Correo electrónico</label><input type="email" id="email" placeholder="tu@correo.cl"></div>
+    <div class="fg">
+      <label>Contraseña</label>
+      <div style="position:relative">
+        <input type="password" id="pass" placeholder="••••••••" style="width:100%;padding:11px 44px 11px 14px;border:1px solid var(--border);border-radius:8px;font-size:15px;color:var(--text);background:var(--white);font-family:inherit;transition:border-color .2s">
+        <button type="button" onclick="togglePass()" id="btn-show" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;padding:0;line-height:1">👁</button>
+      </div>
+    </div>
+    <div style="text-align:right;margin:-8px 0 14px">
+      <a href="#" onclick="recuperarClave(event)" style="font-size:13px;color:var(--blue);text-decoration:none">¿Olvidaste tu contraseña?</a>
+    </div>
+    <button class="btn" id="btn" onclick="login()">Ingresar al portal</button>
+    <div id="recuperar-msg" style="display:none;background:var(--gl);border:1px solid rgba(39,174,96,.2);color:var(--green);border-radius:8px;padding:10px 14px;font-size:13px;margin-top:12px;text-align:center"></div>
+    <div class="foot">Problemas para acceder: <a href="https://wa.me/56950491158" target="_blank">WhatsApp +56 9 5049 1158</a></div>
+  </div>
+</main>
+<footer>2026 SurGestión</footer>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const sb = supabase.createClient('https://mmaamwaylzofisbqgkcd.supabase.co','sb_publishable_SxPyRPpCrgEj7p_Y2aRO_A_0ytIr1Zt');
+sb.auth.getSession().then(function(r){ if(r.data.session) location.href='https://surgestionpm.cl/portal.html'; });
+function togglePass(){
+  var inp=document.getElementById('pass');
+  var btn=document.getElementById('btn-show');
+  if(inp.type==='password'){inp.type='text';btn.textContent='🙈';}
+  else{inp.type='password';btn.textContent='👁';}
+}
+async function recuperarClave(e){
+  e.preventDefault();
+  var email=document.getElementById('email').value.trim();
+  if(!email){document.getElementById('err').textContent='Ingresa tu correo primero.';document.getElementById('err').style.display='block';return;}
+  var {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+'/portal.html'});
+  var msg=document.getElementById('recuperar-msg');
+  if(error){msg.style.background='var(--rl)';msg.style.color='var(--red)';msg.textContent='Error: '+error.message;}
+  else{msg.style.background='var(--gl)';msg.style.color='var(--green)';msg.textContent='Te enviamos un correo con instrucciones para recuperar tu contraseña.';}
+  msg.style.display='block';
+}
+async function login(){
+  const email=document.getElementById('email').value.trim();
+  const pass=document.getElementById('pass').value;
+  const btn=document.getElementById('btn');
+  const err=document.getElementById('err');
+  if(!email||!pass){err.textContent='Completa todos los campos.';err.style.display='block';return;}
+  btn.disabled=true;btn.textContent='Ingresando...';err.style.display='none';
+  const res=await sb.auth.signInWithPassword({email:email,password:pass});
+  if(res.error){err.style.display='block';btn.disabled=false;btn.textContent='Ingresar al portal';}
+  else{location.href='https://surgestionpm.cl/portal.html';}
+}
+document.addEventListener('keydown',function(e){if(e.key==='Enter')login();});
+</script>
+  <script>
+    if('serviceWorker' in navigator){
+      navigator.serviceWorker.register('/service-worker.js');
+    }
+  </script>
+</body>
+</html>
